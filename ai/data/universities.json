@@ -1,0 +1,698 @@
+{
+  "_meta": {
+    "note": "DEMO DATASET. Names of institutions are real, publicly known Jharkhand HEIs. Fields expertise/departments/research_areas/capabilities/facilities are PLACEHOLDER values for MVP demo purposes and are NOT verified against official sources. Replace with verified data before production use. contact_email/contact_phone are FAKE placeholder values added for the notification-fanout demo -- replace with real institutional contacts before production use.",
+    "data_status_options": [
+      "demo",
+      "verified"
+    ]
+  },
+  "institutions": [
+    {
+      "id": "uni_001",
+      "name": "Indian Institute of Technology (Indian School of Mines), Dhanbad",
+      "type": "IIT",
+      "city": "Dhanbad",
+      "district": "Dhanbad",
+      "website": "https://www.iitism.ac.in",
+      "expertise": [
+        "civil engineering",
+        "mining engineering",
+        "mechanical engineering",
+        "environmental engineering",
+        "geotechnical engineering"
+      ],
+      "departments": [
+        "Civil Engineering",
+        "Mining Engineering",
+        "Mechanical Engineering",
+        "Environmental Science & Engineering",
+        "Computer Science & Engineering"
+      ],
+      "research_areas": [
+        "infrastructure resilience",
+        "mine safety",
+        "water resources",
+        "structural engineering"
+      ],
+      "capabilities": [
+        "structural assessment",
+        "geotechnical survey",
+        "prototyping",
+        "material testing"
+      ],
+      "facilities": [
+        "structural testing lab",
+        "geotech lab",
+        "computing lab"
+      ],
+      "latitude": 23.8129,
+      "longitude": 86.4335,
+      "data_status": "demo",
+      "contact_email": "outreach.uni_001@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "uni_002",
+      "name": "Birla Institute of Technology, Mesra",
+      "type": "Deemed University",
+      "city": "Ranchi",
+      "district": "Ranchi",
+      "website": "https://www.bitmesra.ac.in",
+      "expertise": [
+        "computer science",
+        "electrical engineering",
+        "civil engineering",
+        "biotechnology"
+      ],
+      "departments": [
+        "Computer Science & Engineering",
+        "Electrical & Electronics Engineering",
+        "Civil Engineering",
+        "Biotechnology"
+      ],
+      "research_areas": [
+        "AI/ML",
+        "renewable energy systems",
+        "smart infrastructure"
+      ],
+      "capabilities": [
+        "software prototyping",
+        "embedded systems design",
+        "data analytics"
+      ],
+      "facilities": [
+        "AI/ML lab",
+        "electronics lab",
+        "innovation cell"
+      ],
+      "latitude": 23.418,
+      "longitude": 85.4295,
+      "data_status": "demo",
+      "contact_email": "outreach.uni_002@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "uni_003",
+      "name": "National Institute of Technology, Jamshedpur",
+      "type": "NIT",
+      "city": "Jamshedpur",
+      "district": "East Singhbhum",
+      "website": "https://www.nitjsr.ac.in",
+      "expertise": [
+        "civil engineering",
+        "mechanical engineering",
+        "electrical engineering",
+        "metallurgy"
+      ],
+      "departments": [
+        "Civil Engineering",
+        "Mechanical Engineering",
+        "Electrical Engineering",
+        "Metallurgical & Materials Engineering"
+      ],
+      "research_areas": [
+        "road & transportation engineering",
+        "structural health monitoring",
+        "industrial automation"
+      ],
+      "capabilities": [
+        "road condition assessment",
+        "structural inspection",
+        "material testing"
+      ],
+      "facilities": [
+        "transportation engineering lab",
+        "materials testing lab"
+      ],
+      "latitude": 22.7925,
+      "longitude": 86.1842,
+      "data_status": "demo",
+      "contact_email": "outreach.uni_003@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "uni_004",
+      "name": "Birsa Agricultural University",
+      "type": "State Agricultural University",
+      "city": "Ranchi",
+      "district": "Ranchi",
+      "website": "https://bau.ac.in",
+      "expertise": [
+        "agriculture",
+        "irrigation",
+        "soil science",
+        "horticulture",
+        "agricultural engineering"
+      ],
+      "departments": [
+        "Agronomy",
+        "Soil Science",
+        "Agricultural Engineering",
+        "Horticulture",
+        "Agricultural Extension"
+      ],
+      "research_areas": [
+        "irrigation management",
+        "drought-resistant crops",
+        "watershed management",
+        "farm mechanization"
+      ],
+      "capabilities": [
+        "irrigation system design",
+        "soil testing",
+        "crop advisory",
+        "watershed planning"
+      ],
+      "facilities": [
+        "soil testing lab",
+        "agri-extension center",
+        "demonstration farm"
+      ],
+      "latitude": 23.42,
+      "longitude": 85.32,
+      "data_status": "demo",
+      "contact_email": "outreach.uni_004@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "uni_005",
+      "name": "Rajendra Institute of Medical Sciences (RIMS), Ranchi",
+      "type": "Government Medical College",
+      "city": "Ranchi",
+      "district": "Ranchi",
+      "website": "https://rimsranchi.co.in",
+      "expertise": [
+        "healthcare",
+        "public health",
+        "maternal health",
+        "emergency medicine"
+      ],
+      "departments": [
+        "General Medicine",
+        "Obstetrics & Gynaecology",
+        "Community Medicine",
+        "Emergency Medicine"
+      ],
+      "research_areas": [
+        "rural healthcare access",
+        "maternal & child health",
+        "telemedicine"
+      ],
+      "capabilities": [
+        "health camps",
+        "telemedicine support",
+        "medical training",
+        "public health assessment"
+      ],
+      "facilities": [
+        "hospital",
+        "diagnostic center",
+        "medical training facility"
+      ],
+      "latitude": 23.36,
+      "longitude": 85.32,
+      "data_status": "demo",
+      "contact_email": "outreach.uni_005@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "uni_006",
+      "name": "MGM Medical College, Jamshedpur",
+      "type": "Government Medical College",
+      "city": "Jamshedpur",
+      "district": "East Singhbhum",
+      "website": "https://mgmmcjsr.ac.in",
+      "expertise": [
+        "healthcare",
+        "general medicine",
+        "pediatrics",
+        "obstetrics"
+      ],
+      "departments": [
+        "General Medicine",
+        "Pediatrics",
+        "Obstetrics & Gynaecology"
+      ],
+      "research_areas": [
+        "rural health outreach",
+        "maternal mortality reduction"
+      ],
+      "capabilities": [
+        "health camps",
+        "referral support",
+        "medical training"
+      ],
+      "facilities": [
+        "hospital",
+        "outpatient department"
+      ],
+      "latitude": 22.8046,
+      "longitude": 86.2029,
+      "data_status": "demo",
+      "contact_email": "outreach.uni_006@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "uni_007",
+      "name": "National Institute of Foundry and Forge Technology (NIFFT), Ranchi",
+      "type": "Institute of National Importance",
+      "city": "Ranchi",
+      "district": "Ranchi",
+      "website": "https://nifft.ac.in",
+      "expertise": [
+        "metallurgy",
+        "mechanical engineering",
+        "manufacturing"
+      ],
+      "departments": [
+        "Metallurgical Engineering",
+        "Mechanical Engineering",
+        "Forge Technology"
+      ],
+      "research_areas": [
+        "industrial manufacturing",
+        "energy-efficient processes"
+      ],
+      "capabilities": [
+        "prototyping",
+        "material testing",
+        "process optimization"
+      ],
+      "facilities": [
+        "foundry lab",
+        "forge shop",
+        "materials lab"
+      ],
+      "latitude": 23.4,
+      "longitude": 85.42,
+      "data_status": "demo",
+      "contact_email": "outreach.uni_007@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "uni_008",
+      "name": "Central University of Jharkhand",
+      "type": "Central University",
+      "city": "Ranchi",
+      "district": "Ranchi",
+      "website": "https://cuj.ac.in",
+      "expertise": [
+        "environmental science",
+        "social sciences",
+        "rural development",
+        "public policy"
+      ],
+      "departments": [
+        "Environmental Science",
+        "Social Work",
+        "Rural Development",
+        "Public Policy"
+      ],
+      "research_areas": [
+        "tribal development",
+        "environmental sustainability",
+        "rural governance"
+      ],
+      "capabilities": [
+        "community surveys",
+        "policy analysis",
+        "social impact assessment"
+      ],
+      "facilities": [
+        "environmental lab",
+        "social sciences research center"
+      ],
+      "latitude": 23.6345,
+      "longitude": 85.2799,
+      "data_status": "demo",
+      "contact_email": "outreach.uni_008@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "uni_009",
+      "name": "Xavier Institute of Social Service (XISS), Ranchi",
+      "type": "Autonomous Institute",
+      "city": "Ranchi",
+      "district": "Ranchi",
+      "website": "https://xiss.ac.in",
+      "expertise": [
+        "rural development",
+        "social sciences",
+        "public administration",
+        "management"
+      ],
+      "departments": [
+        "Rural Management",
+        "Human Resource Management",
+        "Development Studies"
+      ],
+      "research_areas": [
+        "rural livelihoods",
+        "tribal welfare",
+        "NGO management"
+      ],
+      "capabilities": [
+        "community mobilization",
+        "program evaluation",
+        "training"
+      ],
+      "facilities": [
+        "research center",
+        "training hall"
+      ],
+      "latitude": 23.38,
+      "longitude": 85.33,
+      "data_status": "demo",
+      "contact_email": "outreach.uni_009@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "uni_010",
+      "name": "Vinoba Bhave University",
+      "type": "State University",
+      "city": "Hazaribagh",
+      "district": "Hazaribagh",
+      "website": "https://vbu.ac.in",
+      "expertise": [
+        "general sciences",
+        "environment",
+        "education",
+        "law"
+      ],
+      "departments": [
+        "Environmental Science",
+        "Education",
+        "Law",
+        "Physics"
+      ],
+      "research_areas": [
+        "environmental monitoring",
+        "teacher training",
+        "legal studies"
+      ],
+      "capabilities": [
+        "environmental assessment",
+        "teacher training programs"
+      ],
+      "facilities": [
+        "science labs",
+        "law department library"
+      ],
+      "latitude": 23.9924,
+      "longitude": 85.3616,
+      "data_status": "demo",
+      "contact_email": "outreach.uni_010@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "uni_011",
+      "name": "Kolhan University",
+      "type": "State University",
+      "city": "Chaibasa",
+      "district": "West Singhbhum",
+      "website": "https://kolhanuniversity.ac.in",
+      "expertise": [
+        "general sciences",
+        "commerce",
+        "education",
+        "tribal studies"
+      ],
+      "departments": [
+        "Education",
+        "Commerce",
+        "Tribal & Regional Language"
+      ],
+      "research_areas": [
+        "tribal education",
+        "rural livelihoods"
+      ],
+      "capabilities": [
+        "teacher training",
+        "community education programs"
+      ],
+      "facilities": [
+        "central library",
+        "language research center"
+      ],
+      "latitude": 22.5544,
+      "longitude": 85.8067,
+      "data_status": "demo",
+      "contact_email": "outreach.uni_011@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "uni_012",
+      "name": "Sido Kanhu Murmu University",
+      "type": "State University",
+      "city": "Dumka",
+      "district": "Dumka",
+      "website": "https://skmu.ac.in",
+      "expertise": [
+        "education",
+        "environment",
+        "agriculture",
+        "tribal studies"
+      ],
+      "departments": [
+        "Botany",
+        "Environmental Science",
+        "Education"
+      ],
+      "research_areas": [
+        "agro-forestry",
+        "tribal welfare",
+        "rural education"
+      ],
+      "capabilities": [
+        "agricultural advisory",
+        "teacher training"
+      ],
+      "facilities": [
+        "botanical garden",
+        "science labs"
+      ],
+      "latitude": 24.2685,
+      "longitude": 87.2497,
+      "data_status": "demo",
+      "contact_email": "outreach.uni_012@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "uni_013",
+      "name": "Nilamber Pitamber University",
+      "type": "State University",
+      "city": "Medininagar (Daltonganj)",
+      "district": "Palamu",
+      "website": "https://npu.ac.in",
+      "expertise": [
+        "education",
+        "general sciences",
+        "rural development"
+      ],
+      "departments": [
+        "Education",
+        "Botany",
+        "Zoology"
+      ],
+      "research_areas": [
+        "rural education access",
+        "biodiversity"
+      ],
+      "capabilities": [
+        "teacher training",
+        "community outreach"
+      ],
+      "facilities": [
+        "science labs",
+        "central library"
+      ],
+      "latitude": 24.045,
+      "longitude": 84.07,
+      "data_status": "demo",
+      "contact_email": "outreach.uni_013@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "uni_014",
+      "name": "Usha Martin University",
+      "type": "Private University",
+      "city": "Ranchi",
+      "district": "Ranchi",
+      "website": "https://ushamartinuniversity.ac.in",
+      "expertise": [
+        "computer science",
+        "management",
+        "engineering"
+      ],
+      "departments": [
+        "Computer Science & Engineering",
+        "Management Studies",
+        "Electrical Engineering"
+      ],
+      "research_areas": [
+        "applied AI",
+        "renewable energy"
+      ],
+      "capabilities": [
+        "software prototyping",
+        "data analysis"
+      ],
+      "facilities": [
+        "computer labs",
+        "innovation cell"
+      ],
+      "latitude": 23.32,
+      "longitude": 85.44,
+      "data_status": "demo",
+      "contact_email": "outreach.uni_014@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "uni_015",
+      "name": "Amity University Jharkhand",
+      "type": "Private University",
+      "city": "Ranchi",
+      "district": "Ranchi",
+      "website": "https://ranchi.amity.edu",
+      "expertise": [
+        "computer science",
+        "biotechnology",
+        "management",
+        "law"
+      ],
+      "departments": [
+        "Computer Science & Engineering",
+        "Biotechnology",
+        "Law"
+      ],
+      "research_areas": [
+        "AI/ML applications",
+        "public health biotech"
+      ],
+      "capabilities": [
+        "software prototyping",
+        "biotech lab support"
+      ],
+      "facilities": [
+        "AI lab",
+        "biotech lab",
+        "law moot court"
+      ],
+      "latitude": 23.3,
+      "longitude": 85.38,
+      "data_status": "demo",
+      "contact_email": "outreach.uni_015@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "uni_016",
+      "name": "Jharkhand Rai University",
+      "type": "Private University",
+      "city": "Ranchi",
+      "district": "Ranchi",
+      "website": "https://jru.edu.in",
+      "expertise": [
+        "engineering",
+        "management",
+        "computer applications"
+      ],
+      "departments": [
+        "Computer Applications",
+        "Civil Engineering",
+        "Management"
+      ],
+      "research_areas": [
+        "rural infrastructure",
+        "digital governance"
+      ],
+      "capabilities": [
+        "software development",
+        "infrastructure planning support"
+      ],
+      "facilities": [
+        "computer labs",
+        "engineering workshop"
+      ],
+      "latitude": 23.35,
+      "longitude": 85.37,
+      "data_status": "demo",
+      "contact_email": "outreach.uni_016@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "uni_017",
+      "name": "Indian Institute of Management (IIM), Ranchi",
+      "type": "IIM",
+      "city": "Ranchi",
+      "district": "Ranchi",
+      "website": "https://iimranchi.ac.in",
+      "expertise": [
+        "public policy",
+        "rural management",
+        "innovation & entrepreneurship"
+      ],
+      "departments": [
+        "Public Policy",
+        "Rural Management",
+        "Economics"
+      ],
+      "research_areas": [
+        "rural livelihoods economics",
+        "public administration reform",
+        "social entrepreneurship"
+      ],
+      "capabilities": [
+        "policy analysis",
+        "program design",
+        "impact evaluation"
+      ],
+      "facilities": [
+        "policy research center",
+        "case study library"
+      ],
+      "latitude": 23.4,
+      "longitude": 85.33,
+      "data_status": "demo",
+      "contact_email": "outreach.uni_017@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "uni_018",
+      "name": "Central Institute of Mining and Fuel Research (CIMFR), Dhanbad",
+      "type": "Research Institute (CSIR)",
+      "city": "Dhanbad",
+      "district": "Dhanbad",
+      "website": "https://www.cimfr.nic.in",
+      "expertise": [
+        "mining",
+        "environment",
+        "energy",
+        "safety engineering"
+      ],
+      "departments": [
+        "Mining Safety",
+        "Environmental Monitoring",
+        "Fuel Research"
+      ],
+      "research_areas": [
+        "mine safety",
+        "air quality monitoring",
+        "clean coal technology"
+      ],
+      "capabilities": [
+        "environmental monitoring",
+        "safety audits",
+        "technology transfer"
+      ],
+      "facilities": [
+        "environmental monitoring lab",
+        "fuel research lab"
+      ],
+      "latitude": 23.7957,
+      "longitude": 86.4304,
+      "data_status": "demo",
+      "contact_email": "outreach.uni_018@example.edu",
+      "contact_phone": "+91-00000-00000"
+    }
+  ]
+}

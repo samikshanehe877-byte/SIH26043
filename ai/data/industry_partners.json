@@ -1,0 +1,346 @@
+{
+  "_meta": {
+    "note": "DEMO DATASET. Generic, non-attributed industry/CSR partner categories for MVP demo. No real company CSR commitments are claimed. Replace with verified partnership data before production use. contact_email/contact_phone are FAKE placeholder values added for the notification-fanout demo -- replace with real partner contacts before production use.",
+    "data_status_options": [
+      "demo",
+      "verified"
+    ]
+  },
+  "partners": [
+    {
+      "id": "ind_001",
+      "name": "Regional Steel & Infrastructure Group (Demo Partner)",
+      "type": "industry",
+      "location": "Jamshedpur, East Singhbhum",
+      "sectors": [
+        "infrastructure",
+        "civil construction",
+        "metallurgy"
+      ],
+      "expertise": [
+        "road construction",
+        "structural materials",
+        "heavy engineering"
+      ],
+      "capabilities": [
+        "construction execution",
+        "material supply",
+        "engineering consultancy"
+      ],
+      "support_types": [
+        "funding",
+        "technology",
+        "equipment",
+        "CSR"
+      ],
+      "data_status": "demo",
+      "contact_email": "partnerships.ind_001@example.com",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "ind_002",
+      "name": "Coal & Mining Safety Foundation (Demo Partner)",
+      "type": "CSR organization",
+      "location": "Dhanbad",
+      "sectors": [
+        "mining",
+        "environment",
+        "safety"
+      ],
+      "expertise": [
+        "mine safety systems",
+        "environmental monitoring"
+      ],
+      "capabilities": [
+        "safety audits",
+        "CSR grants for rural infra"
+      ],
+      "support_types": [
+        "funding",
+        "CSR",
+        "equipment"
+      ],
+      "data_status": "demo",
+      "contact_email": "partnerships.ind_002@example.com",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "ind_003",
+      "name": "AgriTech Innovations Pvt Ltd (Demo Partner)",
+      "type": "startup",
+      "location": "Ranchi",
+      "sectors": [
+        "agriculture",
+        "irrigation",
+        "IoT"
+      ],
+      "expertise": [
+        "smart irrigation",
+        "soil sensors",
+        "farm advisory apps"
+      ],
+      "capabilities": [
+        "prototyping",
+        "pilot_deployment",
+        "technology"
+      ],
+      "support_types": [
+        "technology",
+        "prototyping",
+        "pilot_deployment",
+        "mentoring"
+      ],
+      "data_status": "demo",
+      "contact_email": "partnerships.ind_003@example.com",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "ind_004",
+      "name": "Rural Health Access Trust (Demo Partner)",
+      "type": "CSR organization",
+      "location": "Ranchi",
+      "sectors": [
+        "healthcare",
+        "maternal health"
+      ],
+      "expertise": [
+        "mobile health units",
+        "telemedicine deployment"
+      ],
+      "capabilities": [
+        "equipment donation",
+        "health camps",
+        "training"
+      ],
+      "support_types": [
+        "funding",
+        "equipment",
+        "CSR",
+        "mentoring"
+      ],
+      "data_status": "demo",
+      "contact_email": "partnerships.ind_004@example.com",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "ind_005",
+      "name": "Jharkhand Power & Energy Solutions (Demo Partner)",
+      "type": "industry",
+      "location": "Ranchi",
+      "sectors": [
+        "energy",
+        "electricity distribution",
+        "renewables"
+      ],
+      "expertise": [
+        "grid maintenance",
+        "solar microgrids",
+        "rural electrification"
+      ],
+      "capabilities": [
+        "technology_transfer",
+        "equipment",
+        "pilot_deployment"
+      ],
+      "support_types": [
+        "technology",
+        "equipment",
+        "technology_transfer",
+        "funding"
+      ],
+      "data_status": "demo",
+      "contact_email": "partnerships.ind_005@example.com",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "ind_006",
+      "name": "Tribal Livelihoods Innovation Hub (Demo Partner)",
+      "type": "innovation hub",
+      "location": "Ranchi",
+      "sectors": [
+        "rural development",
+        "livelihoods",
+        "social sciences"
+      ],
+      "expertise": [
+        "community-based programs",
+        "skill development"
+      ],
+      "capabilities": [
+        "mentoring",
+        "program design",
+        "grants"
+      ],
+      "support_types": [
+        "mentoring",
+        "funding",
+        "CSR"
+      ],
+      "data_status": "demo",
+      "contact_email": "partnerships.ind_006@example.com",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "ind_007",
+      "name": "EdTech for Rural India (Demo Partner)",
+      "type": "startup",
+      "location": "Bengaluru (Pan-India operations)",
+      "sectors": [
+        "education",
+        "technology"
+      ],
+      "expertise": [
+        "digital learning platforms",
+        "teacher training apps"
+      ],
+      "capabilities": [
+        "technology",
+        "pilot_deployment",
+        "mentoring"
+      ],
+      "support_types": [
+        "technology",
+        "pilot_deployment",
+        "mentoring"
+      ],
+      "data_status": "demo",
+      "contact_email": "partnerships.ind_007@example.com",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "ind_008",
+      "name": "MSME Cluster – Civil & Water Works (Demo Partner)",
+      "type": "MSME",
+      "location": "Ranchi",
+      "sectors": [
+        "water resources",
+        "civil works",
+        "infrastructure"
+      ],
+      "expertise": [
+        "borewell drilling",
+        "pipeline laying",
+        "small-scale construction"
+      ],
+      "capabilities": [
+        "equipment",
+        "on-ground execution"
+      ],
+      "support_types": [
+        "equipment",
+        "technology_transfer"
+      ],
+      "data_status": "demo",
+      "contact_email": "partnerships.ind_008@example.com",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "ind_009",
+      "name": "Water & Sanitation Research Cell (Demo Partner)",
+      "type": "research organization",
+      "location": "Ranchi",
+      "sectors": [
+        "water resources",
+        "environment",
+        "public health"
+      ],
+      "expertise": [
+        "water quality testing",
+        "watershed research"
+      ],
+      "capabilities": [
+        "technology_transfer",
+        "pilot_deployment"
+      ],
+      "support_types": [
+        "technology_transfer",
+        "pilot_deployment",
+        "funding"
+      ],
+      "data_status": "demo",
+      "contact_email": "partnerships.ind_009@example.com",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "ind_010",
+      "name": "Digital Governance & Public Policy Lab (Demo Partner)",
+      "type": "research organization",
+      "location": "Ranchi",
+      "sectors": [
+        "law",
+        "public administration",
+        "governance"
+      ],
+      "expertise": [
+        "e-governance systems",
+        "policy design"
+      ],
+      "capabilities": [
+        "mentoring",
+        "program design"
+      ],
+      "support_types": [
+        "mentoring",
+        "technology"
+      ],
+      "data_status": "demo",
+      "contact_email": "partnerships.ind_010@example.com",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "ind_011",
+      "name": "Accessible Tech Collective (Demo Partner)",
+      "type": "innovation hub",
+      "location": "Ranchi",
+      "sectors": [
+        "accessibility",
+        "social sciences",
+        "assistive technology"
+      ],
+      "expertise": [
+        "assistive devices",
+        "inclusive design"
+      ],
+      "capabilities": [
+        "prototyping",
+        "technology"
+      ],
+      "support_types": [
+        "technology",
+        "prototyping",
+        "mentoring"
+      ],
+      "data_status": "demo",
+      "contact_email": "partnerships.ind_011@example.com",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "ind_012",
+      "name": "Computer Science & AI Startup Incubator (Demo Partner)",
+      "type": "innovation hub",
+      "location": "Ranchi",
+      "sectors": [
+        "computer science / AI",
+        "software"
+      ],
+      "expertise": [
+        "AI product development",
+        "software engineering mentorship"
+      ],
+      "capabilities": [
+        "mentoring",
+        "technology",
+        "prototyping"
+      ],
+      "support_types": [
+        "mentoring",
+        "technology",
+        "prototyping",
+        "funding"
+      ],
+      "data_status": "demo",
+      "contact_email": "partnerships.ind_012@example.com",
+      "contact_phone": "+91-00000-00000"
+    }
+  ]
+}
