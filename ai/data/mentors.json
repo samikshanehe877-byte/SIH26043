@@ -1,0 +1,433 @@
+{
+  "_meta": {
+    "data_status": "demo",
+    "note": "All mentor names below are FICTIONAL, generated for demo purposes only. They are not real faculty members. Before production use, replace with actual verified faculty rosters supplied by each institution. contact_email/contact_phone are FAKE placeholder values added for the notification-fanout demo -- replace with real faculty contacts before production use.",
+    "capacity_note": "current_load / max_capacity are illustrative placeholders simulating how many active student projects a mentor is supervising, used to demonstrate availability-aware matching."
+  },
+  "mentors": [
+    {
+      "id": "mentor_001",
+      "name": "Dr. Ananya Kujur",
+      "university_id": "uni_001",
+      "department": "Civil Engineering",
+      "designation": "Associate Professor",
+      "expertise": [
+        "structural engineering",
+        "geotechnical survey",
+        "infrastructure resilience",
+        "material testing"
+      ],
+      "research_areas": [
+        "structural health monitoring",
+        "low-cost construction materials"
+      ],
+      "max_capacity": 4,
+      "current_load": 2,
+      "data_status": "demo",
+      "contact_email": "mentor_001@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "mentor_002",
+      "name": "Dr. Rakesh Mahato",
+      "university_id": "uni_001",
+      "department": "Environmental Science & Engineering",
+      "designation": "Professor",
+      "expertise": [
+        "environmental engineering",
+        "water resources",
+        "mine safety"
+      ],
+      "research_areas": [
+        "water treatment",
+        "mine water pollution control"
+      ],
+      "max_capacity": 3,
+      "current_load": 3,
+      "data_status": "demo",
+      "contact_email": "mentor_002@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "mentor_003",
+      "name": "Dr. Priya Oraon",
+      "university_id": "uni_002",
+      "department": "Computer Science & Engineering",
+      "designation": "Assistant Professor",
+      "expertise": [
+        "computer science",
+        "machine learning",
+        "mobile applications",
+        "data analytics"
+      ],
+      "research_areas": [
+        "AI for social good",
+        "citizen-facing digital platforms"
+      ],
+      "max_capacity": 5,
+      "current_load": 1,
+      "data_status": "demo",
+      "contact_email": "mentor_003@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "mentor_004",
+      "name": "Dr. Suman Toppo",
+      "university_id": "uni_002",
+      "department": "Biotechnology",
+      "designation": "Associate Professor",
+      "expertise": [
+        "biotechnology",
+        "public health",
+        "water quality testing"
+      ],
+      "research_areas": [
+        "low-cost diagnostics",
+        "rural sanitation biotech"
+      ],
+      "max_capacity": 4,
+      "current_load": 2,
+      "data_status": "demo",
+      "contact_email": "mentor_004@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "mentor_005",
+      "name": "Dr. Vikram Hansda",
+      "university_id": "uni_003",
+      "department": "Electrical Engineering",
+      "designation": "Professor",
+      "expertise": [
+        "electrical engineering",
+        "renewable energy",
+        "rural electrification"
+      ],
+      "research_areas": [
+        "microgrids",
+        "solar energy access"
+      ],
+      "max_capacity": 3,
+      "current_load": 1,
+      "data_status": "demo",
+      "contact_email": "mentor_005@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "mentor_006",
+      "name": "Dr. Neha Soren",
+      "university_id": "uni_003",
+      "department": "Civil Engineering",
+      "designation": "Assistant Professor",
+      "expertise": [
+        "civil engineering",
+        "road infrastructure",
+        "urban development"
+      ],
+      "research_areas": [
+        "rural road connectivity",
+        "pavement design"
+      ],
+      "max_capacity": 4,
+      "current_load": 4,
+      "data_status": "demo",
+      "contact_email": "mentor_006@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "mentor_007",
+      "name": "Dr. Manoj Kisku",
+      "university_id": "uni_004",
+      "department": "Agricultural Engineering",
+      "designation": "Professor",
+      "expertise": [
+        "agriculture",
+        "irrigation",
+        "agricultural engineering",
+        "farm mechanization"
+      ],
+      "research_areas": [
+        "precision irrigation",
+        "drought-resilient farming"
+      ],
+      "max_capacity": 4,
+      "current_load": 2,
+      "data_status": "demo",
+      "contact_email": "mentor_007@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "mentor_008",
+      "name": "Dr. Sushila Marandi",
+      "university_id": "uni_004",
+      "department": "Horticulture",
+      "designation": "Associate Professor",
+      "expertise": [
+        "horticulture",
+        "soil science",
+        "post-harvest management"
+      ],
+      "research_areas": [
+        "fruit crop yield improvement",
+        "soil health mapping"
+      ],
+      "max_capacity": 3,
+      "current_load": 0,
+      "data_status": "demo",
+      "contact_email": "mentor_008@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "mentor_009",
+      "name": "Dr. Rajesh Bhagat",
+      "university_id": "uni_005",
+      "department": "Community Medicine",
+      "designation": "Professor",
+      "expertise": [
+        "healthcare",
+        "public health",
+        "maternal health",
+        "epidemiology"
+      ],
+      "research_areas": [
+        "rural health access",
+        "maternal and child health outcomes"
+      ],
+      "max_capacity": 3,
+      "current_load": 1,
+      "data_status": "demo",
+      "contact_email": "mentor_009@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "mentor_010",
+      "name": "Dr. Kavita Munda",
+      "university_id": "uni_005",
+      "department": "Emergency Medicine",
+      "designation": "Assistant Professor",
+      "expertise": [
+        "emergency medicine",
+        "healthcare",
+        "trauma care logistics"
+      ],
+      "research_areas": [
+        "emergency response systems",
+        "ambulance network optimization"
+      ],
+      "max_capacity": 3,
+      "current_load": 2,
+      "data_status": "demo",
+      "contact_email": "mentor_010@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "mentor_011",
+      "name": "Dr. Alok Tirkey",
+      "university_id": "uni_007",
+      "department": "Metallurgical Engineering",
+      "designation": "Professor",
+      "expertise": [
+        "metallurgy",
+        "manufacturing",
+        "material testing"
+      ],
+      "research_areas": [
+        "recycled metal casting",
+        "low-cost tooling"
+      ],
+      "max_capacity": 3,
+      "current_load": 1,
+      "data_status": "demo",
+      "contact_email": "mentor_011@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "mentor_012",
+      "name": "Dr. Sunita Pahan",
+      "university_id": "uni_008",
+      "department": "Rural Development",
+      "designation": "Associate Professor",
+      "expertise": [
+        "rural development",
+        "public policy",
+        "social sciences"
+      ],
+      "research_areas": [
+        "livelihood diversification",
+        "panchayat governance"
+      ],
+      "max_capacity": 4,
+      "current_load": 2,
+      "data_status": "demo",
+      "contact_email": "mentor_012@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "mentor_013",
+      "name": "Dr. Deepak Lakra",
+      "university_id": "uni_008",
+      "department": "Environmental Science",
+      "designation": "Assistant Professor",
+      "expertise": [
+        "environmental science",
+        "waste management",
+        "sanitation"
+      ],
+      "research_areas": [
+        "solid waste management",
+        "watershed restoration"
+      ],
+      "max_capacity": 4,
+      "current_load": 3,
+      "data_status": "demo",
+      "contact_email": "mentor_013@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "mentor_014",
+      "name": "Dr. Meera Baskey",
+      "university_id": "uni_009",
+      "department": "Rural Management",
+      "designation": "Professor",
+      "expertise": [
+        "rural development",
+        "public administration",
+        "management",
+        "community engagement"
+      ],
+      "research_areas": [
+        "NGO-government collaboration models",
+        "CSR program design"
+      ],
+      "max_capacity": 5,
+      "current_load": 2,
+      "data_status": "demo",
+      "contact_email": "mentor_014@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "mentor_015",
+      "name": "Dr. Birsa Hembrom",
+      "university_id": "uni_012",
+      "department": "Environmental Science",
+      "designation": "Associate Professor",
+      "expertise": [
+        "environment",
+        "agriculture",
+        "tribal studies"
+      ],
+      "research_areas": [
+        "forest-based livelihoods",
+        "tribal agricultural practices"
+      ],
+      "max_capacity": 3,
+      "current_load": 1,
+      "data_status": "demo",
+      "contact_email": "mentor_015@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "mentor_016",
+      "name": "Dr. Anita Devi",
+      "university_id": "uni_014",
+      "department": "Computer Science & Engineering",
+      "designation": "Assistant Professor",
+      "expertise": [
+        "computer science",
+        "engineering",
+        "IoT systems"
+      ],
+      "research_areas": [
+        "low-cost IoT sensors for infrastructure monitoring"
+      ],
+      "max_capacity": 4,
+      "current_load": 1,
+      "data_status": "demo",
+      "contact_email": "mentor_016@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "mentor_017",
+      "name": "Dr. Ramesh Kachhap",
+      "university_id": "uni_015",
+      "department": "Biotechnology",
+      "designation": "Associate Professor",
+      "expertise": [
+        "biotechnology",
+        "public health",
+        "management"
+      ],
+      "research_areas": [
+        "water testing kits",
+        "biotech entrepreneurship"
+      ],
+      "max_capacity": 3,
+      "current_load": 2,
+      "data_status": "demo",
+      "contact_email": "mentor_017@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "mentor_018",
+      "name": "Dr. Ritu Minz",
+      "university_id": "uni_017",
+      "department": "Public Policy",
+      "designation": "Professor",
+      "expertise": [
+        "public policy",
+        "rural management",
+        "innovation & entrepreneurship"
+      ],
+      "research_areas": [
+        "policy design for innovation ecosystems",
+        "startup incubation for social impact"
+      ],
+      "max_capacity": 4,
+      "current_load": 2,
+      "data_status": "demo",
+      "contact_email": "mentor_018@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "mentor_019",
+      "name": "Dr. Sanjay Bedia",
+      "university_id": "uni_018",
+      "department": "Mining Safety",
+      "designation": "Principal Scientist",
+      "expertise": [
+        "mining",
+        "safety engineering",
+        "environment"
+      ],
+      "research_areas": [
+        "mine subsidence monitoring",
+        "occupational safety systems"
+      ],
+      "max_capacity": 3,
+      "current_load": 1,
+      "data_status": "demo",
+      "contact_email": "mentor_019@example.edu",
+      "contact_phone": "+91-00000-00000"
+    },
+    {
+      "id": "mentor_020",
+      "name": "Dr. Pooja Kandulna",
+      "university_id": "uni_018",
+      "department": "Environmental Monitoring",
+      "designation": "Senior Scientist",
+      "expertise": [
+        "environment",
+        "energy",
+        "air quality monitoring"
+      ],
+      "research_areas": [
+        "mining-belt air quality",
+        "energy transition studies"
+      ],
+      "max_capacity": 3,
+      "current_load": 3,
+      "data_status": "demo",
+      "contact_email": "mentor_020@example.edu",
+      "contact_phone": "+91-00000-00000"
+    }
+  ]
+}

@@ -1,0 +1,532 @@
+{
+  "Education": {
+    "description": "Challenges related to access, quality, infrastructure, teaching, learning and educational opportunities.",
+    "subdomains": {
+      "School Infrastructure": {
+        "description": "Problems with school buildings, classrooms, toilets, furniture, laboratories, libraries and basic facilities.",
+        "examples": [
+          "Damaged school building",
+          "Not enough classrooms",
+          "Lack of laboratory facilities"
+        ]
+      },
+      "Teacher Availability": {
+        "description": "Shortage, absence or uneven distribution of teachers and educators.",
+        "examples": [
+          "No mathematics teacher in school",
+          "Teacher shortage in rural school"
+        ]
+      },
+      "Digital Learning": {
+        "description": "Problems related to internet access, computers, smart classrooms and digital educational resources.",
+        "examples": [
+          "No internet in school",
+          "Lack of computers for students",
+          "Students cannot access online classes"
+        ]
+      },
+      "Student Access and Attendance": {
+        "description": "Barriers preventing children from attending or continuing education.",
+        "examples": [
+          "Students dropping out",
+          "Long distance to school",
+          "Children unable to attend school regularly"
+        ]
+      },
+      "Vocational and Skill Education": {
+        "description": "Problems related to practical skills, vocational training and employment-oriented education.",
+        "examples": [
+          "Lack of vocational training",
+          "Students need technical skills"
+        ]
+      },
+      "Higher Education": {
+        "description": "Challenges involving colleges, universities, higher education access and academic resources.",
+        "examples": [
+          "Limited college facilities",
+          "Lack of higher education opportunities"
+        ]
+      }
+    }
+  },
+
+  "Healthcare": {
+    "description": "Challenges related to healthcare access, medical facilities, medicines, diagnosis and public health.",
+    "subdomains": {
+      "Primary Healthcare": {
+        "description": "Access to basic healthcare services, health centres and primary medical treatment.",
+        "examples": [
+          "Village has no primary health centre",
+          "Health centre lacks basic facilities"
+        ]
+      },
+      "Medical Staff Availability": {
+        "description": "Shortage or absence of doctors, nurses, technicians and other healthcare workers.",
+        "examples": [
+          "No doctor available at health centre",
+          "Shortage of nurses"
+        ]
+      },
+      "Medicine Availability": {
+        "description": "Problems involving availability, distribution or access to essential medicines.",
+        "examples": [
+          "Essential medicines unavailable",
+          "Patients must travel far to buy medicines"
+        ]
+      },
+      "Diagnostics and Testing": {
+        "description": "Lack of diagnostic equipment, laboratories and medical testing facilities.",
+        "examples": [
+          "No blood testing facility",
+          "Hospital lacks diagnostic equipment"
+        ]
+      },
+      "Maternal and Child Health": {
+        "description": "Challenges related to pregnancy, childbirth, newborns and children's healthcare.",
+        "examples": [
+          "Pregnant women travel long distances for treatment",
+          "Lack of maternal healthcare"
+        ]
+      },
+      "Emergency Healthcare": {
+        "description": "Problems related to emergency treatment, ambulances and urgent medical response.",
+        "examples": [
+          "No ambulance in remote area",
+          "Emergency response is too slow"
+        ]
+      },
+      "Telemedicine and Health Technology": {
+        "description": "Problems that could be addressed through telemedicine, digital health systems or health technology.",
+        "examples": [
+          "Remote villages lack specialist consultation",
+          "Poor access to telemedicine"
+        ]
+      }
+    }
+  },
+
+  "Agriculture": {
+    "description": "Challenges related to farming, crops, livestock, agricultural resources, productivity and farmer support.",
+    "subdomains": {
+      "Crop Production": {
+        "description": "Problems affecting crop cultivation, productivity and farming practices.",
+        "examples": [
+          "Low crop productivity",
+          "Farmers facing crop losses"
+        ]
+      },
+      "Agricultural Irrigation": {
+        "description": "Problems with water availability and irrigation specifically for agricultural activities.",
+        "examples": [
+          "Fields lack irrigation",
+          "Farmers depend entirely on rainfall"
+        ]
+      },
+      "Crop Disease and Pest Management": {
+        "description": "Crop diseases, pests and difficulties in detecting or controlling them.",
+        "examples": [
+          "Crops damaged by pests",
+          "Farmers cannot identify crop disease"
+        ]
+      },
+      "Soil Health": {
+        "description": "Problems involving soil quality, fertility, erosion and soil management.",
+        "examples": [
+          "Declining soil fertility",
+          "Soil erosion affecting farmland"
+        ]
+      },
+      "Agricultural Storage": {
+        "description": "Problems involving warehouses, cold storage and preservation of agricultural products.",
+        "examples": [
+          "Farmers lack cold storage",
+          "Crops spoil after harvesting"
+        ]
+      },
+      "Agricultural Market Access": {
+        "description": "Challenges involving selling crops, market information, pricing and access to buyers.",
+        "examples": [
+          "Farmers receive low prices",
+          "Farmers lack direct access to markets"
+        ]
+      },
+      "Livestock and Dairy": {
+        "description": "Challenges involving cattle, goats, poultry, dairy production and animal health.",
+        "examples": [
+          "Livestock disease",
+          "Poor dairy infrastructure"
+        ]
+      },
+      "Fisheries": {
+        "description": "Problems involving fish farming, fisheries resources and aquaculture.",
+        "examples": [
+          "Low fish production",
+          "Lack of fish farming facilities"
+        ]
+      }
+    }
+  },
+
+  "Water Resources": {
+    "description": "Challenges related to drinking water, water quality, groundwater, water conservation and water management.",
+    "subdomains": {
+      "Drinking Water Access": {
+        "description": "Problems involving availability and accessibility of safe drinking water.",
+        "examples": [
+          "Village has no reliable drinking water",
+          "Broken hand pumps"
+        ]
+      },
+      "Water Quality": {
+        "description": "Problems involving contaminated, unsafe or polluted drinking and surface water.",
+        "examples": [
+          "Contaminated groundwater",
+          "Unsafe drinking water"
+        ]
+      },
+      "Groundwater Management": {
+        "description": "Problems involving groundwater depletion, monitoring and sustainable groundwater use.",
+        "examples": [
+          "Groundwater levels are falling",
+          "Wells are drying up"
+        ]
+      },
+      "Water Conservation": {
+        "description": "Challenges related to rainwater harvesting, water conservation and sustainable water usage.",
+        "examples": [
+          "Lack of rainwater harvesting",
+          "Large amounts of water are wasted"
+        ]
+      },
+      "Flood Management": {
+        "description": "Problems involving flooding, flood preparedness, flood control and waterlogging.",
+        "examples": [
+          "Village floods every monsoon",
+          "Poor flood protection"
+        ]
+      },
+      "Water Supply Infrastructure": {
+        "description": "Problems involving pipelines, pumps, tanks and other water supply infrastructure.",
+        "examples": [
+          "Water pipeline is damaged",
+          "Overhead water tank is not functioning"
+        ]
+      }
+    }
+  },
+
+  "Sanitation": {
+    "description": "Challenges related to sanitation, hygiene, sewage, toilets and waste management.",
+    "subdomains": {
+      "Toilet Access": {
+        "description": "Problems involving availability, accessibility and maintenance of toilets.",
+        "examples": [
+          "Village lacks public toilets",
+          "School toilets are unusable"
+        ]
+      },
+      "Sewage and Wastewater": {
+        "description": "Problems involving sewage systems, wastewater disposal and treatment.",
+        "examples": [
+          "Untreated sewage enters a river",
+          "No sewage treatment facility"
+        ]
+      },
+      "Solid Waste Management": {
+        "description": "Problems involving garbage collection, segregation, disposal and recycling.",
+        "examples": [
+          "Garbage is not collected",
+          "Waste is dumped in open areas"
+        ]
+      },
+      "Public Hygiene": {
+        "description": "Challenges related to cleanliness, hygiene awareness and sanitation practices.",
+        "examples": [
+          "Poor hygiene facilities",
+          "Lack of sanitation awareness"
+        ]
+      },
+      "Drainage and Waterlogging": {
+        "description": "Problems involving blocked drains, poor drainage and local waterlogging.",
+        "examples": [
+          "Drains are blocked",
+          "Roads remain flooded after rain"
+        ]
+      }
+    }
+  },
+
+  "Environment": {
+    "description": "Challenges related to environmental protection, pollution, ecosystems, forests and climate resilience.",
+    "subdomains": {
+      "Air Pollution": {
+        "description": "Problems involving harmful air pollution from vehicles, industries, burning and other sources.",
+        "examples": [
+          "Industrial smoke affects residents",
+          "Open burning causes air pollution"
+        ]
+      },
+      "Water Pollution": {
+        "description": "Pollution of rivers, lakes, ponds and other water bodies.",
+        "examples": [
+          "Industrial waste pollutes a river",
+          "Village pond is contaminated"
+        ]
+      },
+      "Forest Conservation": {
+        "description": "Challenges involving forests, deforestation and protection of forest resources.",
+        "examples": [
+          "Illegal tree cutting",
+          "Forest area is decreasing"
+        ]
+      },
+      "Biodiversity and Wildlife": {
+        "description": "Problems involving wildlife, biodiversity and protection of natural ecosystems.",
+        "examples": [
+          "Human-wildlife conflict",
+          "Loss of local biodiversity"
+        ]
+      },
+      "Climate Resilience": {
+        "description": "Challenges caused by climate change and the need to adapt communities and infrastructure.",
+        "examples": [
+          "Increasing droughts affect villages",
+          "Extreme heat affects communities"
+        ]
+      },
+      "Environmental Monitoring": {
+        "description": "Need for monitoring environmental conditions, pollution and ecological changes.",
+        "examples": [
+          "No monitoring of local air quality",
+          "Pollution levels are not tracked"
+        ]
+      }
+    }
+  },
+
+  "Energy": {
+    "description": "Challenges related to electricity access, energy reliability, renewable energy and energy efficiency.",
+    "subdomains": {
+      "Electricity Access": {
+        "description": "Problems involving lack of electricity or limited access to electrical power.",
+        "examples": [
+          "Remote village has no electricity",
+          "Households lack electricity connection"
+        ]
+      },
+      "Power Reliability": {
+        "description": "Frequent outages, voltage problems and unreliable electricity supply.",
+        "examples": [
+          "Village experiences frequent power cuts",
+          "Voltage fluctuates frequently"
+        ]
+      },
+      "Renewable Energy": {
+        "description": "Challenges or opportunities involving solar, wind, biomass and other renewable energy sources.",
+        "examples": [
+          "Village needs solar power",
+          "Unused solar potential"
+        ]
+      },
+      "Energy Efficiency": {
+        "description": "Problems involving inefficient energy use and opportunities to reduce energy consumption.",
+        "examples": [
+          "Street lights consume excessive electricity",
+          "Buildings use inefficient lighting"
+        ]
+      },
+      "Clean Cooking Energy": {
+        "description": "Problems involving access to clean and safe cooking energy.",
+        "examples": [
+          "Families depend on firewood",
+          "Households lack clean cooking fuel"
+        ]
+      }
+    }
+  },
+
+  "Urban Infrastructure": {
+    "description": "Challenges related to roads, transport, public infrastructure, housing and urban services.",
+    "subdomains": {
+      "Roads and Streets": {
+        "description": "Problems involving roads, potholes, damaged streets and road connectivity.",
+        "examples": [
+          "Road has large potholes",
+          "Village road is damaged"
+        ]
+      },
+      "Public Transport": {
+        "description": "Problems involving buses, public transportation availability, connectivity and accessibility.",
+        "examples": [
+          "Remote area has no bus service",
+          "Public transport is unreliable"
+        ]
+      },
+      "Street Lighting": {
+        "description": "Problems involving street lights and lighting of public areas.",
+        "examples": [
+          "Street lights are not working",
+          "Dark roads create safety concerns"
+        ]
+      },
+      "Housing and Shelter": {
+        "description": "Challenges involving inadequate housing, unsafe homes and shelter facilities.",
+        "examples": [
+          "Families live in unsafe houses",
+          "Lack of affordable housing"
+        ]
+      },
+      "Public Infrastructure": {
+        "description": "Problems involving public spaces, community facilities and other physical infrastructure.",
+        "examples": [
+          "Community building is damaged",
+          "Public facilities are poorly maintained"
+        ]
+      },
+      "Traffic and Road Safety": {
+        "description": "Problems involving traffic management, accidents, crossings and road safety.",
+        "examples": [
+          "Dangerous road crossing near school",
+          "Frequent accidents at an intersection"
+        ]
+      }
+    }
+  },
+
+  "Accessibility": {
+    "description": "Challenges related to inclusion and access for persons with disabilities and other vulnerable groups.",
+    "subdomains": {
+      "Physical Accessibility": {
+        "description": "Accessibility of buildings, roads, toilets and public spaces for persons with disabilities.",
+        "examples": [
+          "Government building has no ramp",
+          "Public toilet is inaccessible to wheelchair users"
+        ]
+      },
+      "Accessible Transport": {
+        "description": "Problems involving transportation access for persons with disabilities.",
+        "examples": [
+          "Buses are not wheelchair accessible",
+          "No accessible transport service"
+        ]
+      },
+      "Assistive Technology": {
+        "description": "Lack of devices and technologies that support people with disabilities.",
+        "examples": [
+          "Students need assistive learning technology",
+          "Lack of affordable assistive devices"
+        ]
+      },
+      "Inclusive Education": {
+        "description": "Barriers preventing persons with disabilities from accessing education.",
+        "examples": [
+          "School lacks facilities for visually impaired students",
+          "No special learning support"
+        ]
+      },
+      "Digital Accessibility": {
+        "description": "Problems preventing people with disabilities from using digital services and information.",
+        "examples": [
+          "Government website is not screen-reader friendly",
+          "Digital services lack accessibility features"
+        ]
+      }
+    }
+  },
+
+  "Public Administration": {
+    "description": "Challenges related to government services, public service delivery, citizen grievances and administrative processes.",
+    "subdomains": {
+      "Public Service Delivery": {
+        "description": "Problems involving delays, inefficiency or lack of access to government services.",
+        "examples": [
+          "Government service takes too long",
+          "Citizens cannot access a public service"
+        ]
+      },
+      "Government Schemes": {
+        "description": "Problems involving awareness, access, implementation or delivery of government welfare schemes.",
+        "examples": [
+          "Eligible citizens do not receive benefits",
+          "People are unaware of available schemes"
+        ]
+      },
+      "Documents and Certificates": {
+        "description": "Problems involving birth certificates, caste certificates, income certificates and other official documents.",
+        "examples": [
+          "Certificate application takes months",
+          "Citizens cannot easily obtain documents"
+        ]
+      },
+      "Citizen Grievance Management": {
+        "description": "Problems involving reporting, tracking and resolution of citizen complaints.",
+        "examples": [
+          "Complaints are not resolved",
+          "Citizens cannot track complaints"
+        ]
+      },
+      "Transparency and Accountability": {
+        "description": "Challenges involving transparency, monitoring and accountability in public services.",
+        "examples": [
+          "Citizens cannot track project progress",
+          "Lack of transparency in local projects"
+        ]
+      },
+      "Civic Information Access": {
+        "description": "Problems involving access to information about government services, policies and public resources.",
+        "examples": [
+          "Citizens do not know where to apply",
+          "Government information is difficult to access"
+        ]
+      }
+    }
+  },
+
+  "Rural Livelihoods": {
+    "description": "Challenges related to rural employment, skills, entrepreneurship, self-help groups and income opportunities.",
+    "subdomains": {
+      "Rural Employment": {
+        "description": "Problems involving lack of employment and sustainable income opportunities in rural areas.",
+        "examples": [
+          "Young people cannot find local jobs",
+          "Seasonal unemployment is high"
+        ]
+      },
+      "Skill Development": {
+        "description": "Lack of training and skills needed for employment or entrepreneurship.",
+        "examples": [
+          "Youth need technical training",
+          "Lack of local skill development centres"
+        ]
+      },
+      "Self Help Groups": {
+        "description": "Challenges involving women's self-help groups, community groups and their economic activities.",
+        "examples": [
+          "Women SHGs lack market access",
+          "SHGs need better training"
+        ]
+      },
+      "Rural Entrepreneurship": {
+        "description": "Challenges faced by people starting or operating small businesses in rural areas.",
+        "examples": [
+          "Local entrepreneurs lack funding",
+          "Rural businesses need digital tools"
+        ]
+      },
+      "Handicrafts and Traditional Industries": {
+        "description": "Challenges involving artisans, handicrafts, traditional products and local industries.",
+        "examples": [
+          "Artisans struggle to find customers",
+          "Traditional products lack market access"
+        ]
+      },
+      "Financial and Market Access": {
+        "description": "Problems involving access to finance, markets, customers and business opportunities.",
+        "examples": [
+          "Small businesses cannot access credit",
+          "Rural producers struggle to reach markets"
+        ]
+      }
+    }
+  }
+}
