@@ -9,8 +9,6 @@ import {
   Sparkles,
   ArrowRight,
   Handshake,
-  CheckCircle2,
-  AlertCircle,
   Plus,
 } from "lucide-react";
 import { MentorChallenge } from "@/types/mentor";

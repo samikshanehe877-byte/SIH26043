@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Calendar, Clock, AlertCircle } from "lucide-react";
+import { Calendar, Clock } from "lucide-react";
 import { Task } from "@/types/mentor";
 import { TaskPriorityBadge } from "./TaskStatusBadge";
 

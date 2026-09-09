@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, UserCircle2, ExternalLink } from "lucide-react";
+import { Bell } from "lucide-react";
 import { useMentor } from "@/context/MentorContext";
 
 interface MentorHeaderProps {

@@ -8,8 +8,6 @@ import {
   Check,
   AlertCircle,
   Plus,
-  Sparkles,
-  Info,
 } from "lucide-react";
 import { useMentor } from "@/context/MentorContext";
 import { MentorChallenge, Student } from "@/types/mentor";
@@ -27,7 +25,7 @@ export default function CreateTeamModal({
   challenge,
   onSuccess,
 }: CreateTeamModalProps) {
-  const { students, teams, createTeam, getTeamForChallenge } = useMentor();
+  const { students, createTeam, getTeamForChallenge } = useMentor();
 
   const [teamName, setTeamName] = useState(`Team Phoenix`);
   const [description, setDescription] = useState(

@@ -1,6 +1,6 @@
 "use client";
 
-import { X, CheckCircle2, Clock, FileText, CheckSquare, Plus } from "lucide-react";
+import { X, Plus } from "lucide-react";
 import { Student, Task } from "@/types/mentor";
 import { useMentor } from "@/context/MentorContext";
 import { TaskStatusBadge, TaskPriorityBadge } from "./TaskStatusBadge";

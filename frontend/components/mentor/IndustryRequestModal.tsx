@@ -395,6 +395,48 @@ export default function IndustryRequestModal({
             </div>
           )}
 
+          {helpType === "Cloud Resources" && (
+            <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-4 space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold text-blue-800">
+                <Sparkles size={16} />
+                <span>Cloud Infrastructure Requisition</span>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                  Compute / Storage Specifications *
+                </label>
+                <input
+                  type="text"
+                  value={cloudSpecs}
+                  onChange={(e) => setCloudSpecs(e.target.value)}
+                  placeholder="e.g. AWS EC2 p3.2xlarge with Tesla V100 GPU"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800"
+                />
+              </div>
+            </div>
+          )}
+
+          {helpType === "Hardware" && (
+            <div className="rounded-2xl border border-orange-200 bg-orange-50/40 p-4 space-y-3">
+              <div className="flex items-center gap-2 text-xs font-bold text-orange-800">
+                <Sparkles size={16} />
+                <span>Hardware Equipment Requisition</span>
+              </div>
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                  Hardware Specifications / Sensors *
+                </label>
+                <input
+                  type="text"
+                  value={hardwareSpecs}
+                  onChange={(e) => setHardwareSpecs(e.target.value)}
+                  placeholder="e.g. 10 IP67 weather-sealed ultrasonic distance sensors"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-800"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Standard Fields */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
@@ -457,7 +499,7 @@ export default function IndustryRequestModal({
               </label>
               <select
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as any)}
+                onChange={(e) => setPriority(e.target.value as "Low" | "Medium" | "High" | "Critical")}
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-800 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
               >
                 <option value="Low">Low</option>

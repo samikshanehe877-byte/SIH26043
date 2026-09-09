@@ -4,11 +4,8 @@ import { useState } from "react";
 import {
   X,
   Handshake,
-  Building2,
-  Calendar,
   Send,
   CheckCircle2,
-  Clock,
   MessageSquare,
   FileText,
 } from "lucide-react";

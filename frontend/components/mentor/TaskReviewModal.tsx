@@ -6,10 +6,8 @@ import {
   FileCheck,
   ExternalLink,
   FileText,
-  MessageSquare,
   CheckCircle2,
   AlertTriangle,
-  Send,
 } from "lucide-react";
 import { useMentor } from "@/context/MentorContext";
 import { Task } from "@/types/mentor";
@@ -31,13 +29,11 @@ export default function TaskReviewModal({
     task.submission?.feedback ||
       "Well done! Dataset balance and preprocessing pipeline meet quality standards."
   );
-  const [actionType, setActionType] = useState<"approve" | "request_changes">("approve");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
   const handleReview = (type: "approve" | "request_changes") => {
-    setActionType(type);
     setIsSubmitting(true);
     reviewTask(task.id, type, feedback);
     setTimeout(() => {

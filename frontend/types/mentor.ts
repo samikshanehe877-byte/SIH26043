@@ -129,6 +129,7 @@ export interface IndustryRequestDetails {
   sessionsCount?: number;
   preferredDate?: string;
   apiToolName?: string;
+  expectedUsage?: string;
   accessDuration?: string;
   cloudSpecs?: string;
   hardwareSpecs?: string;

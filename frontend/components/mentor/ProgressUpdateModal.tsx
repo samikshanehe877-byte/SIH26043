@@ -6,8 +6,6 @@ import {
   Send,
   Building2,
   CheckCircle2,
-  AlertCircle,
-  FileText,
   UploadCloud,
 } from "lucide-react";
 import { useMentor } from "@/context/MentorContext";

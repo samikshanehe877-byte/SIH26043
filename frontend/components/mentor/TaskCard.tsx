@@ -1,19 +1,18 @@
 "use client";
 
-import { Calendar, User, Clock, FileCheck, CheckCircle2, AlertTriangle, FileText } from "lucide-react";
-import { Task } from "@/types/mentor";
+import { Calendar, FileCheck, FileText } from "lucide-react";
+import { Task, TaskStatus } from "@/types/mentor";
 import { TaskStatusBadge, TaskPriorityBadge } from "./TaskStatusBadge";
 
 interface TaskCardProps {
   task: Task;
   onReview?: (task: Task) => void;
-  onStatusChange?: (taskId: string, status: any) => void;
+  onStatusChange?: (taskId: string, status: TaskStatus) => void;
 }
 
 export default function TaskCard({
   task,
   onReview,
-  onStatusChange,
 }: TaskCardProps) {
   const isAwaitingReview = task.status === "Submitted" || task.status === "Under Review";
 

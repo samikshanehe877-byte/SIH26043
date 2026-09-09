@@ -1,6 +1,6 @@
 "use client";
 
-import { Handshake, Building2, Calendar, Clock, MessageSquare, ArrowRight } from "lucide-react";
+import { Building2, Calendar, MessageSquare, ArrowRight } from "lucide-react";
 import { IndustryCollaborationRequest } from "@/types/mentor";
 import { CollaborationStatusBadge, HelpTypeBadge } from "./CollaborationStatusBadge";
 

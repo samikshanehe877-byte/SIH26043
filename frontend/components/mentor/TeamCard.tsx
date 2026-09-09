@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Users2, CheckSquare, Clock, ArrowRight, Handshake } from "lucide-react";
-import { Team, Student } from "@/types/mentor";
+import { Users2, ArrowRight, Handshake } from "lucide-react";
+import { Team } from "@/types/mentor";
 import { useMentor } from "@/context/MentorContext";
 
 interface TeamCardProps {
