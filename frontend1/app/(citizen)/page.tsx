@@ -18,11 +18,14 @@ const TRENDING = [
 ];
 
 export default function HomePage() {
-  const { problems, toggleSupport, toggleSave } = useProblems();
+  const { problems, myProblems, toggleSupport, toggleSave } = useProblems();
   const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
   const [search, setSearch] = useState("");
 
-  const filtered = problems.filter(
+  const dashboardProblems = Array.from(
+    new Map([...myProblems, ...problems].map((problem) => [String(problem.id), problem])).values()
+  );
+  const filtered = dashboardProblems.filter(
     (p) =>
       p.title.toLowerCase().includes(search.toLowerCase()) ||
       p.description.toLowerCase().includes(search.toLowerCase()) ||
@@ -106,21 +109,21 @@ export default function HomePage() {
             <div className="space-y-3">
               <StatsCard
                 label="Problems Submitted"
-                value={currentUser.totalSubmitted}
+                value={myProblems.length}
                 icon={FileText}
                 color="blue"
                 sublabel="Total reported"
               />
               <StatsCard
                 label="In Progress"
-                value={currentUser.inProgress}
+                value={myProblems.filter((problem) => ["Under Review", "Assigned to University", "In Progress", "Collaboration with Industry"].includes(problem.status)).length}
                 icon={Clock}
                 color="amber"
                 sublabel="Being worked on"
               />
               <StatsCard
                 label="Problems Solved"
-                value={currentUser.completed}
+                value={myProblems.filter((problem) => problem.status === "Completed").length}
                 icon={CheckCircle2}
                 color="green"
                 sublabel="Successfully resolved"

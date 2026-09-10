@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Upload, X, CheckCircle2, FileImage, FileVideo, FileText, AlertCircle } from "lucide-react";
+import { Upload, X, CheckCircle2, FileImage, FileText, AlertCircle } from "lucide-react";
 import { Problem, ProblemCategory } from "@/types/problem";
 
 const CATEGORIES: ProblemCategory[] = [
@@ -10,13 +10,14 @@ const CATEGORIES: ProblemCategory[] = [
 ];
 
 interface UploadedFile {
+  file: File;
   name: string;
   size: string;
-  type: "image" | "video" | "document";
+  type: "image" | "document";
 }
 
 interface PostProblemFormProps {
-  onSubmitSuccess: (problem: Problem) => void;
+  onSubmitSuccess: (problem: Problem, files: File[]) => boolean | Promise<boolean>;
 }
 
 export default function PostProblemForm({ onSubmitSuccess }: PostProblemFormProps) {
@@ -26,6 +27,7 @@ export default function PostProblemForm({ onSubmitSuccess }: PostProblemFormProp
   const [location, setLocation]     = useState("");
   const [files, setFiles]           = useState<UploadedFile[]>([]);
   const [submitted, setSubmitted]   = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [errors, setErrors]         = useState<Record<string, string>>({});
   const fileInputRef                = useRef<HTMLInputElement>(null);
 
@@ -45,9 +47,10 @@ export default function PostProblemForm({ onSubmitSuccess }: PostProblemFormProp
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files ?? []);
     const mapped: UploadedFile[] = selected.map((f) => ({
+      file: f,
       name: f.name,
       size: f.size > 1024 * 1024 ? `${(f.size / 1024 / 1024).toFixed(1)} MB` : `${(f.size / 1024).toFixed(0)} KB`,
-      type: f.type.startsWith("image/") ? "image" : f.type.startsWith("video/") ? "video" : "document",
+      type: f.type.startsWith("image/") ? "image" : "document",
     }));
     setFiles((prev) => [...prev, ...mapped]);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -55,7 +58,7 @@ export default function PostProblemForm({ onSubmitSuccess }: PostProblemFormProp
 
   const removeFile = (index: number) => setFiles((prev) => prev.filter((_, i) => i !== index));
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
@@ -76,13 +79,15 @@ export default function PostProblemForm({ onSubmitSuccess }: PostProblemFormProp
       image: "📋",
     };
 
-    onSubmitSuccess(newProblem);
-    setSubmitted(true);
+    setSubmitError("");
+    const success = await onSubmitSuccess(newProblem, files.map((item) => item.file));
+    if (success) setSubmitted(true);
+    else setSubmitError("We could not submit your problem. Check that the API is running and try again.");
   };
 
   const handleReset = () => {
     setTitle(""); setCategory(""); setDescription("");
-    setLocation(""); setFiles([]); setErrors({}); setSubmitted(false);
+    setLocation(""); setFiles([]); setErrors({}); setSubmitted(false); setSubmitError("");
   };
 
   if (submitted) {
@@ -105,10 +110,11 @@ export default function PostProblemForm({ onSubmitSuccess }: PostProblemFormProp
     );
   }
 
-  const fileIcons = { image: FileImage, video: FileVideo, document: FileText };
+  const fileIcons = { image: FileImage, document: FileText };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+      {submitError && <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{submitError}</p>}
       {/* Title */}
       <div>
         <label className="mb-1.5 block text-sm font-semibold text-slate-700">
@@ -187,13 +193,13 @@ export default function PostProblemForm({ onSubmitSuccess }: PostProblemFormProp
           <Upload size={24} className="text-slate-400" />
           <div>
             <p className="text-sm font-medium text-slate-600">Click to upload files</p>
-            <p className="text-xs text-slate-400">Images, Videos, or Documents (PDF, DOC)</p>
+            <p className="text-xs text-slate-400">Images or Documents (PDF, DOC)</p>
           </div>
           <input
             ref={fileInputRef}
             type="file"
             multiple
-            accept="image/*,video/*,.pdf,.doc,.docx"
+            accept="image/*,.pdf,.doc,.docx"
             onChange={handleFileChange}
             className="hidden"
           />

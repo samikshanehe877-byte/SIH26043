@@ -1,31 +1,54 @@
 "use client";
 
-import { useState } from "react";
-import { Calendar, Building2, Eye, FileText, Clock, CheckCircle2 } from "lucide-react";
-import { myProblems } from "@/data/problems";
+import { useEffect, useState } from "react";
+import { Calendar, Building2, Eye, FileText, Clock, CheckCircle2, Trash2, Upload } from "lucide-react";
 import { Problem } from "@/types/problem";
 import StatusBadge from "@/components/StatusBadge";
 import ProblemDetails from "@/components/ProblemDetails";
 import StatsCard from "@/components/StatsCard";
-import { currentUser } from "@/data/problems";
+import { useProblems } from "@/context/ProblemsContext";
 
 export default function MyProblemsPage() {
+  const { myProblems, toggleSupport, deleteProblem, resubmitProblem } = useProblems();
   const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
-  const [problems, setProblems] = useState<Problem[]>(myProblems);
+  const [proofFiles, setProofFiles] = useState<Record<string, File[]>>({});
+  const [proofNotes, setProofNotes] = useState<Record<string, string>>({});
+  const problems = myProblems;
 
-  const handleToggleSupport = (id: number) => {
-    setProblems((prev) =>
-      prev.map((p) =>
-        p.id === id
-          ? { ...p, isSupported: !p.isSupported, supporters: p.isSupported ? p.supporters - 1 : p.supporters + 1 }
-          : p
-      )
-    );
+  useEffect(() => {
+    const problemId = new URLSearchParams(window.location.search).get("problemId");
+    if (!problemId) return;
+    const selectionTimer = window.setTimeout(() => {
+      const problem = problems.find((item) => String(item.id) === problemId);
+      if (problem) setSelectedProblem(problem);
+    }, 0);
+    return () => window.clearTimeout(selectionTimer);
+  }, [problems]);
+
+  const handleToggleSupport = (id: number | string) => {
+    toggleSupport(id);
     setSelectedProblem((prev) =>
       prev?.id === id
         ? { ...prev, isSupported: !prev.isSupported, supporters: prev.isSupported ? prev.supporters - 1 : prev.supporters + 1 }
         : prev
     );
+  };
+
+  const handleDelete = async (problem: Problem) => {
+    if (!window.confirm("Delete this unverified problem? This cannot be undone.")) return;
+    await deleteProblem(problem.id);
+  };
+
+  const handleResubmit = async (problem: Problem) => {
+    const success = await resubmitProblem(
+      problem.id,
+      proofFiles[String(problem.id)] ?? [],
+      proofNotes[String(problem.id)] ?? ""
+    );
+    if (success) {
+      setProofFiles((previous) => ({ ...previous, [String(problem.id)]: [] }));
+      setProofNotes((previous) => ({ ...previous, [String(problem.id)]: "" }));
+    }
   };
 
   const progressColor = (p: number) => {
@@ -46,9 +69,19 @@ export default function MyProblemsPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <StatsCard label="Total Submitted" value={currentUser.totalSubmitted} icon={FileText}      color="blue"   />
-          <StatsCard label="In Progress"      value={currentUser.inProgress}     icon={Clock}        color="amber"  />
-          <StatsCard label="Completed"        value={currentUser.completed}       icon={CheckCircle2} color="green"  />
+          <StatsCard label="Total Submitted" value={problems.length} icon={FileText} color="blue" />
+          <StatsCard
+            label="In Progress"
+            value={problems.filter((problem) => ["Under Review", "Assigned to University", "In Progress", "Collaboration with Industry"].includes(problem.status)).length}
+            icon={Clock}
+            color="amber"
+          />
+          <StatsCard
+            label="Completed"
+            value={problems.filter((problem) => problem.status === "Completed").length}
+            icon={CheckCircle2}
+            color="green"
+          />
         </div>
 
         <div className="space-y-4">
@@ -101,13 +134,58 @@ export default function MyProblemsPage() {
               </div>
 
               <div className="mt-4">
-                <button
-                  onClick={() => setSelectedProblem(problem)}
-                  className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-600 transition hover:bg-blue-100"
-                >
-                  <Eye size={14} />
-                  View Details
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setSelectedProblem(problem)}
+                    className="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-600 transition hover:bg-blue-100"
+                  >
+                    <Eye size={14} />
+                    View Details
+                  </button>
+                  {problem.status === "Needs Proof" && (
+                    <div className="w-full rounded-xl border border-amber-200 bg-amber-50 p-3">
+                      <p className="text-xs font-semibold text-amber-800">Additional proof requested</p>
+                      <textarea
+                        value={proofNotes[String(problem.id)] ?? ""}
+                        onChange={(event) => setProofNotes((previous) => ({ ...previous, [String(problem.id)]: event.target.value }))}
+                        placeholder="Add a note for the reviewing officer"
+                        rows={2}
+                        className="mt-2 w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none focus:border-amber-400"
+                      />
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-semibold text-amber-800 hover:bg-amber-100">
+                          <Upload size={13} />
+                          Choose evidence
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*,video/*,.pdf,.doc,.docx"
+                            className="hidden"
+                            onChange={(event) => setProofFiles((previous) => ({ ...previous, [String(problem.id)]: Array.from(event.target.files ?? []) }))}
+                          />
+                        </label>
+                        <button
+                          onClick={() => handleResubmit(problem)}
+                          className="rounded-lg bg-amber-600 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-700"
+                        >
+                          Resubmit for review
+                        </button>
+                        {(proofFiles[String(problem.id)]?.length ?? 0) > 0 && (
+                          <span className="text-xs text-amber-700">{proofFiles[String(problem.id)].length} file(s) selected</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {problem.status !== "Verified" && (
+                    <button
+                      onClick={() => handleDelete(problem)}
+                      className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-600 transition hover:bg-red-100"
+                    >
+                      <Trash2 size={14} />
+                      Delete
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           ))}

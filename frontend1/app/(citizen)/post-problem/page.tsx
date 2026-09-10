@@ -8,8 +8,22 @@ import { Problem } from "@/types/problem";
 export default function PostProblemPage() {
   const { addProblem } = useProblems();
 
-  const handleSubmitSuccess = (problem: Problem) => {
-    addProblem(problem);
+  const handleSubmitSuccess = async (problem: Problem, files: File[]): Promise<boolean> => {
+    const problemId = await addProblem(problem);
+    if (!problemId) return false;
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    if (files.length > 0) {
+      const formData = new FormData();
+      files.forEach((file) => formData.append("files", file));
+      const evidenceResponse = await fetch(`${apiUrl}/problems/${problemId}/evidence`, { method: "POST", body: formData });
+      if (!evidenceResponse.ok) return false;
+    }
+
+    // Analysis enriches a saved submission; it should not make submission appear to fail.
+    // This also keeps citizens unblocked when the optional AI provider is unavailable.
+    void fetch(`${apiUrl}/problems/${problemId}/analyze`, { method: "POST" }).catch(() => undefined);
+    return true;
   };
 
   return (
@@ -29,7 +43,7 @@ export default function PostProblemPage() {
             <li>Be specific about the exact location of the problem</li>
             <li>Describe how long the problem has existed</li>
             <li>Mention how many people are affected</li>
-            <li>Attach photos or videos if possible — they increase priority</li>
+            <li>Attach photos or documents if available — they can help verification</li>
           </ul>
         </div>
       </div>

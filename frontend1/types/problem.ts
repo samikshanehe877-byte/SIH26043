@@ -1,5 +1,8 @@
 export type ProblemStatus =
   | "Submitted"
+  | "Verified"
+  | "Needs Proof"
+  | "Rejected"
   | "Under Review"
   | "Assigned to University"
   | "In Progress"
@@ -27,7 +30,7 @@ export interface Comment {
 }
 
 export interface Problem {
-  id: number;
+  id: number | string;
   title: string;
   description: string;
   category: ProblemCategory;
@@ -43,8 +46,28 @@ export interface Problem {
   assignedUniversity?: string;
   assignedDepartment?: string;
   image?: string;
+  evidenceAttachments?: EvidenceAttachment[];
+  verificationHistory?: VerificationHistoryEntry[];
+  correctionCount?: number;
+  correctionReasons?: string[];
   isSupported?: boolean;
   isSaved?: boolean;
+}
+
+export interface EvidenceAttachment {
+  name: string;
+  content_type: string;
+  size: number;
+  url: string;
+}
+
+export interface VerificationHistoryEntry {
+  officer: string;
+  timestamp: string;
+  note: string;
+  previous_status: string;
+  decision: "approve" | "reject" | "proof" | "resubmit";
+  status: string;
 }
 
 export interface User {
@@ -60,11 +83,12 @@ export interface User {
 }
 
 export interface Notification {
-  id: number;
+  id: number | string;
   type: "success" | "info" | "warning" | "update";
   title: string;
   message: string;
   timeAgo: string;
   isRead: boolean;
   problemTitle?: string;
+  problemId?: number | string;
 }
