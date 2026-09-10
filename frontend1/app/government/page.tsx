@@ -21,6 +21,33 @@ import { currentOfficial, regionalStats, domainClusters } from "@/data/governmen
 export default function GovernmentDashboard() {
   const [region, setRegion] = useState("Maharashtra");
 
+  const operatingModel = [
+    {
+      title: "Verification & Governance",
+      description: "Identity checks, evidence review, and authorization decisions for every problem.",
+      metric: `${regionalStats.verified} verified`,
+      tone: "emerald",
+    },
+    {
+      title: "Regional Matching",
+      description: "Local districts prioritized first, then state and external expertise when needed.",
+      metric: "District-first routing",
+      tone: "blue",
+    },
+    {
+      title: "AI-Assisted Decision Support",
+      description: "Impact, urgency, and priority are estimated with explainable factors for human review.",
+      metric: "High-confidence scoring",
+      tone: "amber",
+    },
+    {
+      title: "Project Lifecycle Oversight",
+      description: "Formal collaboration, milestones, updates, and impact tracking across all partners.",
+      metric: `${regionalStats.activeProjects} active projects`,
+      tone: "purple",
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -45,6 +72,36 @@ export default function GovernmentDashboard() {
             <option>Nagpur Division</option>
           </select>
         </div>
+      </div>
+
+      <div className="rounded-2xl border border-emerald-100 bg-gradient-to-r from-emerald-50 via-white to-sky-50 p-5 shadow-sm">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">Regional Governance Model</p>
+            <h2 className="mt-2 text-xl font-bold text-slate-900">Government as the trust, verification, and orchestration layer</h2>
+            <p className="mt-2 max-w-3xl text-sm text-slate-600">
+              Problems are converted into structured civic challenges, validated with evidence, matched regionally, and moved into collaborative project workflows involving citizens, academia, and industry.
+            </p>
+          </div>
+          <div className="rounded-xl border border-emerald-200 bg-white px-4 py-3 text-sm font-medium text-emerald-700 shadow-sm">
+            AI-assisted analysis · Human governance · Regional prioritization
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {operatingModel.map((item) => (
+          <div key={item.title} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+            <div className="mb-3 flex items-center justify-between">
+              <span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em] ${item.tone === "emerald" ? "bg-emerald-100 text-emerald-700" : item.tone === "blue" ? "bg-blue-100 text-blue-700" : item.tone === "amber" ? "bg-amber-100 text-amber-700" : "bg-purple-100 text-purple-700"}`}>
+                {item.tone}
+              </span>
+            </div>
+            <h3 className="text-sm font-bold text-slate-900">{item.title}</h3>
+            <p className="mt-2 text-xs leading-5 text-slate-600">{item.description}</p>
+            <p className="mt-3 text-sm font-semibold text-slate-800">{item.metric}</p>
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
@@ -116,6 +173,31 @@ export default function GovernmentDashboard() {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         <div className="xl:col-span-2 space-y-6">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Problem-to-Solution Lifecycle</h3>
+                <p className="text-xs text-slate-500">From civic report to verified collaborative impact</p>
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-5">
+              {[
+                "Problem submitted",
+                "AI structuring",
+                "Government verification",
+                "Solver matching",
+                "Project delivery",
+              ].map((step, index) => (
+                <div key={step} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+                  <div className="mb-2 flex h-7 w-7 items-center justify-center rounded-full bg-emerald-600 text-xs font-semibold text-white">
+                    {index + 1}
+                  </div>
+                  <p className="text-xs font-medium text-slate-700">{step}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <VerificationQueue />
           <ProjectStatus />
         </div>

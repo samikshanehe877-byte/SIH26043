@@ -8,8 +8,8 @@ import StatusBadge from "./StatusBadge";
 interface ProblemCardProps {
   problem: Problem;
   onViewDetails: (problem: Problem) => void;
-  onToggleSupport: (id: number) => void;
-  onToggleSave: (id: number) => void;
+  onToggleSupport: (id: number | string) => void;
+  onToggleSave: (id: number | string) => void;
 }
 
 const categoryColors: Record<string, string> = {
