@@ -2,6 +2,9 @@ import { ProblemStatus } from "@/types/problem";
 
 const styles: Record<ProblemStatus, string> = {
   Submitted:                    "bg-slate-100 text-slate-600",
+  Verified:                     "bg-emerald-50 text-emerald-700 border border-emerald-200",
+  "Needs Proof":               "bg-amber-50 text-amber-700 border border-amber-200",
+  Rejected:                     "bg-red-50 text-red-700 border border-red-200",
   "Under Review":               "bg-amber-50 text-amber-700 border border-amber-200",
   "Assigned to University":     "bg-blue-50 text-blue-700 border border-blue-200",
   "In Progress":                "bg-orange-50 text-orange-700 border border-orange-200",
@@ -12,6 +15,9 @@ const styles: Record<ProblemStatus, string> = {
 
 const dots: Record<ProblemStatus, string> = {
   Submitted:                    "bg-slate-400",
+  Verified:                     "bg-emerald-500",
+  "Needs Proof":               "bg-amber-500",
+  Rejected:                     "bg-red-500",
   "Under Review":               "bg-amber-500",
   "Assigned to University":     "bg-blue-500",
   "In Progress":                "bg-orange-500",

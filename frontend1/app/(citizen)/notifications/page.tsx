@@ -1,23 +1,49 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CheckCheck, Bell } from "lucide-react";
 import NotificationItem from "@/components/NotificationItem";
-import { notifications as initialNotifications } from "@/data/problems";
+import { currentUser } from "@/data/problems";
 import { Notification } from "@/types/problem";
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+  useEffect(() => {
+    fetch(`${apiUrl}/notifications?citizen_name=${encodeURIComponent(currentUser.name)}`, { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : []))
+      .then((records) => {
+        if (!Array.isArray(records)) return;
+        setNotifications(records.map((record) => ({
+          id: record.id,
+          type: record.type,
+          title: record.title,
+          message: record.message,
+          timeAgo: formatNotificationTime(record.created_at),
+          isRead: Boolean(record.is_read),
+          problemTitle: record.problem_title,
+          problemId: record.problem_id,
+        })));
+      })
+      .catch(() => undefined);
+  }, [apiUrl]);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
-  const markAllRead = () =>
+  const markAllRead = async () => {
+    await fetch(`${apiUrl}/notifications/read-all`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ citizen_name: currentUser.name }),
+    });
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  };
 
-  const markOneRead = (id: number) =>
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
-    );
+  const markOneRead = async (id: number | string) => {
+    await fetch(`${apiUrl}/notifications/${id}/read`, { method: "PATCH" });
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+  };
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
@@ -47,7 +73,7 @@ export default function NotificationsPage() {
           {notifications
             .filter((n) => !n.isRead)
             .map((n) => (
-              <div key={n.id} onClick={() => markOneRead(n.id)} className="cursor-pointer">
+              <div key={n.id} onClick={() => openNotification(n)} className="cursor-pointer">
                 <NotificationItem notification={n} />
               </div>
             ))}
@@ -60,7 +86,9 @@ export default function NotificationsPage() {
           {notifications
             .filter((n) => n.isRead)
             .map((n) => (
-              <NotificationItem key={n.id} notification={n} />
+              <div key={n.id} onClick={() => openNotification(n)} className="cursor-pointer">
+                <NotificationItem notification={n} />
+              </div>
             ))}
         </div>
       )}
@@ -76,4 +104,21 @@ export default function NotificationsPage() {
       )}
     </div>
   );
+
+  function openNotification(notification: Notification) {
+    void markOneRead(notification.id);
+    window.location.href = notification.problemId
+      ? `/my-problems?problemId=${encodeURIComponent(notification.problemId)}`
+      : "/my-problems";
+  }
+}
+
+function formatNotificationTime(createdAt?: string) {
+  if (!createdAt) return "Recently";
+  const elapsedMinutes = Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000));
+  if (elapsedMinutes < 1) return "Just now";
+  if (elapsedMinutes < 60) return `${elapsedMinutes} min ago`;
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24) return `${elapsedHours} hr ago`;
+  return `${Math.floor(elapsedHours / 24)} day ago`;
 }
