@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Home, Search, PlusCircle, FileText, Bell } from "lucide-react";
-import { notifications } from "@/data/problems";
+import { currentUser } from "@/data/problems";
 
 const navigation = [
   { name: "Home",     href: "/",             icon: Home       },
@@ -15,7 +16,15 @@ const navigation = [
 
 export default function BottomNavigation() {
   const pathname = usePathname();
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const [unreadCount, setUnreadCount] = useState(0);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+  useEffect(() => {
+    fetch(`${apiUrl}/notifications?citizen_name=${encodeURIComponent(currentUser.name)}`, { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : []))
+      .then((records) => setUnreadCount(Array.isArray(records) ? records.filter((record) => !record.is_read).length : 0))
+      .catch(() => undefined);
+  }, [apiUrl, pathname]);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-slate-100 bg-white px-2 py-2 shadow-lg lg:hidden">

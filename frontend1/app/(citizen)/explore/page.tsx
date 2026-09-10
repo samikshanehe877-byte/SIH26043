@@ -32,7 +32,7 @@ export default function ExplorePage() {
       result = result.filter((p) => p.location.toLowerCase().includes(loc));
     }
     result.sort((a, b) =>
-      filters.sortBy === "supported" ? b.supporters - a.supporters : b.id - a.id
+      filters.sortBy === "supported" ? b.supporters - a.supporters : String(b.id).localeCompare(String(a.id))
     );
     return result;
   }, [problems, filters]);
