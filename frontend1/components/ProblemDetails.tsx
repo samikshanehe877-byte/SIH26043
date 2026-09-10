@@ -9,7 +9,7 @@ import ProgressTracker from "./ProgressTracker";
 interface ProblemDetailsProps {
   problem: Problem;
   onClose: () => void;
-  onToggleSupport: (id: number) => void;
+  onToggleSupport: (id: number | string) => void;
 }
 
 export default function ProblemDetails({ problem, onClose, onToggleSupport }: ProblemDetailsProps) {
