@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   Home, Search, PlusCircle, FileText, Bell, User, Settings, LogOut,
 } from "lucide-react";
 import { currentUser } from "@/data/problems";
-import { notifications } from "@/data/problems";
 
 const navigation = [
   { name: "Home",             href: "/",             icon: Home       },
@@ -20,7 +20,15 @@ const navigation = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
+  const [unreadCount, setUnreadCount] = useState(0);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+  useEffect(() => {
+    fetch(`${apiUrl}/notifications?citizen_name=${encodeURIComponent(currentUser.name)}`, { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : []))
+      .then((records) => setUnreadCount(Array.isArray(records) ? records.filter((record) => !record.is_read).length : 0))
+      .catch(() => undefined);
+  }, [apiUrl, pathname]);
 
   return (
     <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-72 flex-col border-r border-slate-100 bg-white shadow-sm">
