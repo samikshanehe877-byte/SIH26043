@@ -1,0 +1,65 @@
+# .gitignore
+# Python virtual environment
+.ai/.venv/
+.ai/.venv/**
+
+# Node modules (should be rebuilt)
+frontend1/node_modules/
+frontend1/.next/
+frontend1/.next/**
+
+# Turbopack cache files
+frontend1/.next/dev/cache/
+frontend1/.next/dev/cache/**
+
+# Large binary files
+*.dll
+*.exe
+*.so
+*.dylib
+*.zip
+*.tar
+*.gz
+*.7z
+*.pdb
+
+# Build artifacts
+dist/
+build/
+out/
+
+# -------------------------------------------------
+#  Ignore generated caches, large binaries, etc.
+# -------------------------------------------------
+
+# Python virtual environment (if you ever keep one)
+.ai/.venv/
+.ai/.venv/**
+
+# Node.js packages – rebuilt on install
+frontend/node_modules/
+frontend/node_modules/**
+
+# Next.js build output and Turbopack cache
+frontend/.next/
+frontend/.next/**
+
+# The stray folder that caused the issue
+frontend1/
+frontend1/**
+
+# Large binary files (DLLs, executables, etc.)
+*.dll
+*.exe
+*.so
+*.dylib
+*.zip
+*.tar
+*.gz
+*.7z
+*.pdb
+
+# Build artifacts
+dist/
+build/
+out/

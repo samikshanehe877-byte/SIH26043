@@ -1,0 +1,23 @@
+{
+  "problem_text": "Test description",
+  "title": "Test title",
+  "description": "Test description",
+  "category": "Other",
+  "location": "Test location",
+  "citizen_name": "TestUser",
+  "citizen_avatar": "C",
+  "date": "2026-09-12",
+  "status": "submitted",
+  "supporters": 0,
+  "progress": 0,
+  "current_step": 1,
+  "raw_input": "test",
+  "problem_nature": "Technical",
+  "affected_population": "100",
+  "frequency": "daily",
+  "required_capabilities": ["cap1"],
+  "confirmed_by_giver": true,
+  "problem_giver_type": "individual",
+  "community_group_name": ""
+}
+
