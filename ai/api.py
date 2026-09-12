@@ -155,6 +155,17 @@ class StructureProblemRequest(BaseModel):
     location_hint: Optional[str] = None
 
 
+class VolunteerRequest(BaseModel):
+    solver_type: str  # "university" | "industry"
+    solver_name: str
+    proposal: Optional[str] = None
+
+
+class SelectVolunteerRequest(BaseModel):
+    solver_type: str
+    solver_name: str
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -181,6 +192,88 @@ def structure_problem_endpoint(req: StructureProblemRequest):
 def create_problem_endpoint(problem: ProblemBase):
     """Persist a citizen problem for later review and public discovery."""
     return create_problem(problem)
+
+
+@app.post("/problems/{problem_id}/volunteer", response_model=ProblemBase)
+def volunteer_for_problem_endpoint(problem_id: str, req: VolunteerRequest):
+    """University or industry volunteers to solve a verified problem."""
+    from problem_storage import add_volunteer, create_notification
+    try:
+        problem = add_volunteer(problem_id, req.solver_type, req.solver_name, req.proposal or "")
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    if not problem:
+        raise HTTPException(status_code=404, detail="Problem not found")
+    create_notification(
+        NotificationRecord(
+            citizen_name=problem.citizen_name,
+            type="info",
+            title="New volunteer proposal",
+            message=f"{req.solver_name} ({req.solver_type}) volunteered to solve your problem '{problem.title or problem.problem_text}'.",
+            problem_id=problem.id,
+            problem_title=problem.title or problem.problem_text,
+        )
+    )
+    return problem
+
+
+@app.delete("/problems/{problem_id}/volunteer")
+def withdraw_volunteer_endpoint(problem_id: str, req: VolunteerRequest):
+    """A volunteer withdraws their proposal before the giver has accepted anyone."""
+    from problem_storage import withdraw_volunteer, create_notification
+    try:
+        problem = withdraw_volunteer(problem_id, req.solver_type, req.solver_name)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    if not problem:
+        raise HTTPException(status_code=404, detail="Problem not found")
+    create_notification(
+        NotificationRecord(
+            citizen_name=problem.citizen_name,
+            type="info",
+            title="Volunteer request withdrawn",
+            message=f"{req.solver_name} ({req.solver_type}) withdrew their proposal for '{problem.title or problem.problem_text}'.",
+            problem_id=problem.id,
+            problem_title=problem.title or problem.problem_text,
+        )
+    )
+    return {"status": "withdrawn", "id": problem_id}
+
+
+@app.post("/problems/{problem_id}/select-volunteer", response_model=ProblemBase)
+def select_volunteer_endpoint(problem_id: str, req: SelectVolunteerRequest):
+    """Giver selects one volunteer; chosen is accepted, others are rejected."""
+    from problem_storage import select_volunteer, create_notification
+    try:
+        problem = select_volunteer(problem_id, req.solver_type, req.solver_name)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    if not problem:
+        raise HTTPException(status_code=404, detail="Problem not found")
+    title = problem.title or problem.problem_text
+    create_notification(
+        NotificationRecord(
+            citizen_name=problem.citizen_name,
+            type="success",
+            title="Volunteer accepted",
+            message=f"Your problem '{title}' has been assigned to {req.solver_name} ({req.solver_type}).",
+            problem_id=problem.id,
+            problem_title=title,
+        )
+    )
+    for v in problem.volunteers:
+        if v["status"] == "rejected":
+            create_notification(
+                NotificationRecord(
+                    citizen_name=v["solver_name"],
+                    type="update",
+                    title="Volunteer request not selected",
+                    message=f"Your proposal for '{title}' was not selected. Another solver has been chosen.",
+                    problem_id=problem.id,
+                    problem_title=title,
+                )
+            )
+    return problem
 
 
 @app.get("/problems", response_model=List[ProblemBase])

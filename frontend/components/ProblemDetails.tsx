@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { X, MapPin, Calendar, Building2, ThumbsUp, Send } from "lucide-react";
+import { X, MapPin, Calendar, Building2, ThumbsUp, Send, Users, Handshake, CheckCircle2, Trash2 } from "lucide-react";
 import { Problem } from "@/types/problem";
+import { currentUser } from "@/data/problems";
+import { useProblems } from "@/context/ProblemsContext";
 import StatusBadge from "./StatusBadge";
 import ProgressTracker from "./ProgressTracker";
 
@@ -13,8 +15,12 @@ interface ProblemDetailsProps {
 }
 
 export default function ProblemDetails({ problem, onClose, onToggleSupport }: ProblemDetailsProps) {
+  const { selectVolunteer, withdrawVolunteerRequest } = useProblems();
+  const [localProblem, setLocalProblem] = useState<Problem | null>(null);
+  const displayProblem = localProblem ?? problem;
   const [commentText, setCommentText] = useState("");
   const [localComments, setLocalComments] = useState(problem.comments);
+  const isGiver = displayProblem.citizenName === currentUser.name;
 
   const handleAddComment = () => {
     if (!commentText.trim()) return;
@@ -24,6 +30,42 @@ export default function ProblemDetails({ problem, onClose, onToggleSupport }: Pr
     ]);
     setCommentText("");
   };
+
+  const handleSelectVolunteer = async (solverType: "university" | "industry", solverName: string) => {
+    const success = await selectVolunteer(displayProblem.id, solverType, solverName);
+    if (success) {
+      const updatedVolunteers = (displayProblem.volunteers ?? []).map((v) => {
+        if (v.solverType === solverType && v.solverName === solverName) {
+          return { ...v, status: "accepted" as const };
+        }
+        if (v.status === "volunteered") {
+          return { ...v, status: "rejected" as const };
+        }
+        return v;
+      });
+      setLocalProblem({
+        ...displayProblem,
+        volunteers: updatedVolunteers,
+        status: "Assigned to University",
+        assignedByGiver: true,
+      });
+    }
+  };
+
+  const handleWithdrawVolunteer = async (solverType: "university" | "industry", solverName: string) => {
+    const success = await withdrawVolunteerRequest(displayProblem.id, solverType, solverName);
+    if (success) {
+      const updatedVolunteers = (displayProblem.volunteers ?? []).map((v) =>
+        v.solverType === solverType && v.solverName === solverName
+          ? { ...v, status: "withdrawn" as const }
+          : v
+      );
+      setLocalProblem({ ...displayProblem, volunteers: updatedVolunteers });
+    }
+  };
+
+  const activeVolunteers = (displayProblem.volunteers ?? []).filter((v) => v.status === "volunteered" || v.status === "accepted");
+  const acceptedVolunteer = (displayProblem.volunteers ?? []).find((v) => v.status === "accepted");
 
   return (
     <div
@@ -38,28 +80,28 @@ export default function ProblemDetails({ problem, onClose, onToggleSupport }: Pr
         <div className="flex flex-shrink-0 items-start justify-between gap-3 border-b border-slate-100 p-5">
           <div className="flex-1">
             <div className="mb-2 flex flex-wrap items-center gap-2">
-              <StatusBadge status={problem.status} />
+              <StatusBadge status={displayProblem.status} />
               <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
-                {problem.category}
+                {displayProblem.category}
               </span>
-              {problem.problemNature && (
+              {displayProblem.problemNature && (
                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
-                  problem.problemNature === "Technical"
+                  displayProblem.problemNature === "Technical"
                     ? "bg-purple-50 text-purple-700 border border-purple-200"
-                    : problem.problemNature === "Non-Technical"
+                    : displayProblem.problemNature === "Non-Technical"
                     ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                     : "bg-blue-50 text-blue-700 border border-blue-200"
                 }`}>
-                  {problem.problemNature === "Technical" ? "⚙️ Technical" : problem.problemNature === "Non-Technical" ? "🤝 Non-Technical" : "🌐 Hybrid"}
+                  {displayProblem.problemNature === "Technical" ? "⚙️ Technical" : displayProblem.problemNature === "Non-Technical" ? "🤝 Non-Technical" : "🌐 Hybrid"}
                 </span>
               )}
-              {problem.problemGiverType && problem.problemGiverType !== "individual" && (
+              {displayProblem.problemGiverType && displayProblem.problemGiverType !== "individual" && (
                 <span className="rounded-full bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-0.5 text-xs font-semibold">
-                  👥 {problem.communityGroupName || "Community Group"}
+                  👥 {displayProblem.communityGroupName || "Community Group"}
                 </span>
               )}
             </div>
-            <h2 className="text-lg font-bold text-slate-900 leading-snug">{problem.title}</h2>
+            <h2 className="text-lg font-bold text-slate-900 leading-snug">{displayProblem.title}</h2>
           </div>
           <button
             onClick={onClose}
@@ -76,28 +118,28 @@ export default function ProblemDetails({ problem, onClose, onToggleSupport }: Pr
             <div className="flex flex-wrap gap-4 text-sm text-slate-500">
               <span className="flex items-center gap-1.5">
                 <MapPin size={14} className="text-slate-400" />
-                {problem.location}
+                {displayProblem.location}
               </span>
               <span className="flex items-center gap-1.5">
                 <Calendar size={14} className="text-slate-400" />
-                Posted {problem.date}
+                Posted {displayProblem.date}
               </span>
               <span className="flex items-center gap-1.5">
                 <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
-                  {problem.citizenAvatar}
+                  {displayProblem.citizenAvatar}
                 </div>
-                {problem.citizenName}
+                {displayProblem.citizenName}
               </span>
             </div>
 
             {/* Structured Scope Card (if available) */}
-            {(problem.affectedPopulation || problem.frequency || problem.suggestedIntervention || (problem.requiredCapabilities && problem.requiredCapabilities.length > 0)) && (
+            {(displayProblem.affectedPopulation || displayProblem.frequency || displayProblem.suggestedIntervention || (displayProblem.requiredCapabilities && displayProblem.requiredCapabilities.length > 0)) && (
               <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
                     AI-Structured Scope & Requirements
                   </h4>
-                  {problem.confirmedByGiver && (
+                  {displayProblem.confirmedByGiver && (
                     <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
                       ✓ Citizen Confirmed
                     </span>
@@ -105,25 +147,25 @@ export default function ProblemDetails({ problem, onClose, onToggleSupport }: Pr
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
-                  {problem.affectedPopulation && (
+                  {displayProblem.affectedPopulation && (
                     <div className="rounded-xl bg-white p-2.5 border border-slate-100">
                       <span className="font-semibold text-slate-400 block mb-0.5">Affected Population</span>
-                      <span className="font-medium text-slate-800">{problem.affectedPopulation}</span>
+                      <span className="font-medium text-slate-800">{displayProblem.affectedPopulation}</span>
                     </div>
                   )}
-                  {problem.frequency && (
+                  {displayProblem.frequency && (
                     <div className="rounded-xl bg-white p-2.5 border border-slate-100">
                       <span className="font-semibold text-slate-400 block mb-0.5">Recurrence Pattern</span>
-                      <span className="font-medium text-slate-800">{problem.frequency}</span>
+                      <span className="font-medium text-slate-800">{displayProblem.frequency}</span>
                     </div>
                   )}
                 </div>
 
-                {problem.requiredCapabilities && problem.requiredCapabilities.length > 0 && (
+                {displayProblem.requiredCapabilities && displayProblem.requiredCapabilities.length > 0 && (
                   <div>
                     <span className="font-semibold text-slate-500 text-[11px] block mb-1.5">Required Capabilities & Skills:</span>
                     <div className="flex flex-wrap gap-1">
-                      {problem.requiredCapabilities.map((cap, i) => (
+                      {displayProblem.requiredCapabilities.map((cap, i) => (
                         <span key={i} className="rounded-lg bg-white border border-blue-100 text-blue-700 px-2 py-0.5 text-[11px] font-semibold shadow-2xs">
                           {cap}
                         </span>
@@ -132,18 +174,18 @@ export default function ProblemDetails({ problem, onClose, onToggleSupport }: Pr
                   </div>
                 )}
 
-                {problem.suggestedIntervention && (
+                {displayProblem.suggestedIntervention && (
                   <div className="rounded-xl bg-blue-50/60 border border-blue-100/80 p-2.5 text-xs text-blue-900">
                     <span className="font-bold block mb-0.5">Suggested Intervention Vector:</span>
-                    <span>{problem.suggestedIntervention}</span>
+                    <span>{displayProblem.suggestedIntervention}</span>
                   </div>
                 )}
 
-                {problem.rawInput && problem.rawInput !== problem.description && (
+                {displayProblem.rawInput && displayProblem.rawInput !== displayProblem.description && (
                   <details className="text-xs text-slate-500 cursor-pointer pt-1">
                     <summary className="font-semibold hover:text-slate-800">View original raw citizen report</summary>
                     <p className="mt-1.5 rounded-lg bg-white p-2.5 border border-slate-200/80 italic text-slate-700">
-                      &ldquo;{problem.rawInput}&rdquo;
+                      &ldquo;{displayProblem.rawInput}&rdquo;
                     </p>
                   </details>
                 )}
@@ -151,20 +193,44 @@ export default function ProblemDetails({ problem, onClose, onToggleSupport }: Pr
             )}
 
             {/* Image */}
-            {problem.image && (
+            {displayProblem.image && (
               <div className="flex h-44 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 text-6xl border border-slate-100">
-                {problem.image}
+                {displayProblem.image}
               </div>
             )}
 
             {/* Description */}
             <div>
               <h4 className="mb-2 text-sm font-bold text-slate-700">Detailed Statement</h4>
-              <p className="text-sm text-slate-600 leading-relaxed">{problem.description}</p>
+              <p className="text-sm text-slate-600 leading-relaxed">{displayProblem.description}</p>
             </div>
 
-            {/* Current Action */}
-            {problem.assignedUniversity && (
+            {/* Current Assignment (if a volunteer was accepted) */}
+            {acceptedVolunteer && (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <div className="mb-1.5 flex items-center gap-2">
+                  {acceptedVolunteer.solverType === "university" ? (
+                    <Building2 size={16} className="text-emerald-600" />
+                  ) : (
+                    <Users size={16} className="text-emerald-600" />
+                  )}
+                  <span className="text-sm font-bold text-emerald-800">Assigned Solver</span>
+                </div>
+                <p className="text-sm text-emerald-700 leading-relaxed">
+                  <span className="font-semibold">{acceptedVolunteer.solverName}</span> (
+                  {acceptedVolunteer.solverType}) has been selected to solve this problem.
+                  {acceptedVolunteer.proposal && (
+                    <>
+                      <br />
+                      <span className="mt-1 block italic">&ldquo;{acceptedVolunteer.proposal}&rdquo;</span>
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
+
+            {/* Previous Assignment (government-assigned, if any) */}
+            {displayProblem.assignedUniversity && !acceptedVolunteer && (
               <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
                 <div className="mb-1.5 flex items-center gap-2">
                   <Building2 size={16} className="text-blue-600" />
@@ -172,30 +238,116 @@ export default function ProblemDetails({ problem, onClose, onToggleSupport }: Pr
                 </div>
                 <p className="text-sm text-blue-600 leading-relaxed">
                   This problem has been assigned to{" "}
-                  <span className="font-semibold">{problem.assignedUniversity}</span> and is
+                  <span className="font-semibold">{displayProblem.assignedUniversity}</span> and is
                   currently being reviewed by the{" "}
-                  <span className="font-semibold">{problem.assignedDepartment}</span>.
+                  <span className="font-semibold">{displayProblem.assignedDepartment}</span>.
                 </p>
+              </div>
+            )}
+
+            {/* Volunteer Applications (shown to problem giver when there are pending volunteers) */}
+            {isGiver && activeVolunteers.length > 0 && !acceptedVolunteer && (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Handshake size={18} className="text-amber-600" />
+                  <h4 className="text-sm font-bold text-amber-900">Volunteer Solutions</h4>
+                </div>
+                <p className="text-xs text-amber-800">
+                  {activeVolunteers.length} {activeVolunteers.length === 1 ? "institution has" : "institutions have"} volunteered. Review and accept the best fit — the selected solver and the others will be notified.
+                </p>
+
+                {activeVolunteers.map((v, idx) => (
+                  <div key={idx} className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {v.solverType === "university" ? (
+                          <Building2 size={14} className="text-blue-600" />
+                        ) : (
+                          <Users size={14} className="text-green-600" />
+                        )}
+                        <span className="text-sm font-semibold text-slate-900">
+                          {v.solverName} <span className="text-xs text-slate-500 font-normal">({v.solverType})</span>
+                        </span>
+                      </div>
+                      {isGiver && (
+                        <button
+                          onClick={() => handleSelectVolunteer(v.solverType, v.solverName)}
+                          className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700"
+                        >
+                          <CheckCircle2 size={12} />
+                          Accept
+                        </button>
+                      )}
+                    </div>
+                    {v.proposal && (
+                      <p className="text-xs text-slate-600 italic leading-relaxed">
+                        &ldquo;{v.proposal}&rdquo;
+                      </p>
+                    )}
+                    <div className="flex items-center gap-1 text-[10px] text-slate-400">
+                      <Calendar size={10} />
+                      <span>Volunteered {v.submittedAt ? new Date(v.submittedAt).toLocaleDateString() : "recently"}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Volunteer Applications (view-only for non-givers) */}
+            {!isGiver && activeVolunteers.length > 0 && !acceptedVolunteer && (
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Handshake size={16} className="text-slate-600" />
+                  <h4 className="text-sm font-bold text-slate-700">Volunteer Solutions</h4>
+                </div>
+                {activeVolunteers.map((v, idx) => (
+                  <div key={idx} className="flex items-center gap-2 text-xs text-slate-600">
+                    {v.solverType === "university" ? (
+                      <Building2 size={12} className="text-blue-600" />
+                    ) : (
+                      <Users size={12} className="text-green-600" />
+                    )}
+                    <span className="font-medium">{v.solverName}</span>
+                    <span className="text-slate-400">({v.solverType})</span>
+                    <span className="text-amber-600 font-medium">• Pending giver selection</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* My own volunteer application (for university/industry viewers) */}
+            {!isGiver && displayProblem.volunteers && displayProblem.volunteers.length > 0 && (
+              <div className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 p-3">
+                <span className="text-xs text-slate-600">Your proposal is awaiting the problem giver's decision.</span>
+                {displayProblem.volunteers.some((v) => v.status === "volunteered") && (
+                  <button
+                    onClick={() => displayProblem.volunteers?.forEach((v) => v.status === "volunteered" && handleWithdrawVolunteer(v.solverType, v.solverName))}
+                    className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-red-50 hover:text-red-600"
+                  >
+                    <Trash2 size={12} />
+                    Withdraw
+                  </button>
+                )}
               </div>
             )}
 
             {/* Support */}
             <div className="flex items-center gap-3">
               <button
-                onClick={() => onToggleSupport(problem.id)}
+                onClick={() => onToggleSupport(displayProblem.id)}
                 className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold transition-all ${
-                  problem.isSupported
+                  displayProblem.isSupported
                     ? "bg-blue-600 text-white shadow-md"
                     : "border border-slate-200 text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
                 }`}
               >
-                <ThumbsUp size={15} className={problem.isSupported ? "fill-white" : ""} />
-                {problem.isSupported ? "Supported" : "Support this Problem"} · {problem.supporters}
+                <ThumbsUp size={15} className={displayProblem.isSupported ? "fill-white" : ""} />
+                {displayProblem.isSupported ? "Supported" : "Support this Problem"} · {displayProblem.supporters}
               </button>
             </div>
 
             {/* Progress Tracker */}
-            <ProgressTracker currentStep={problem.currentStep} progress={problem.progress} />
+            <ProgressTracker currentStep={displayProblem.currentStep} progress={displayProblem.progress} />
 
             {/* Comments */}
             <div>

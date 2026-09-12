@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   ClipboardList, Activity, CheckCircle2, Clock, Bell, Users,
-  Building2, AlertCircle,
+  Building2, AlertCircle, Handshake, Send,
 } from "lucide-react";
 import Link from "next/link";
 import UniversityStatsCard from "@/components/university/UniversityStatsCard";
@@ -18,6 +18,7 @@ import {
 } from "@/data/universityAppData";
 import { universityChallenges as initialChallenges } from "@/data/universityChallenges";
 import { UniversityChallenge } from "@/types/universityChallenge";
+import { useProblems } from "@/context/ProblemsContext";
 
 const ACTIVITY = [
   { dot: "bg-green-500",  text: "Traffic Signal Optimization challenge completed successfully",    time: "4 days ago"  },
@@ -29,6 +30,7 @@ const ACTIVITY = [
 ];
 
 export default function UniversityDashboard() {
+  const { problems, volunteerForProblem, withdrawVolunteerRequest } = useProblems();
   const [challenges, setChallenges] = useState<UniversityChallenge[]>(initialChallenges);
   const [selectedChallenge, setSelectedChallenge] = useState<UniversityChallenge | null>(null);
   const [rejectingChallenge, setRejectingChallenge] = useState<UniversityChallenge | null>(null);
@@ -68,6 +70,36 @@ export default function UniversityDashboard() {
     );
     setAssigningMentorChallenge(null);
   };
+
+  const [volunteeredIds, setVolunteeredIds] = useState<Set<string>>(new Set());
+
+  const handleVolunteer = async (problemId: string, universityName: string, proposal: string) => {
+    const success = await volunteerForProblem(problemId, "university", universityName, proposal);
+    if (success) {
+      setVolunteeredIds((prev) => new Set(prev).add(problemId));
+    }
+    return success;
+  };
+
+  const handleWithdrawVolunteer = async (problemId: string) => {
+    const success = await withdrawVolunteerRequest(problemId, "university", universityCoordinator.university);
+    if (success) {
+      setVolunteeredIds((prev) => {
+        const next = new Set(prev);
+        next.delete(problemId);
+        return next;
+      });
+    }
+    return success;
+  };
+
+  const availableProblems = problems.filter(
+    (p) =>
+      p.status === "Verified" &&
+      !p.volunteers?.some(
+        (v) => v.solverType === "university" && v.solverName === universityCoordinator.university && v.status === "accepted"
+      )
+  );
 
   const stats = {
     total:    challenges.length,
@@ -116,6 +148,89 @@ export default function UniversityDashboard() {
           <UniversityStatsCard label="Active Challenges" value={stats.active}    icon={Activity}      color="purple" sublabel="In progress"       />
           <UniversityStatsCard label="Completed"         value={stats.completed} icon={CheckCircle2}  color="green"  sublabel="Successfully done" />
         </div>
+
+        {/* Available Problems — Volunteer Opportunities */}
+        {availableProblems.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Handshake size={18} className="text-indigo-600" />
+              <h2 className="text-lg font-bold text-slate-800">
+                Available Problems — Volunteer Opportunities
+              </h2>
+              <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-bold text-indigo-700">
+                {availableProblems.length}
+              </span>
+            </div>
+            <p className="text-xs text-slate-500">
+              These verified problems are open for university volunteer proposals. Review and volunteer your department's solution.
+            </p>
+            <div className="space-y-4">
+              {availableProblems.map((problem) => {
+                const hasVolunteered = volunteeredIds.has(String(problem.id));
+                const existingVolunteer = problem.volunteers?.find(
+                  (v) => v.solverName === universityCoordinator.university
+                );
+                const showVolunteer = !hasVolunteered && !existingVolunteer;
+                const showWithdraw = hasVolunteered || (existingVolunteer && existingVolunteer.status === "volunteered");
+                return (
+                  <div key={problem.id} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-indigo-50 text-indigo-700 px-2.5 py-0.5 text-xs font-semibold">
+                        {problem.category}
+                      </span>
+                      {existingVolunteer && existingVolunteer.status === "accepted" && (
+                        <span className="rounded-full bg-emerald-100 text-emerald-700 px-2.5 py-0.5 text-xs font-bold">
+                          ✓ Selected
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900 mb-1.5">{problem.title}</h3>
+                    <p className="text-sm text-slate-500 mb-3 line-clamp-2">{problem.description}</p>
+                    {problem.volunteers && problem.volunteers.filter((v) => v.status === "volunteered" || v.status === "accepted").length > 0 && (
+                      <div className="mb-3 flex flex-wrap gap-1.5">
+                        {problem.volunteers
+                          .filter((v) => v.status === "volunteered" || v.status === "accepted")
+                          .map((v, i) => (
+                            <span key={i} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                              {v.solverName}
+                              {v.status === "accepted" && <span className="text-emerald-600">✓</span>}
+                            </span>
+                          ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      {showVolunteer && (
+                        <button
+                          onClick={() => handleVolunteer(String(problem.id), universityCoordinator.university, problem.requiredCapabilities?.join(", ") || "")}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700"
+                        >
+                          <Handshake size={12} />
+                          Volunteer
+                        </button>
+                      )}
+                      {showWithdraw && (
+                        <button
+                          onClick={() => handleWithdrawVolunteer(String(problem.id))}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                        >
+                          <span className="text-amber-600">↶</span>
+                          {existingVolunteer?.status === "accepted" ? "Withdrawn" : "Withdraw"}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setSelectedChallenge(problem as unknown as UniversityChallenge)}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                      >
+                        <Send size={12} />
+                        Proposal
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Awaiting Decision — most important section */}
         {awaitingDecision.length > 0 && (

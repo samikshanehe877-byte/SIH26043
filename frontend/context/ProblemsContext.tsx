@@ -10,6 +10,9 @@ interface ProblemsContextType {
   addProblem: (problem: Problem) => Promise<string | number | null>;
   deleteProblem: (id: number | string) => Promise<boolean>;
   resubmitProblem: (id: number | string, files: File[], note?: string) => Promise<boolean>;
+  volunteerForProblem: (id: number | string, solverType: "university" | "industry", solverName: string, proposal?: string) => Promise<boolean>;
+  withdrawVolunteerRequest: (id: number | string, solverType: "university" | "industry", solverName: string) => Promise<boolean>;
+  selectVolunteer: (id: number | string, solverType: "university" | "industry", solverName: string) => Promise<boolean>;
   toggleSupport: (id: number | string) => void;
   toggleSave: (id: number | string) => void;
   isLoading: boolean;
@@ -148,8 +151,83 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const volunteerForProblem = async (
+    id: number | string,
+    solverType: "university" | "industry",
+    solverName: string,
+    proposal = ""
+  ): Promise<boolean> => {
+    try {
+      const response = await fetch(`${apiUrl}/problems/${id}/volunteer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ solver_type: solverType, solver_name: solverName, proposal }),
+      });
+      if (!response.ok) return false;
+      const saved = toFrontendProblem(await response.json());
+      setProblems((prev) => prev.map((p) => (p.id === id ? saved : p)));
+      setMyProblems((prev) => prev.map((p) => (p.id === id ? saved : p)));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const withdrawVolunteerRequest = async (
+    id: number | string,
+    solverType: "university" | "industry",
+    solverName: string
+  ): Promise<boolean> => {
+    try {
+      const response = await fetch(`${apiUrl}/problems/${id}/volunteer`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ solver_type: solverType, solver_name: solverName }),
+      });
+      if (!response.ok) return false;
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const selectVolunteer = async (
+    id: number | string,
+    solverType: "university" | "industry",
+    solverName: string
+  ): Promise<boolean> => {
+    try {
+      const response = await fetch(`${apiUrl}/problems/${id}/select-volunteer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ solver_type: solverType, solver_name: solverName }),
+      });
+      if (!response.ok) return false;
+      const saved = toFrontendProblem(await response.json());
+      setProblems((prev) => prev.map((p) => (p.id === id ? saved : p)));
+      setMyProblems((prev) => prev.map((p) => (p.id === id ? saved : p)));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   return (
-    <ProblemsContext.Provider value={{ problems, myProblems, addProblem, deleteProblem, resubmitProblem, toggleSupport, toggleSave, isLoading }}>
+    <ProblemsContext.Provider
+      value={{
+        problems,
+        myProblems,
+        addProblem,
+        deleteProblem,
+        resubmitProblem,
+        volunteerForProblem,
+        withdrawVolunteerRequest,
+        selectVolunteer,
+        toggleSupport,
+        toggleSave,
+        isLoading,
+      }}
+    >
       {children}
     </ProblemsContext.Provider>
   );
@@ -180,6 +258,16 @@ function toFrontendProblem(record: Record<string, unknown>): Problem {
           .filter((entry) => entry.decision === "proof")
           .map((entry) => String(entry.note ?? "Additional proof requested"))
       : [],
+    volunteers: Array.isArray(record.volunteers)
+      ? record.volunteers.map((v: Record<string, unknown>) => ({
+          solverType: v.solver_type as "university" | "industry",
+          solverName: String(v.solver_name ?? ""),
+          proposal: String(v.proposal ?? ""),
+          submittedAt: String(v.submitted_at ?? ""),
+          status: v.status as "volunteered" | "accepted" | "rejected" | "withdrawn",
+        }))
+      : undefined,
+    assignedByGiver: record.assigned_by_giver as boolean | undefined,
   };
 }
 

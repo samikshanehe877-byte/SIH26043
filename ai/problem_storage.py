@@ -49,6 +49,11 @@ class ProblemBase(BaseModel):
     # Problem giver entity type
     problem_giver_type: Optional[str] = "individual"  # "individual", "community_group", "ngo", "local_authority"
     community_group_name: Optional[str] = None
+    # Volunteer / solver assignment workflow
+    volunteers: List[Dict] = Field(default_factory=list)
+    assigned_university: Optional[str] = None
+    assigned_industry: Optional[str] = None
+    assigned_by_giver: Optional[bool] = None
     # Optional location info
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -114,6 +119,10 @@ class ProblemUpdate(BaseModel):
     confirmed_by_giver: Optional[bool] = None
     problem_giver_type: Optional[str] = None
     community_group_name: Optional[str] = None
+    volunteers: Optional[List[Dict]] = None
+    assigned_university: Optional[str] = None
+    assigned_industry: Optional[str] = None
+    assigned_by_giver: Optional[bool] = None
     original_text: Optional[str] = None
     translated_text: Optional[str] = None
     source_language: Optional[str] = None
@@ -154,6 +163,7 @@ _JSON_FIELDS = {
     "evidence_attachments",
     "verification_history",
     "required_capabilities",
+    "volunteers",
 }
 
 
@@ -297,5 +307,86 @@ def mark_all_notifications_read(citizen_name: str) -> None:
             notification.is_read = True
             connection.execute(
                 "UPDATE notifications SET payload = ? WHERE id = ?",
-                (notification.model_dump_json(), row["id"]),
+                (                 notification.model_dump_json(), row["id"]),
             )
+
+
+# ---------------------------------------------------------------------------
+# Volunteer / solver-assignment workflow helpers
+# ---------------------------------------------------------------------------
+
+VOLUNTEER_STATUSES = {"volunteered", "accepted", "rejected", "withdrawn"}
+
+
+def _volunteer_index(problem: ProblemInDB, solver_type: str, solver_name: str) -> int | None:
+    """Return the index of an existing active volunteer entry, or None."""
+    for i, v in enumerate(problem.volunteers):
+        if v.get("solver_type") == solver_type and v.get("solver_name") == solver_name:
+            return i
+    return None
+
+
+def add_volunteer(problem_id: str, solver_type: str, solver_name: str, proposal: str) -> ProblemInDB | None:
+    """Add a volunteer proposal to a problem. Raises if a volunteer with the same
+    entity already exists and has not been withdrawn."""
+    problem = get_problem(problem_id)
+    if not problem:
+        return None
+    idx = _volunteer_index(problem, solver_type, solver_name)
+    existing = problem.volunteers[idx]["status"] if idx is not None else None
+    if existing in ("volunteered", "accepted"):
+        raise ValueError(f"{solver_type} '{solver_name}' has already volunteered")
+    entry = {
+        "solver_type": solver_type,
+        "solver_name": solver_name,
+        "proposal": proposal,
+        "submitted_at": datetime.now().isoformat(),
+        "status": "volunteered",
+    }
+    if idx is not None:
+        problem.volunteers[idx] = entry
+    else:
+        problem.volunteers.append(entry)
+    updated = update_problem(
+        problem_id,
+        ProblemUpdate(volunteers=problem.volunteers),
+    )
+    return updated
+
+
+def withdraw_volunteer(problem_id: str, solver_type: str, solver_name: str) -> ProblemInDB | None:
+    """Withdraw a volunteer proposal — only allowed while status is still 'volunteered'."""
+    problem = get_problem(problem_id)
+    if not problem:
+        return None
+    idx = _volunteer_index(problem, solver_type, solver_name)
+    if idx is None or problem.volunteers[idx]["status"] != "volunteered":
+        raise ValueError("Cannot withdraw: proposal not found or already decided")
+    problem.volunteers[idx]["status"] = "withdrawn"
+    return update_problem(problem_id, ProblemUpdate(volunteers=problem.volunteers))
+
+
+def select_volunteer(problem_id: str, solver_type: str, solver_name: str) -> ProblemInDB | None:
+    """Giver selects one volunteer. The chosen entry becomes 'accepted'; all other
+    'volunteered' entries become 'rejected'."""
+    problem = get_problem(problem_id)
+    if not problem:
+        return None
+    idx = _volunteer_index(problem, solver_type, solver_name)
+    if idx is None or problem.volunteers[idx]["status"] != "volunteered":
+        raise ValueError("Cannot select: proposal not found or not in 'volunteered' state")
+    for i, v in enumerate(problem.volunteers):
+        if i == idx:
+            v["status"] = "accepted"
+        elif v["status"] == "volunteered":
+            v["status"] = "rejected"
+    assignment_update = ProblemUpdate(
+        volunteers=problem.volunteers,
+        status="assigned",
+        assigned_by_giver=True,
+    )
+    if solver_type == "university":
+        assignment_update.assigned_university = solver_name
+    elif solver_type == "industry":
+        assignment_update.assigned_industry = solver_name
+    return update_problem(problem_id, assignment_update)
