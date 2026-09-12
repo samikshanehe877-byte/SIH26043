@@ -1,12 +1,42 @@
 "use client";
 
+import { useState } from "react";
 import { useIndustry } from "@/context/IndustryContext";
+import { useProblems } from "@/context/ProblemsContext";
 import StatsCard from "@/components/StatsCard";
-import { Inbox, Handshake, Award, Activity, ArrowRight, Clock } from "lucide-react";
+import { Inbox, Handshake, Award, Activity, ArrowRight, Clock, Send } from "lucide-react";
 import Link from "next/link";
 
 export default function IndustryDashboardPage() {
   const { company, requests, collaborations, impact } = useIndustry();
+  const { problems, volunteerForProblem, withdrawVolunteerRequest } = useProblems();
+  const [volunteeredIds, setVolunteeredIds] = useState<Set<string>>(new Set());
+
+  const handleVolunteer = async (problemId: string, proposal: string) => {
+    const success = await volunteerForProblem(problemId, "industry", company.name, proposal);
+    if (success) setVolunteeredIds((prev) => new Set(prev).add(problemId));
+    return success;
+  };
+
+  const handleWithdraw = async (problemId: string) => {
+    const success = await withdrawVolunteerRequest(problemId, "industry", company.name);
+    if (success) {
+      setVolunteeredIds((prev) => {
+        const next = new Set(prev);
+        next.delete(problemId);
+        return next;
+      });
+    }
+    return success;
+  };
+
+  const availableProblems = problems.filter(
+    (p) =>
+      p.status === "Verified" &&
+      !p.volunteers?.some(
+        (v) => v.solverName === company.name && v.solverType === "industry" && v.status === "accepted"
+      )
+  );
 
   const pendingRequestsCount = requests.filter(r => r.status === "Received" || r.status === "Under Review" || r.status === "Clarification Needed").length;
   const activeCollaborationsCount = collaborations.filter(c => c.collaborationStatus === "In Progress" || c.collaborationStatus === "Support Delivered").length;
@@ -51,6 +81,82 @@ export default function IndustryDashboardPage() {
           color="purple"
         />
       </div>
+
+      {/* Available Problems — Volunteer Opportunities */}
+      {availableProblems.length > 0 && (
+        <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+          <div className="mb-4 flex items-center gap-2">
+            <Handshake size={18} className="text-blue-600" />
+            <h2 className="text-lg font-bold text-slate-800">
+              Available Problems — Volunteer Opportunities
+            </h2>
+            <span className="rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-bold text-blue-700">
+              {availableProblems.length}
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mb-4">
+            These verified societal problems are open for industry volunteer proposals. Review and offer your company's solution.
+          </p>
+          <div className="space-y-4">
+            {availableProblems.map((problem) => {
+              const hasVolunteered = volunteeredIds.has(String(problem.id));
+              const existingVolunteer = problem.volunteers?.find(
+                (v) => v.solverName === company.name && v.solverType === "industry"
+              );
+              const showVolunteer = !hasVolunteered && !existingVolunteer;
+              const showWithdraw = hasVolunteered || (existingVolunteer && existingVolunteer.status === "volunteered");
+              return (
+                <div key={problem.id} className="rounded-xl border border-slate-100 p-4">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-blue-50 text-blue-700 px-2.5 py-0.5 text-xs font-semibold">
+                      {problem.category}
+                    </span>
+                    {existingVolunteer && existingVolunteer.status === "accepted" && (
+                      <span className="rounded-full bg-emerald-100 text-emerald-700 px-2.5 py-0.5 text-xs font-bold">
+                        ✓ Selected
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="font-bold text-slate-900 mb-1">{problem.title}</h3>
+                  <p className="text-sm text-slate-600 mb-3 line-clamp-2">{problem.description}</p>
+                  {problem.volunteers && problem.volunteers.filter((v) => v.status === "volunteered" || v.status === "accepted").length > 0 && (
+                    <div className="mb-3 flex flex-wrap gap-1.5">
+                      {problem.volunteers
+                        .filter((v) => v.status === "volunteered" || v.status === "accepted")
+                        .map((v, i) => (
+                          <span key={i} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
+                            {v.solverName}
+                            {v.status === "accepted" && <span className="text-emerald-600">✓</span>}
+                          </span>
+                        ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    {showVolunteer && (
+                      <button
+                        onClick={() => handleVolunteer(String(problem.id), problem.requiredCapabilities?.join(", ") || "")}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700"
+                      >
+                        <Handshake size={12} />
+                        Volunteer
+                      </button>
+                    )}
+                    {showWithdraw && (
+                      <button
+                        onClick={() => handleWithdraw(String(problem.id))}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                      >
+                        <span className="text-amber-600">↶</span>
+                        {existingVolunteer?.status === "accepted" ? "Withdrawn" : "Withdraw"}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column */}

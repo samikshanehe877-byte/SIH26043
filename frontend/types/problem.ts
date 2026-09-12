@@ -25,6 +25,18 @@ export type ProblemNature = "Technical" | "Non-Technical" | "Hybrid";
 
 export type ProblemGiverType = "individual" | "community_group" | "ngo" | "local_authority";
 
+export type SolverType = "university" | "industry";
+
+export type VolunteerStatus = "volunteered" | "accepted" | "rejected" | "withdrawn";
+
+export interface ProblemVolunteer {
+  solverType: SolverType;
+  solverName: string;
+  proposal: string;
+  submittedAt: string;
+  status: VolunteerStatus;
+}
+
 export interface StructuredProblemDraft {
   title: string;
   problem_statement: string;
@@ -74,6 +86,9 @@ export interface Problem {
   confirmedByGiver?: boolean;
   problemGiverType?: ProblemGiverType;
   communityGroupName?: string;
+  volunteers?: ProblemVolunteer[];
+  assignedVolunteer?: ProblemVolunteer;
+  assignedByGiver?: boolean;
   // Assignment & evidence
   assignedUniversity?: string;
   assignedDepartment?: string;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MapPin, Clock, ThumbsUp, MessageCircle, Share2, Bookmark, ChevronRight } from "lucide-react";
+import { MapPin, Clock, ThumbsUp, MessageCircle, Share2, Bookmark, ChevronRight, Users, Building2 } from "lucide-react";
 import { Problem } from "@/types/problem";
 import StatusBadge from "./StatusBadge";
 
@@ -130,6 +130,33 @@ export default function ProblemCard({ problem, onViewDetails, onToggleSupport, o
           />
         </div>
       </div>
+
+      {/* Volunteers */}
+      {problem.volunteers && problem.volunteers.length > 0 && (
+        <div className="mx-5 mb-4 flex flex-wrap items-center gap-2 text-xs">
+          {problem.volunteers.filter((v) => v.status === "accepted" || v.status === "volunteered").map((v, i) => (
+            <span
+              key={i}
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                v.status === "accepted"
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  : "bg-slate-100 text-slate-600 border border-slate-200"
+              }`}
+            >
+              {v.solverType === "university" ? <Building2 size={10} /> : <Users size={10} />}
+              {v.solverName}
+              {v.status === "accepted" && " ✓"}
+            </span>
+          ))}
+          {problem.volunteers.filter((v) => v.status === "accepted").length === 0 &&
+            problem.volunteers.filter((v) => v.status === "volunteered").length > 0 && (
+              <span className="text-slate-400">
+                {problem.volunteers.filter((v) => v.status === "volunteered").length} volunteer
+                {problem.volunteers.filter((v) => v.status === "volunteered").length > 1 ? "s" : ""} — awaiting giver selection
+              </span>
+            )}
+        </div>
+      )}
 
       {/* Actions */}
       <div className="flex items-center justify-between border-t border-slate-50 px-5 py-3">
