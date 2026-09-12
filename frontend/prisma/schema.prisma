@@ -1,0 +1,614 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  CITIZEN
+  STUDENT
+  FACULTY
+  MENTOR
+  INDUSTRY_EMPLOYEE
+  INDUSTRY_EXPERT
+  GOVERNMENT_OFFICER
+  ADMIN
+}
+
+enum AccountStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+}
+
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum ProblemStatus {
+  SUBMITTED
+  VERIFIED
+  NEEDS_PROOF
+  REJECTED
+  UNDER_REVIEW
+  ASSIGNED_TO_UNIVERSITY
+  IN_PROGRESS
+  COLLABORATION_WITH_INDUSTRY
+  SOLUTION_IMPLEMENTED
+  COMPLETED
+}
+
+enum ProblemType {
+  TECHNICAL
+  NON_TECHNICAL
+  HYBRID
+}
+
+enum ProblemGiverType {
+  INDIVIDUAL
+  COMMUNITY_GROUP
+  NGO
+  LOCAL_AUTHORITY
+}
+
+enum SolverType {
+  UNIVERSITY
+  INDUSTRY
+}
+
+enum VolunteerStatus {
+  VOLUNTEERED
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum MatchStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum ProjectMemberRole {
+  STUDENT
+  UNIVERSITY_MENTOR
+  FACULTY
+  INDUSTRY_ENGINEER
+  INDUSTRY_MENTOR
+  INDUSTRY_EXPERT
+  PROBLEM_OWNER
+  GOVERNMENT_OFFICER
+}
+
+enum EvidenceType {
+  IMAGE
+  DOCUMENT
+  VIDEO
+  AUDIO
+  OTHER
+}
+
+model User {
+  id              String       @id @default(cuid())
+  name            String
+  email           String       @unique
+  passwordHash    String       @map("password_hash")
+  phone           String?
+  role            UserRole     @default(CITIZEN)
+  profilePhoto    String?      @map("profile_photo")
+  location        String?
+  regionId        String?      @map("region_id")
+  accountStatus   AccountStatus @default(PENDING_VERIFICATION) @map("account_status")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  universityStudents   UniversityStudent[]
+  universityMentors    UniversityMentor[]
+  universityFaculty    UniversityFaculty[]
+  industryEmployees    IndustryEmployee[]
+  industryMentors      IndustryMentor[]
+  industryExperts      IndustryExpert[]
+  governmentOfficers   GovernmentOfficer[]
+  ownedProblems        Problem[]                @relation("ProblemOwner")
+  projectMembers       ProjectMember[]
+  skills               UserSkill[]
+  matches              Match[]                  @relation("MatchUser")
+  evidence             Evidence[]
+  verificationHistory  VerificationHistory[]    @relation("VerificationOfficer")
+
+  @@map("users")
+}
+
+model Region {
+  id        String   @id @default(cuid())
+  name      String
+  district  String?
+  state     String
+  country   String   @default("India")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  users       User[]
+  universities University[]
+  industries   Industry[]
+  problems     Problem[]
+
+  @@map("regions")
+}
+
+model University {
+  id                 String           @id @default(cuid())
+  name               String
+  registrationNumber String           @unique @map("registration_number")
+  description        String?
+  website            String?
+  email              String
+  phone              String?
+  address            String?
+  district           String?
+  state              String
+  country            String           @default("India")
+  logo               String?
+  verificationStatus VerificationStatus @default(PENDING) @map("verification_status")
+  regionId           String           @map("region_id")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  region             Region           @relation(fields: [regionId], references: [id])
+  students           UniversityStudent[]
+  faculty            UniversityFaculty[]
+  mentors            UniversityMentor[]
+  teams              UniversityTeam[]
+  projects           Project[]        @relation("UniversityProjects")
+
+  @@map("universities")
+}
+
+model UniversityStudent {
+  id               String   @id @default(cuid())
+  userId           String   @unique @map("user_id")
+  universityId     String   @map("university_id")
+  rollNumber       String   @map("roll_number")
+  course           String
+  department       String
+  year             Int
+  graduationYear   Int      @map("graduation_year")
+  cgpa             Float?
+  bio              String?
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  teamMembers UniversityTeamMember[]
+  projectMembers ProjectMember[]
+
+  @@map("university_students")
+}
+
+model UniversityFaculty {
+  id            String   @id @default(cuid())
+  userId        String   @unique @map("user_id")
+  universityId  String   @map("university_id")
+  department    String
+  designation   String
+  specialization String?
+  experienceYears Int     @map("experience_years")
+  bio           String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  projectMembers ProjectMember[]
+
+  @@map("university_faculty")
+}
+
+model UniversityMentor {
+  id             String   @id @default(cuid())
+  userId         String   @unique @map("user_id")
+  universityId   String   @map("university_id")
+  department     String
+  designation    String
+  specialization String?
+  experienceYears Int     @map("experience_years")
+  bio            String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  university University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  projectMembers ProjectMember[]
+
+  @@map("university_mentors")
+}
+
+model UniversityTeam {
+  id            String   @id @default(cuid())
+  universityId  String   @map("university_id")
+  name          String
+  description   String?
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  university University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  members    UniversityTeamMember[]
+
+  @@map("university_teams")
+}
+
+model UniversityTeamMember {
+  id        String   @id @default(cuid())
+  teamId    String   @map("team_id")
+  studentId String   @map("student_id")
+  role      String   @default("member")
+  joinedAt  DateTime @default(now()) @map("joined_at")
+
+  team    UniversityTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  student UniversityStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, studentId])
+  @@map("university_team_members")
+}
+
+model Industry {
+  id                 String           @id @default(cuid())
+  companyName        String           @map("company_name")
+  registrationNumber String           @unique @map("registration_number")
+  industryType       String           @map("industry_type")
+  description        String?
+  website            String?
+  email              String
+  phone              String?
+  address            String?
+  district           String?
+  state              String
+  country            String           @default("India")
+  logo               String?
+  verificationStatus VerificationStatus @default(PENDING) @map("verification_status")
+  regionId           String           @map("region_id")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  region      Region           @relation(fields: [regionId], references: [id])
+  employees   IndustryEmployee[]
+  mentors     IndustryMentor[]
+  experts     IndustryExpert[]
+  teams       IndustryTeam[]
+  projects    Project[]        @relation("IndustryProjects")
+
+  @@map("industries")
+}
+
+model IndustryEmployee {
+  id              String   @id @default(cuid())
+  userId          String   @unique @map("user_id")
+  industryId      String   @map("industry_id")
+  employeeCode    String   @map("employee_code")
+  designation     String
+  department      String
+  experienceYears Int      @map("experience_years")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  industry  Industry  @relation(fields: [industryId], references: [id], onDelete: Cascade)
+  teamMembers IndustryTeamMember[]
+  projectMembers ProjectMember[]
+
+  @@map("industry_employees")
+}
+
+model IndustryMentor {
+  id             String   @id @default(cuid())
+  userId         String   @unique @map("user_id")
+  industryId     String   @map("industry_id")
+  designation    String
+  department     String
+  expertise      String
+  experienceYears Int     @map("experience_years")
+  bio            String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  industry  Industry  @relation(fields: [industryId], references: [id], onDelete: Cascade)
+  projectMembers ProjectMember[]
+
+  @@map("industry_mentors")
+}
+
+model IndustryExpert {
+  id              String   @id @default(cuid())
+  userId          String   @unique @map("user_id")
+  industryId      String   @map("industry_id")
+  expertise       String
+  certifications  String?
+  experienceYears Int      @map("experience_years")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  industry  Industry  @relation(fields: [industryId], references: [id], onDelete: Cascade)
+  projectMembers ProjectMember[]
+
+  @@map("industry_experts")
+}
+
+model IndustryTeam {
+  id          String   @id @default(cuid())
+  industryId  String   @map("industry_id")
+  name        String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  industry Industry @relation(fields: [industryId], references: [id], onDelete: Cascade)
+  members  IndustryTeamMember[]
+
+  @@map("industry_teams")
+}
+
+model IndustryTeamMember {
+  id        String   @id @default(cuid())
+  teamId    String   @map("team_id")
+  employeeId String  @map("employee_id")
+  role      String   @default("member")
+  joinedAt  DateTime @default(now()) @map("joined_at")
+
+  team     IndustryTeam     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  employee IndustryEmployee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, employeeId])
+  @@map("industry_team_members")
+}
+
+model Government {
+  id                 String           @id @default(cuid())
+  name               String
+  department         String
+  level              String
+  email              String
+  phone              String?
+  address            String?
+  district           String?
+  state              String
+  country            String           @default("India")
+  verificationStatus VerificationStatus @default(PENDING) @map("verification_status")
+  regionId           String           @map("region_id")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  region   Region             @relation(fields: [regionId], references: [id])
+  officers GovernmentOfficer[]
+
+  @@map("governments")
+}
+
+model GovernmentOfficer {
+  id           String   @id @default(cuid())
+  userId       String   @unique @map("user_id")
+  governmentId String   @map("government_id")
+  designation  String
+  department   String
+  jurisdiction String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  government Government @relation(fields: [governmentId], references: [id], onDelete: Cascade)
+  verificationHistory VerificationHistory[]
+
+  @@map("government_officers")
+}
+
+model Problem {
+  id                  String         @id @default(cuid())
+  title               String
+  description         String
+  problemType         ProblemType    @default(HYBRID) @map("problem_type")
+  domain              String
+  subdomain           String?
+  ownerUserId         String         @map("owner_user_id")
+  ownerOrganizationId String?        @map("owner_organization_id")
+  ownerOrganizationType String?      @map("owner_organization_type")
+  regionId            String         @map("region_id")
+  district            String?
+  state               String
+  latitude            Float?
+  longitude           Float?
+  impactLevel         Int            @default(1) @map("impact_level")
+  urgency             Int            @default(1)
+  status              ProblemStatus  @default(SUBMITTED)
+  rawInput            String?        @map("raw_input")
+  problemNature       ProblemType?   @map("problem_nature")
+  affectedArea        String?        @map("affected_area")
+  affectedPopulation  String?        @map("affected_population")
+  frequency           String?
+  requiredCapabilities String[]      @map("required_capabilities")
+  suggestedIntervention String?      @map("suggested_intervention")
+  confirmedByGiver    Boolean        @default(false) @map("confirmed_by_giver")
+  problemGiverType    ProblemGiverType? @map("problem_giver_type")
+  communityGroupName  String?        @map("community_group_name")
+  correctionCount     Int            @default(0) @map("correction_count")
+  correctionReasons   String[]       @map("correction_reasons")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  updatedAt           DateTime       @updatedAt @map("updated_at")
+
+  ownerUser      User            @relation("ProblemOwner", fields: [ownerUserId], references: [id])
+  region         Region          @relation(fields: [regionId], references: [id])
+  project        Project?
+  matches        Match[]
+  evidence       Evidence[]
+  verificationHistory VerificationHistory[]
+  skills         ProblemSkill[]
+
+  @@map("problems")
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  problemId   String        @unique @map("problem_id")
+  title       String
+  description String?
+  status      ProjectStatus @default(PLANNING)
+  startDate   DateTime?     @map("start_date")
+  targetDate  DateTime?     @map("target_date")
+  createdBy   String        @map("created_by")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  problem    Problem       @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  members    ProjectMember[]
+  university University?   @relation("UniversityProjects", fields: [universityId], references: [id])
+  universityId String?     @map("university_id")
+  industry   Industry?     @relation("IndustryProjects", fields: [industryId], references: [id])
+  industryId String?      @map("industry_id")
+
+  @@map("projects")
+}
+
+model ProjectMember {
+  id              String            @id @default(cuid())
+  projectId       String            @map("project_id")
+  userId          String            @map("user_id")
+  role            ProjectMemberRole
+  organizationType String           @map("organization_type")
+  organizationId  String            @map("organization_id")
+  joinedAt        DateTime          @default(now()) @map("joined_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+model Match {
+  id              String      @id @default(cuid())
+  problemId       String      @map("problem_id")
+  userId          String      @map("user_id")
+  organizationId  String      @map("organization_id")
+  organizationType String     @map("organization_type")
+  matchScore      Float       @map("match_score")
+  semanticScore   Float?      @map("semantic_score")
+  skillScore      Float?      @map("skill_score")
+  regionalScore   Float?      @map("regional_score")
+  experienceScore Float?      @map("experience_score")
+  reason          String?
+  status          MatchStatus @default(PENDING)
+  createdAt       DateTime    @default(now()) @map("created_at")
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  user    User    @relation("MatchUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("matches")
+}
+
+model Skill {
+  id       String @id @default(cuid())
+  name     String @unique
+  domain   String
+  category String?
+
+  userSkills     UserSkill[]
+  problemSkills  ProblemSkill[]
+
+  @@map("skills")
+}
+
+model UserSkill {
+  id             String  @id @default(cuid())
+  userId         String  @map("user_id")
+  skillId        String  @map("skill_id")
+  proficiency    Int     @default(1)
+  experienceYears Float? @map("experience_years")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, skillId])
+  @@map("user_skills")
+}
+
+model ProblemSkill {
+  id        String @id @default(cuid())
+  problemId String @map("problem_id")
+  skillId   String @map("skill_id")
+  required  Boolean @default(true)
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  skill   Skill   @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([problemId, skillId])
+  @@map("problem_skills")
+}
+
+model Evidence {
+  id          String       @id @default(cuid())
+  problemId   String       @map("problem_id")
+  userId      String       @map("user_id")
+  type        EvidenceType
+  name        String
+  contentType String       @map("content_type")
+  size        Int
+  url         String
+  description String?
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("evidence")
+}
+
+model VerificationHistory {
+  id              String   @id @default(cuid())
+  problemId       String   @map("problem_id")
+  officerId       String   @map("officer_id")
+  note            String?
+  previousStatus  String   @map("previous_status")
+  decision        String
+  status          String
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  officer GovernmentOfficer @relation(fields: [officerId], references: [id], onDelete: Cascade)
+
+  @@map("verification_history")
+}
+
+model Collaboration {
+  id              String   @id @default(cuid())
+  problemId       String   @map("problem_id")
+  universityId    String?  @map("university_id")
+  industryId      String?  @map("industry_id")
+  governmentId    String?  @map("government_id")
+  status          String   @default("PROPOSED")
+  proposedBy      String   @map("proposed_by")
+  description     String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  problem    Problem    @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  university University? @relation(fields: [universityId], references: [id])
+  industry   Industry?   @relation(fields: [industryId], references: [id])
+  government Government? @relation(fields: [governmentId], references: [id])
+
+  @@map("collaborations")
+}
