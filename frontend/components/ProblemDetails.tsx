@@ -42,6 +42,22 @@ export default function ProblemDetails({ problem, onClose, onToggleSupport }: Pr
               <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
                 {problem.category}
               </span>
+              {problem.problemNature && (
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                  problem.problemNature === "Technical"
+                    ? "bg-purple-50 text-purple-700 border border-purple-200"
+                    : problem.problemNature === "Non-Technical"
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    : "bg-blue-50 text-blue-700 border border-blue-200"
+                }`}>
+                  {problem.problemNature === "Technical" ? "⚙️ Technical" : problem.problemNature === "Non-Technical" ? "🤝 Non-Technical" : "🌐 Hybrid"}
+                </span>
+              )}
+              {problem.problemGiverType && problem.problemGiverType !== "individual" && (
+                <span className="rounded-full bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-0.5 text-xs font-semibold">
+                  👥 {problem.communityGroupName || "Community Group"}
+                </span>
+              )}
             </div>
             <h2 className="text-lg font-bold text-slate-900 leading-snug">{problem.title}</h2>
           </div>
@@ -74,6 +90,66 @@ export default function ProblemDetails({ problem, onClose, onToggleSupport }: Pr
               </span>
             </div>
 
+            {/* Structured Scope Card (if available) */}
+            {(problem.affectedPopulation || problem.frequency || problem.suggestedIntervention || (problem.requiredCapabilities && problem.requiredCapabilities.length > 0)) && (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    AI-Structured Scope & Requirements
+                  </h4>
+                  {problem.confirmedByGiver && (
+                    <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      ✓ Citizen Confirmed
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                  {problem.affectedPopulation && (
+                    <div className="rounded-xl bg-white p-2.5 border border-slate-100">
+                      <span className="font-semibold text-slate-400 block mb-0.5">Affected Population</span>
+                      <span className="font-medium text-slate-800">{problem.affectedPopulation}</span>
+                    </div>
+                  )}
+                  {problem.frequency && (
+                    <div className="rounded-xl bg-white p-2.5 border border-slate-100">
+                      <span className="font-semibold text-slate-400 block mb-0.5">Recurrence Pattern</span>
+                      <span className="font-medium text-slate-800">{problem.frequency}</span>
+                    </div>
+                  )}
+                </div>
+
+                {problem.requiredCapabilities && problem.requiredCapabilities.length > 0 && (
+                  <div>
+                    <span className="font-semibold text-slate-500 text-[11px] block mb-1.5">Required Capabilities & Skills:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {problem.requiredCapabilities.map((cap, i) => (
+                        <span key={i} className="rounded-lg bg-white border border-blue-100 text-blue-700 px-2 py-0.5 text-[11px] font-semibold shadow-2xs">
+                          {cap}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {problem.suggestedIntervention && (
+                  <div className="rounded-xl bg-blue-50/60 border border-blue-100/80 p-2.5 text-xs text-blue-900">
+                    <span className="font-bold block mb-0.5">Suggested Intervention Vector:</span>
+                    <span>{problem.suggestedIntervention}</span>
+                  </div>
+                )}
+
+                {problem.rawInput && problem.rawInput !== problem.description && (
+                  <details className="text-xs text-slate-500 cursor-pointer pt-1">
+                    <summary className="font-semibold hover:text-slate-800">View original raw citizen report</summary>
+                    <p className="mt-1.5 rounded-lg bg-white p-2.5 border border-slate-200/80 italic text-slate-700">
+                      &ldquo;{problem.rawInput}&rdquo;
+                    </p>
+                  </details>
+                )}
+              </div>
+            )}
+
             {/* Image */}
             {problem.image && (
               <div className="flex h-44 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 text-6xl border border-slate-100">
@@ -83,7 +159,7 @@ export default function ProblemDetails({ problem, onClose, onToggleSupport }: Pr
 
             {/* Description */}
             <div>
-              <h4 className="mb-2 text-sm font-bold text-slate-700">Description</h4>
+              <h4 className="mb-2 text-sm font-bold text-slate-700">Detailed Statement</h4>
               <p className="text-sm text-slate-600 leading-relaxed">{problem.description}</p>
             </div>
 

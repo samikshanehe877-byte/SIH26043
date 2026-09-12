@@ -39,6 +39,16 @@ class ProblemBase(BaseModel):
     translated_text: Optional[str] = None
     original_text: Optional[str] = None
     source_language: str = "English"
+    # Unstructured input & structured problem definition
+    raw_input: Optional[str] = None
+    problem_nature: Optional[str] = None  # "Technical", "Non-Technical", "Hybrid"
+    affected_population: Optional[str] = None
+    frequency: Optional[str] = None
+    required_capabilities: List[str] = Field(default_factory=list)
+    confirmed_by_giver: bool = True
+    # Problem giver entity type
+    problem_giver_type: Optional[str] = "individual"  # "individual", "community_group", "ngo", "local_authority"
+    community_group_name: Optional[str] = None
     # Optional location info
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -92,6 +102,18 @@ class NotificationRecord(BaseModel):
     created_at: datetime = Field(default_factory=datetime.now)
 
 class ProblemUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    location: Optional[str] = None
+    raw_input: Optional[str] = None
+    problem_nature: Optional[str] = None
+    affected_population: Optional[str] = None
+    frequency: Optional[str] = None
+    required_capabilities: Optional[List[str]] = None
+    confirmed_by_giver: Optional[bool] = None
+    problem_giver_type: Optional[str] = None
+    community_group_name: Optional[str] = None
     original_text: Optional[str] = None
     translated_text: Optional[str] = None
     source_language: Optional[str] = None
@@ -131,6 +153,7 @@ _JSON_FIELDS = {
     "evidence_provided",
     "evidence_attachments",
     "verification_history",
+    "required_capabilities",
 }
 
 

@@ -11,7 +11,13 @@ Connects to: classifier.py, priority_ai.py, problem_summary.py, image_analyzer.p
 import os
 import logging
 from dotenv import load_dotenv
-from google import genai
+# Safely import the Gemini client library
+try:
+    import google.generativeai as genai
+except Exception as e:
+    logger = logging.getLogger(__name__)
+    logger.warning("Failed to import google.generativeai: %s", e)
+    genai = None
 
 load_dotenv()
 logger = logging.getLogger(__name__)

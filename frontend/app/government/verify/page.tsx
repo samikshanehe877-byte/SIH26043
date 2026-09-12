@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { ShieldCheck, XCircle, Clock, AlertTriangle, User, FileText, MapPin, BadgeCheck } from "lucide-react";
@@ -80,6 +80,13 @@ export default function VerifyPage() {
                 description: record.description ?? record.problem_text,
                 location: record.location ?? record.district ?? "Location pending",
                 problemType: record.category ?? "Other",
+                raw_input: record.raw_input,
+                problem_nature: record.problem_nature,
+                affected_population: record.affected_population,
+                frequency: record.frequency,
+                required_capabilities: record.required_capabilities,
+                problem_giver_type: record.problem_giver_type,
+                community_group_name: record.community_group_name,
                 verificationStatus: record.status === "returned_for_correction" ? "Returned for Correction" : "Pending",
                 publicVisible: false,
                 evidence: record.evidence_provided ?? [],

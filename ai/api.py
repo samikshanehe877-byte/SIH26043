@@ -50,6 +50,7 @@ from pydantic import BaseModel
 from notification_service import notify_fanout
 from frontend_adapter import to_university_challenge, to_university_mentor
 from department_matcher import list_departments_for_university, match_departments
+from problem_structurer import structure_raw_problem, StructuredProblemDraft
 from problem_storage import (
     ProblemBase,
     ProblemUpdate,
@@ -148,9 +149,32 @@ class AnalyzeStoredProblemResponse(BaseModel):
     suggested_department: Optional[Dict[str, Any]] = None
 
 
+class StructureProblemRequest(BaseModel):
+    raw_text: str
+    source_language: Optional[str] = "English"
+    location_hint: Optional[str] = None
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.post("/ai/structure-problem", response_model=StructuredProblemDraft)
+def structure_problem_endpoint(req: StructureProblemRequest):
+    """
+    Transforms messy, unstructured citizen input (text or speech transcript)
+    into a standardized, objective societal problem draft with estimated scope,
+    nature (Technical/Non-Technical/Hybrid), and required capabilities.
+    Presented to the citizen for review BEFORE government submission.
+    """
+    if not req.raw_text or not req.raw_text.strip():
+        raise HTTPException(status_code=400, detail="Raw problem text cannot be empty.")
+    return structure_raw_problem(
+        raw_text=req.raw_text,
+        source_language=req.source_language or "English",
+        location_hint=req.location_hint,
+    )
 
 
 @app.post("/problems", response_model=ProblemBase)

@@ -62,9 +62,10 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
     // Submissions remain private until a government officer verifies them.
     try {
       const response = await fetch(`${apiUrl}/problems`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          // Ensure problem_text is sent as required by backend
           problem_text: problem.description,
           title: problem.title,
           description: problem.description,
@@ -77,6 +78,14 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
           supporters: problem.supporters,
           progress: problem.progress,
           current_step: problem.currentStep,
+          raw_input: problem.rawInput,
+          problem_nature: problem.problemNature,
+          affected_population: problem.affectedPopulation,
+          frequency: problem.frequency,
+          required_capabilities: problem.requiredCapabilities,
+          confirmed_by_giver: problem.confirmedByGiver ?? true,
+          problem_giver_type: problem.problemGiverType ?? "individual",
+          community_group_name: problem.communityGroupName,
         }),
       });
       if (!response.ok) return null;
@@ -170,6 +179,15 @@ function toFrontendProblem(record: Record<string, unknown>): Problem {
     comments: [],
     progress: Number(record.progress ?? 0),
     currentStep: Number(record.current_step ?? 1),
+    rawInput: record.raw_input ? String(record.raw_input) : undefined,
+    problemNature: (record.problem_nature as Problem["problemNature"]) ?? undefined,
+    affectedArea: record.affected_area ? String(record.affected_area) : undefined,
+    affectedPopulation: record.affected_population ? String(record.affected_population) : undefined,
+    frequency: record.frequency ? String(record.frequency) : undefined,
+    requiredCapabilities: Array.isArray(record.required_capabilities) ? (record.required_capabilities as string[]) : [],
+    confirmedByGiver: Boolean(record.confirmed_by_giver ?? true),
+    problemGiverType: (record.problem_giver_type as Problem["problemGiverType"]) ?? "individual",
+    communityGroupName: record.community_group_name ? String(record.community_group_name) : undefined,
     evidenceAttachments: Array.isArray(record.evidence_attachments) ? record.evidence_attachments : [],
     verificationHistory: Array.isArray(record.verification_history) ? record.verification_history : [],
     correctionCount: Array.isArray(record.verification_history)

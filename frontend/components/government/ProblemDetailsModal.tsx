@@ -80,6 +80,22 @@ export default function GovernmentProblemDetails({
               <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
                 {problem.verificationStatus}
               </span>
+              {Boolean(problem.problem_nature) && (
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                  problem.problem_nature === "Technical"
+                    ? "bg-purple-50 text-purple-700 border border-purple-200"
+                    : problem.problem_nature === "Non-Technical"
+                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                    : "bg-blue-50 text-blue-700 border border-blue-200"
+                }`}>
+                  {problem.problem_nature === "Technical" ? "⚙️ Technical" : problem.problem_nature === "Non-Technical" ? "🤝 Non-Technical" : "🌐 Hybrid"}
+                </span>
+              )}
+              {Boolean(problem.problem_giver_type && problem.problem_giver_type !== "individual") && (
+                <span className="rounded-full bg-slate-100 text-slate-700 border border-slate-200 px-2.5 py-0.5 text-xs font-semibold">
+                  👥 {String(problem.community_group_name || "Community Group")}
+                </span>
+              )}
             </div>
             <h2 className="text-lg font-bold text-slate-900 leading-snug">{problem.title}</h2>
           </div>
@@ -126,6 +142,61 @@ export default function GovernmentProblemDetails({
             </div>
 
             {/* Problem Details */}
+            {/* AI-Structured Scope & Requirements */}
+            {(problem.affectedPopulation || problem.frequency || problem.suggestedIntervention || (problem.requiredCapabilities && problem.requiredCapabilities.length > 0)) && (
+              <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                    AI-Structured Scope & Requirements
+                  </h4>
+                  {problem.confirmedByGiver && (
+                    <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1">
+                      ✓ Citizen Confirmed
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs">
+                  {problem.affectedPopulation && (
+                    <div className="rounded-xl bg-white p-2.5 border border-slate-100">
+                      <span className="font-semibold text-slate-400 block mb-0.5">Affected Population</span>
+                      <span className="font-medium text-slate-800">{problem.affectedPopulation}</span>
+                    </div>
+                  )}
+                  {problem.frequency && (
+                    <div className="rounded-xl bg-white p-2.5 border border-slate-100">
+                      <span className="font-semibold text-slate-400 block mb-0.5">Recurrence Pattern</span>
+                      <span className="font-medium text-slate-800">{problem.frequency}</span>
+                    </div>
+                  )}
+                </div>
+                {problem.requiredCapabilities && problem.requiredCapabilities.length > 0 && (
+                  <div>
+                    <span className="font-semibold text-slate-500 text-[11px] block mb-1.5">Required Capabilities & Skills:</span>
+                    <div className="flex flex-wrap gap-1">
+                      {problem.requiredCapabilities.map((cap, i) => (
+                        <span key={i} className="rounded-lg bg-white border border-blue-100 text-blue-700 px-2 py-0.5 text-[11px] font-semibold shadow-2xs">
+                          {cap}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {problem.suggestedIntervention && (
+                  <div className="rounded-xl bg-blue-50/60 border border-blue-100/80 p-2.5 text-xs text-blue-900">
+                    <span className="font-bold block mb-0.5">Suggested Intervention Vector:</span>
+                    <span>{problem.suggestedIntervention}</span>
+                  </div>
+                )}
+                {problem.rawInput && problem.rawInput !== problem.description && (
+                  <details className="text-xs text-slate-500 cursor-pointer pt-1">
+                    <summary className="font-semibold hover:text-slate-800">View original raw citizen report</summary>
+                    <p className="mt-1.5 rounded-lg bg-white p-2.5 border border-slate-200/80 italic text-slate-700">
+                      “{problem.rawInput}”
+                    </p>
+                  </details>
+                )}
+              </div>
+            )}
             <div className="space-y-4">
               <div className="border-t border-slate-100 pt-4">
                 <h4 className="mb-2 text-sm font-bold text-slate-700">Problem Classification</h4>

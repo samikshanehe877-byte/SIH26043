@@ -21,6 +21,26 @@ export type ProblemCategory =
   | "Water and Sanitation"
   | "Other";
 
+export type ProblemNature = "Technical" | "Non-Technical" | "Hybrid";
+
+export type ProblemGiverType = "individual" | "community_group" | "ngo" | "local_authority";
+
+export interface StructuredProblemDraft {
+  title: string;
+  problem_statement: string;
+  category: ProblemCategory;
+  problem_nature: ProblemNature;
+  affected_area: string;
+  affected_population: string;
+  frequency: string;
+  required_capabilities: string[];
+  suggested_intervention: string;
+  raw_input: string;
+  source_language?: string;
+  translated_input?: string | null;
+  engine?: string;
+}
+
 export interface Comment {
   id: number;
   author: string;
@@ -43,6 +63,18 @@ export interface Problem {
   comments: Comment[];
   progress: number;
   currentStep: number;
+  // Structured problem attributes
+  rawInput?: string;
+  problemNature?: ProblemNature;
+  affectedArea?: string;
+  affectedPopulation?: string;
+  frequency?: string;
+  requiredCapabilities?: string[];
+  suggestedIntervention?: string;
+  confirmedByGiver?: boolean;
+  problemGiverType?: ProblemGiverType;
+  communityGroupName?: string;
+  // Assignment & evidence
   assignedUniversity?: string;
   assignedDepartment?: string;
   image?: string;

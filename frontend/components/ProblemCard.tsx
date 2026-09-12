@@ -57,17 +57,51 @@ export default function ProblemCard({ problem, onViewDetails, onToggleSupport, o
         </div>
       </div>
 
-      {/* Category + Title + Description */}
+      {/* Category + Nature + Title + Description */}
       <div className="px-5 pb-3">
-        <span className={`mb-2 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${categoryColors[problem.category] ?? "bg-slate-100 text-slate-600"}`}>
-          {problem.category}
-        </span>
+        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${categoryColors[problem.category] ?? "bg-slate-100 text-slate-600"}`}>
+            {problem.category}
+          </span>
+          {problem.problemNature && (
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+              problem.problemNature === "Technical"
+                ? "bg-purple-50 text-purple-700 border border-purple-200"
+                : problem.problemNature === "Non-Technical"
+                ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                : "bg-blue-50 text-blue-700 border border-blue-200"
+            }`}>
+              {problem.problemNature === "Technical" ? "⚙️ Technical" : problem.problemNature === "Non-Technical" ? "🤝 Non-Tech" : "🌐 Hybrid"}
+            </span>
+          )}
+          {problem.problemGiverType && problem.problemGiverType !== "individual" && (
+            <span className="rounded-full bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 text-[10px] font-semibold">
+              👥 Group
+            </span>
+          )}
+        </div>
+
         <h3 className="text-base font-bold text-slate-900 leading-snug group-hover:text-blue-600 transition-colors">
           {problem.title}
         </h3>
         <p className="mt-1.5 text-sm text-slate-500 leading-relaxed line-clamp-2">
           {problem.description}
         </p>
+
+        {problem.requiredCapabilities && problem.requiredCapabilities.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2.5">
+            {problem.requiredCapabilities.slice(0, 3).map((cap, i) => (
+              <span key={i} className="rounded-md bg-slate-50 border border-slate-200/80 px-2 py-0.5 text-[10px] text-slate-600 font-medium">
+                {cap}
+              </span>
+            ))}
+            {problem.requiredCapabilities.length > 3 && (
+              <span className="text-[10px] text-slate-400 self-center">
+                +{problem.requiredCapabilities.length - 3} more
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Image placeholder */}
