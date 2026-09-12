@@ -40,9 +40,10 @@ export default function PostProblemPage() {
         <div className="space-y-1">
           <p className="text-sm font-semibold text-blue-900">How it works</p>
           <ul className="space-y-0.5 text-xs text-blue-700 list-disc list-inside">
-            <li><strong>1. Express Naturally:</strong> Type or paste what is happening in English, Hindi, Marathi, or regional dialects.</li>
-            <li><strong>2. AI Structuring:</strong> AI standardizes the title, classifies problem nature (Technical/Non-Technical/Hybrid), and estimates scope.</li>
-            <li><strong>3. Your Confirmation:</strong> Review, edit, or regenerate the draft. No problem is submitted without your approval.</li>
+            <li>Be specific about the exact location of the problem</li>
+            <li>Describe how long the problem has existed</li>
+            <li>Mention how many people are affected</li>
+            <li>Attach photos or documents if available — they can help verification</li>
           </ul>
         </div>
       </div>
