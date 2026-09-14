@@ -2,16 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { CheckCheck, Bell } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 import NotificationItem from "@/components/NotificationItem";
-import { currentUser } from "@/data/problems";
 import { Notification } from "@/types/problem";
 
 export default function NotificationsPage() {
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
   useEffect(() => {
-    fetch(`${apiUrl}/notifications?citizen_name=${encodeURIComponent(currentUser.name)}`, { cache: "no-store" })
+    if (!isAuthenticated || !user) {
+      router.push("/signin?callbackUrl=/notifications");
+      return;
+    }
+    
+    fetch(`${apiUrl}/notifications?citizen_name=${encodeURIComponent(user.name)}`, { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : []))
       .then((records) => {
         if (!Array.isArray(records)) return;
@@ -27,15 +35,16 @@ export default function NotificationsPage() {
         })));
       })
       .catch(() => undefined);
-  }, [apiUrl]);
+  }, [apiUrl, isAuthenticated, user, router]);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const markAllRead = async () => {
+    if (!user) return;
     await fetch(`${apiUrl}/notifications/read-all`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ citizen_name: currentUser.name }),
+      body: JSON.stringify({ citizen_name: user.name }),
     });
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   };
@@ -44,6 +53,10 @@ export default function NotificationsPage() {
     await fetch(`${apiUrl}/notifications/${id}/read`, { method: "PATCH" });
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
   };
+
+  if (!isAuthenticated || !user) {
+    return null;
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">

@@ -19,6 +19,7 @@ import {
 import { universityChallenges as initialChallenges } from "@/data/universityChallenges";
 import { UniversityChallenge } from "@/types/universityChallenge";
 import { useProblems } from "@/context/ProblemsContext";
+import { Problem } from "@/types/problem";
 
 const ACTIVITY = [
   { dot: "bg-green-500",  text: "Traffic Signal Optimization challenge completed successfully",    time: "4 days ago"  },
@@ -30,7 +31,7 @@ const ACTIVITY = [
 ];
 
 export default function UniversityDashboard() {
-  const { problems, volunteerForProblem, withdrawVolunteerRequest } = useProblems();
+  const { publicProblems, volunteerForProblem, withdrawVolunteerRequest } = useProblems();
   const [challenges, setChallenges] = useState<UniversityChallenge[]>(initialChallenges);
   const [selectedChallenge, setSelectedChallenge] = useState<UniversityChallenge | null>(null);
   const [rejectingChallenge, setRejectingChallenge] = useState<UniversityChallenge | null>(null);
@@ -93,8 +94,8 @@ export default function UniversityDashboard() {
     return success;
   };
 
-  const availableProblems = problems.filter(
-    (p) =>
+  const availableProblems = publicProblems.filter(
+    (p: Problem) =>
       p.status === "Verified" &&
       !p.volunteers?.some(
         (v) => v.solverType === "university" && v.solverName === universityCoordinator.university && v.status === "accepted"

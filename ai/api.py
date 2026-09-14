@@ -277,9 +277,9 @@ def select_volunteer_endpoint(problem_id: str, req: SelectVolunteerRequest):
 
 
 @app.get("/problems", response_model=List[ProblemBase])
-def list_problem_endpoint(status: Optional[str] = None, limit: int = 100, skip: int = 0):
-    """List persisted problems, optionally filtered by workflow status."""
-    return list_problems(status=status, limit=min(limit, 500), skip=max(skip, 0))
+def list_problem_endpoint(status: Optional[str] = None, limit: int = 100, skip: int = 0, citizen_name: Optional[str] = None):
+    """List persisted problems, optionally filtered by workflow status and citizen name."""
+    return list_problems(status=status, limit=min(limit, 500), skip=max(skip, 0), citizen_name=citizen_name)
 
 
 @app.get("/problems/{problem_id}", response_model=ProblemBase)

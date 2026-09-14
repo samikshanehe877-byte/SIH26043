@@ -8,14 +8,14 @@ import { useProblems } from "@/context/ProblemsContext";
 import { Problem } from "@/types/problem";
 
 export default function ExplorePage() {
-  const { problems, toggleSupport, toggleSave } = useProblems();
+  const { publicProblems, toggleSupport, toggleSave } = useProblems();
   const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
   const [filters, setFilters] = useState<Filters>({
     search: "", category: "", status: "", location: "", sortBy: "recent",
   });
 
   const filtered = useMemo(() => {
-    let result = [...problems];
+    let result = [...publicProblems];
     if (filters.search) {
       const q = filters.search.toLowerCase();
       result = result.filter(
@@ -35,7 +35,7 @@ export default function ExplorePage() {
       filters.sortBy === "supported" ? b.supporters - a.supporters : String(b.id).localeCompare(String(a.id))
     );
     return result;
-  }, [problems, filters]);
+  }, [publicProblems, filters]);
 
   return (
     <>

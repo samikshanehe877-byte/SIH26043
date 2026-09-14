@@ -244,14 +244,25 @@ def update_problem(problem_id: str, update: ProblemUpdate) -> Optional[ProblemIn
 def list_problems(
     status: Optional[str] = None,
     limit: int = 100,
-    skip: int = 0
+    skip: int = 0,
+    citizen_name: Optional[str] = None,
 ) -> List[ProblemInDB]:
-    """List problems with optional status filter."""
+    """List problems with optional status and citizen_name filter."""
     with _connection() as connection:
-        if status:
+        if status and citizen_name:
+            rows = connection.execute(
+                "SELECT payload FROM problems WHERE json_extract(payload, '$.status') = ? AND json_extract(payload, '$.citizen_name') = ? ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?",
+                (status, citizen_name, limit, skip),
+            ).fetchall()
+        elif status:
             rows = connection.execute(
                 "SELECT payload FROM problems WHERE json_extract(payload, '$.status') = ? ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?",
                 (status, limit, skip),
+            ).fetchall()
+        elif citizen_name:
+            rows = connection.execute(
+                "SELECT payload FROM problems WHERE json_extract(payload, '$.citizen_name') = ? ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?",
+                (citizen_name, limit, skip),
             ).fetchall()
         else:
             rows = connection.execute(

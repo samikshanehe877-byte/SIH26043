@@ -1,11 +1,15 @@
 "use client";
 
 import { Lightbulb } from "lucide-react";
+import { useRouter } from "next/navigation";
 import PostProblemForm from "@/components/PostProblemForm";
 import { useProblems } from "@/context/ProblemsContext";
+import { useAuth } from "@/context/AuthContext";
 import { Problem } from "@/types/problem";
 
 export default function PostProblemPage() {
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { addProblem } = useProblems();
 
   const handleSubmitSuccess = async (problem: Problem, files: File[]): Promise<boolean> => {
@@ -20,15 +24,22 @@ export default function PostProblemPage() {
       if (!evidenceResponse.ok) return false;
     }
 
-    // Analysis enriches a saved submission; it should not make submission appear to fail.
-    // This also keeps citizens unblocked when the optional AI provider is unavailable.
     void fetch(`${apiUrl}/problems/${problemId}/analyze`, { method: "POST" }).catch(() => undefined);
     return true;
   };
 
-  // TODO: Get from auth context/session
-  const ownerUserId = "citizen-user-id"; // Replace with actual user ID from session
-  const regionId = "region-1"; // Replace with actual region ID from user profile
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    router.push("/signin?callbackUrl=/post-problem");
+    return null;
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -53,7 +64,11 @@ export default function PostProblemPage() {
       </div>
 
       <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-        <PostProblemForm onSubmitSuccess={handleSubmitSuccess} ownerUserId={ownerUserId} regionId={regionId} />
+        <PostProblemForm 
+          onSubmitSuccess={handleSubmitSuccess} 
+          ownerUserId={user.id} 
+          regionId={user.regionId ?? "region-1"} 
+        />
       </div>
     </div>
   );
