@@ -14,7 +14,7 @@ export default function UniversityNotificationItem({
 }: {
   notification: UniversityNotification;
 }) {
-  const { icon: Icon, bg, iconColor, border } = config[notification.type];
+  const { icon: Icon, bg, iconColor, border } = config[notification.type] ?? config.info;
   return (
     <div
       className={`flex gap-4 rounded-2xl border p-4 transition hover:shadow-sm ${

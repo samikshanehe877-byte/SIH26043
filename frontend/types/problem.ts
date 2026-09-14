@@ -91,6 +91,7 @@ export interface Problem {
   assignedByGiver?: boolean;
   // Assignment & evidence
   assignedUniversity?: string;
+  assignedIndustry?: string;
   assignedDepartment?: string;
   image?: string;
   evidenceAttachments?: EvidenceAttachment[];

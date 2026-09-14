@@ -7,7 +7,7 @@ import { ChallengeStatusBadge, ChallengePriorityBadge } from "./ChallengeBadges"
 interface ChallengeCardProps {
   challenge: UniversityChallenge;
   onViewDetails: (challenge: UniversityChallenge) => void;
-  onAccept?: (id: number) => void;
+  onAccept?: (id: number | string) => void;
   onReject?: (challenge: UniversityChallenge) => void;
   onAssignMentor?: (challenge: UniversityChallenge) => void;
 }

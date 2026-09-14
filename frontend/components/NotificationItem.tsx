@@ -9,7 +9,7 @@ const config = {
 };
 
 export default function NotificationItem({ notification }: { notification: Notification }) {
-  const { icon: Icon, bg, iconColor, border } = config[notification.type];
+  const { icon: Icon, bg, iconColor, border } = config[notification.type] ?? config.info;
 
   return (
     <div

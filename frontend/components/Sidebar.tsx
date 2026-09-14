@@ -21,6 +21,7 @@ const navigation = [
 export default function Sidebar() {
   const pathname = usePathname();
   const { user } = useAuth();
+  const { user, isLoading } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -29,13 +30,40 @@ export default function Sidebar() {
     fetch(`${apiUrl}/notifications?citizen_name=${encodeURIComponent(user.name)}`, { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : []))
       .then((records) => setUnreadCount(Array.isArray(records) ? records.filter((record) => !record.is_read).length : 0))
+      .then((records) => setUnreadCount(Array.isArray(records) ? records.filter((r) => !r.is_read).length : 0))
       .catch(() => undefined);
   }, [apiUrl, pathname, user]);
 
+  // While auth is resolving show a skeleton so the layout doesn't shift
+  if (isLoading) {
+    return (
+      <aside className="fixed left-0 top-0 z-40 hidden h-screen w-72 shrink-0 flex-col border-r border-slate-100 bg-white shadow-sm lg:flex">
+        <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 shadow-sm">
+            <span className="text-sm font-black text-white">ST</span>
+          </div>
+          <div>
+            <h1 className="text-base font-bold text-slate-900">SolveTogether</h1>
+            <p className="text-xs text-slate-400">Citizen Portal</p>
+          </div>
+        </div>
+        <nav className="flex flex-1 flex-col gap-1 px-3 py-4">
+          {navigation.map((item) => (
+            <div key={item.name} className="mx-1 my-0.5 h-10 animate-pulse rounded-xl bg-slate-100" />
+          ))}
+        </nav>
+        <div className="border-t border-slate-100 p-4">
+          <div className="h-14 animate-pulse rounded-xl bg-slate-100" />
+        </div>
+      </aside>
+    );
+  }
+
+  // Auth resolved but no user — middleware will redirect
   if (!user) return null;
 
   return (
-    <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-72 flex-col border-r border-slate-100 bg-white shadow-sm">
+    <aside className="fixed left-0 top-0 z-40 hidden h-screen w-72 shrink-0 flex-col border-r border-slate-100 bg-white shadow-sm lg:flex">
       {/* Logo */}
       <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-5">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600 shadow-sm">
@@ -67,6 +95,11 @@ export default function Sidebar() {
               <span className="flex-1">{item.name}</span>
               {item.name === "Notifications" && unreadCount > 0 && (
                 <span className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${isActive ? "bg-white text-blue-600" : "bg-red-500 text-white"}`}>
+                <span
+                  className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${
+                    isActive ? "bg-white text-blue-600" : "bg-red-500 text-white"
+                  }`}
+                >
                   {unreadCount}
                 </span>
               )}
@@ -88,6 +121,10 @@ export default function Sidebar() {
         </div>
         <button
           onClick={() => { document.cookie = "auth_session=; path=/; max-age=0"; window.location.href = "/"; }}
+          onClick={() => {
+            document.cookie = "auth_session=; path=/; max-age=0";
+            window.location.href = "/";
+          }}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-red-50 hover:text-red-500"
         >
           <LogOut size={16} />

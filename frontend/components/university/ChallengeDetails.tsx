@@ -13,7 +13,7 @@ import IndustryCollabModal from "./IndustryCollabModal";
 interface ChallengeDetailsProps {
   challenge: UniversityChallenge;
   onClose: () => void;
-  onAccept?: (id: number) => void;
+  onAccept?: (id: number | string) => void;
   onReject?: (challenge: UniversityChallenge) => void;
   onAssignMentor?: (challenge: UniversityChallenge) => void;
 }

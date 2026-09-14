@@ -16,7 +16,7 @@ const REJECTION_REASONS = [
 interface RejectChallengeModalProps {
   challenge: UniversityChallenge;
   onClose: () => void;
-  onReject: (challengeId: number, reason: string) => void;
+  onReject: (challengeId: number | string, reason: string) => void;
 }
 
 export default function RejectChallengeModal({

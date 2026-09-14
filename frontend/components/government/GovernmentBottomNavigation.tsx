@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ShieldCheck, FolderKanban, BarChart3, Map } from "lucide-react";
+import { LayoutDashboard, ShieldCheck, FolderKanban, BarChart3, Map, Bell } from "lucide-react";
 
 const items = [
   { name: "Dashboard", href: "/government", icon: LayoutDashboard },
@@ -10,6 +10,7 @@ const items = [
   { name: "Projects", href: "/government/projects", icon: FolderKanban },
   { name: "Analytics", href: "/government/analytics", icon: BarChart3 },
   { name: "Map", href: "/government/map", icon: Map },
+  { name: "Alerts", href: "/government/notifications", icon: Bell },
 ];
 
 export default function GovernmentBottomNavigation() {

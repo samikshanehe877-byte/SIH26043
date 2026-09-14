@@ -13,7 +13,7 @@ import logging
 from dotenv import load_dotenv
 # Safely import the Gemini client library
 try:
-    import google.generativeai as genai
+    from google import genai
 except Exception as e:
     logger = logging.getLogger(__name__)
     logger.warning("Failed to import google.generativeai: %s", e)

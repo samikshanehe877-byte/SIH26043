@@ -11,21 +11,30 @@ export default function NotificationsPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
   useEffect(() => {
+    if (authLoading) return;
+
     if (!isAuthenticated || !user) {
       router.push("/signin?callbackUrl=/notifications");
       return;
     }
-    
+
     fetch(`${apiUrl}/notifications?citizen_name=${encodeURIComponent(user.name)}`, { cache: "no-store" })
-      .then((response) => (response.ok ? response.json() : []))
+      .then((response) => {
+        if (!response.ok) throw new Error("Unable to load notifications");
+        return response.json();
+      })
       .then((records) => {
         if (!Array.isArray(records)) return;
         setNotifications(records.map((record) => ({
           id: record.id,
-          type: record.type,
+          type: record.type === "success" || record.type === "warning" || record.type === "update"
+            ? record.type
+            : "info",
           title: record.title,
           message: record.message,
           timeAgo: formatNotificationTime(record.created_at),
@@ -34,27 +43,31 @@ export default function NotificationsPage() {
           problemId: record.problem_id,
         })));
       })
-      .catch(() => undefined);
-  }, [apiUrl, isAuthenticated, user, router]);
+      .catch(() => setLoadError(true))
+      .finally(() => setIsLoading(false));
+  }, [apiUrl, authLoading, isAuthenticated, user, router]);
 
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const markAllRead = async () => {
     if (!user) return;
-    await fetch(`${apiUrl}/notifications/read-all`, {
+    const response = await fetch(`${apiUrl}/notifications/read-all`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ citizen_name: user.name }),
     });
+    if (!response.ok) return;
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   };
 
   const markOneRead = async (id: number | string) => {
-    await fetch(`${apiUrl}/notifications/${id}/read`, { method: "PATCH" });
+    const response = await fetch(`${apiUrl}/notifications/${id}/read`, { method: "PATCH" });
+    if (!response.ok) return false;
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+    return true;
   };
 
-  if (!isAuthenticated || !user) {
+  if (authLoading || !isAuthenticated || !user) {
     return null;
   }
 
@@ -80,7 +93,19 @@ export default function NotificationsPage() {
         )}
       </div>
 
-      {unreadCount > 0 && (
+      {isLoading && (
+        <div className="rounded-2xl border border-slate-100 bg-white p-6 text-sm text-slate-500 shadow-sm">
+          Loading notifications...
+        </div>
+      )}
+
+      {loadError && (
+        <div className="rounded-2xl border border-red-100 bg-red-50 p-6 text-sm text-red-700">
+          Notifications could not be loaded. Please refresh and try again.
+        </div>
+      )}
+
+      {!isLoading && !loadError && unreadCount > 0 && (
         <div className="space-y-2">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Unread</p>
           {notifications
@@ -93,7 +118,7 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      {notifications.some((n) => n.isRead) && (
+      {!isLoading && !loadError && notifications.some((n) => n.isRead) && (
         <div className="space-y-2">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Earlier</p>
           {notifications
@@ -106,7 +131,7 @@ export default function NotificationsPage() {
         </div>
       )}
 
-      {notifications.length === 0 && (
+      {!isLoading && !loadError && notifications.length === 0 && (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white py-20 text-center shadow-sm">
           <Bell size={40} className="mb-3 text-slate-200" />
           <p className="font-semibold text-slate-500">No notifications yet</p>
@@ -118,17 +143,19 @@ export default function NotificationsPage() {
     </div>
   );
 
-  function openNotification(notification: Notification) {
-    void markOneRead(notification.id);
-    window.location.href = notification.problemId
+  async function openNotification(notification: Notification) {
+    await markOneRead(notification.id);
+    router.push(notification.problemId
       ? `/my-problems?problemId=${encodeURIComponent(notification.problemId)}`
-      : "/my-problems";
+      : "/my-problems");
   }
 }
 
 function formatNotificationTime(createdAt?: string) {
   if (!createdAt) return "Recently";
-  const elapsedMinutes = Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000));
+  const timestamp = new Date(createdAt).getTime();
+  if (Number.isNaN(timestamp)) return "Recently";
+  const elapsedMinutes = Math.max(0, Math.floor((Date.now() - timestamp) / 60000));
   if (elapsedMinutes < 1) return "Just now";
   if (elapsedMinutes < 60) return `${elapsedMinutes} min ago`;
   const elapsedHours = Math.floor(elapsedMinutes / 60);
