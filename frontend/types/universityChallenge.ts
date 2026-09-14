@@ -1,4 +1,4 @@
-import { ProblemCategory } from "./problem";
+import { ProblemCategory, Problem } from "./problem";
 
 export type ChallengeStatus =
   | "Awaiting Decision"
@@ -28,7 +28,7 @@ export interface AIDepartmentAssignment {
 }
 
 export interface UniversityChallenge {
-  id: number;
+  id: number | string;
   title: string;
   description: string;
   category: ProblemCategory;
@@ -51,6 +51,77 @@ export interface UniversityChallenge {
   rejectionReason?: string;
   notes?: string;
   image?: string;
+}
+
+const CATEGORY_DEPARTMENTS: Record<string, { id: number; name: string }> = {
+  "Water and Sanitation": { id: 3, name: "Civil Engineering" },
+  "Environment": { id: 3, name: "Civil Engineering" },
+  "Transportation": { id: 3, name: "Civil Engineering" },
+  "Infrastructure": { id: 3, name: "Civil Engineering" },
+  "Education": { id: 6, name: "Information Technology" },
+  "Technology": { id: 1, name: "Computer Engineering" },
+  "Public Safety": { id: 1, name: "Computer Engineering" },
+  "Healthcare": { id: 1, name: "Computer Engineering" },
+  "Other": { id: 1, name: "Computer Engineering" },
+};
+
+function toChallengeStatus(status: Problem["status"]): ChallengeStatus {
+  switch (status) {
+    case "Assigned to University":
+    case "Submitted":
+    case "Verified":
+    case "Under Review":
+    case "Needs Proof":
+      return "Awaiting Decision";
+    case "In Progress":
+    case "Collaboration with Industry":
+      return "Active";
+    case "Completed":
+    case "Solution Implemented":
+      return "Completed";
+    case "Rejected":
+      return "Rejected";
+    default:
+      return "Awaiting Decision";
+  }
+}
+
+function toChallengePriority(supporters: number): ChallengePriority {
+  if (supporters >= 200) return "Critical";
+  if (supporters >= 100) return "High";
+  if (supporters >= 30) return "Medium";
+  return "Low";
+}
+
+export function toUniversityChallenge(p: Problem): UniversityChallenge {
+  const primaryDept = CATEGORY_DEPARTMENTS[p.category] ?? { id: 1, name: "Computer Engineering" };
+  return {
+    id: p.id,
+    title: p.title,
+    description: p.description,
+    category: p.category,
+    location: p.location,
+    citizenName: p.citizenName,
+    citizenAvatar: p.citizenAvatar || (p.citizenName ? p.citizenName.slice(0, 2).toUpperCase() : "C"),
+    dateSubmitted: p.date || "Recently",
+    status: toChallengeStatus(p.status),
+    priority: toChallengePriority(p.supporters || 0),
+    aiMatchScore: Math.min(98, 80 + ((p.supporters || 0) % 19)),
+    supporters: p.supporters || 0,
+    aiDepartmentAssignment: {
+      primaryDepartment: primaryDept,
+      supportingDepartments: [{ id: 2, name: "AI & Machine Learning" }],
+      confidence: Math.min(95, 78 + ((p.supporters || 0) % 18)),
+      reason: `Based on the ${p.category} domain, ${primaryDept.name} is recommended as the primary department for technical evaluation and solution development.`,
+    },
+    assignedDepartmentId: primaryDept.id,
+    assignedDepartmentName: p.assignedDepartment || primaryDept.name,
+    assignedMentorName: undefined,
+    progress: p.progress ?? 0,
+    currentStep: p.currentStep ?? 1,
+    industryCollabStatus: "Not Requested",
+    image: p.image,
+  };
 }
 
 export interface UniversityDepartment {

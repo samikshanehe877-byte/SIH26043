@@ -191,7 +191,19 @@ def structure_problem_endpoint(req: StructureProblemRequest):
 @app.post("/problems", response_model=ProblemBase)
 def create_problem_endpoint(problem: ProblemBase):
     """Persist a citizen problem for later review and public discovery."""
-    return create_problem(problem)
+    created = create_problem(problem)
+    title = created.title or created.problem_text
+    create_notification(
+        NotificationRecord(
+            citizen_name=created.citizen_name,
+            type="success",
+            title="Problem submitted",
+            message=f"Your problem '{title}' was submitted for review.",
+            problem_id=created.id,
+            problem_title=title,
+        )
+    )
+    return created
 
 
 @app.post("/problems/{problem_id}/volunteer", response_model=ProblemBase)
@@ -277,9 +289,9 @@ def select_volunteer_endpoint(problem_id: str, req: SelectVolunteerRequest):
 
 
 @app.get("/problems", response_model=List[ProblemBase])
-def list_problem_endpoint(status: Optional[str] = None, limit: int = 100, skip: int = 0, citizen_name: Optional[str] = None):
-    """List persisted problems, optionally filtered by workflow status and citizen name."""
-    return list_problems(status=status, limit=min(limit, 500), skip=max(skip, 0), citizen_name=citizen_name)
+def list_problem_endpoint(status: Optional[str] = None, limit: int = 100, skip: int = 0, citizen_name: Optional[str] = None, assigned_university: Optional[str] = None, assigned_industry: Optional[str] = None):
+    """List persisted problems, optionally filtered by workflow status, citizen name, assigned university, or assigned industry."""
+    return list_problems(status=status, limit=min(limit, 500), skip=max(skip, 0), citizen_name=citizen_name, assigned_university=assigned_university, assigned_industry=assigned_industry)
 
 
 @app.get("/problems/{problem_id}", response_model=ProblemBase)
@@ -366,6 +378,17 @@ def analyze_stored_problem_endpoint(problem_id: str):
     if not updated:
         raise HTTPException(status_code=404, detail="Problem not found")
 
+    create_notification(
+        NotificationRecord(
+            citizen_name=updated.citizen_name,
+            type="update",
+            title="Problem analysis completed",
+            message=f"AI analysis for your problem '{updated.title or updated.problem_text}' is complete and it is ready for review.",
+            problem_id=updated.id,
+            problem_title=updated.title or updated.problem_text,
+        )
+    )
+
     return {
         "id": updated.id,
         "status": updated.status,
@@ -425,8 +448,8 @@ async def upload_evidence_endpoint(problem_id: str, files: List[UploadFile] = Fi
         NotificationRecord(
             citizen_name=updated.citizen_name,
             type="info",
-            title="Problem resubmitted",
-            message=f"Your problem '{updated.title or updated.problem_text}' was resubmitted for government review.",
+            title="Evidence submitted",
+            message=f"Evidence for your problem '{updated.title or updated.problem_text}' was submitted for government review.",
             problem_id=updated.id,
             problem_title=updated.title or updated.problem_text,
         )
@@ -526,6 +549,17 @@ def resubmit_problem_endpoint(problem_id: str, action: CitizenProblemAction):
     )
     if not updated:
         raise HTTPException(status_code=404, detail="Problem not found")
+    title = updated.title or updated.problem_text
+    create_notification(
+        NotificationRecord(
+            citizen_name=updated.citizen_name,
+            type="success",
+            title="Problem resubmitted",
+            message=f"Your problem '{title}' was resubmitted for government review.",
+            problem_id=updated.id,
+            problem_title=title,
+        )
+    )
     return updated
 
 
@@ -539,6 +573,16 @@ def delete_problem_endpoint(problem_id: str, citizen_name: str):
         raise HTTPException(status_code=403, detail="You can only delete your own problems")
     if problem.status == "verified":
         raise HTTPException(status_code=409, detail="Verified problems cannot be deleted")
+    create_notification(
+        NotificationRecord(
+            citizen_name=problem.citizen_name,
+            type="info",
+            title="Problem deleted",
+            message=f"Your problem '{problem.title or problem.problem_text}' was deleted.",
+            problem_id=problem.id,
+            problem_title=problem.title or problem.problem_text,
+        )
+    )
     from problem_storage import delete_problem
     if not delete_problem(problem_id):
         raise HTTPException(status_code=404, detail="Problem not found")

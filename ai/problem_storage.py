@@ -246,29 +246,35 @@ def list_problems(
     limit: int = 100,
     skip: int = 0,
     citizen_name: Optional[str] = None,
+    assigned_university: Optional[str] = None,
+    assigned_industry: Optional[str] = None,
 ) -> List[ProblemInDB]:
-    """List problems with optional status and citizen_name filter."""
+    """List problems with optional status, citizen_name, assigned_university, and assigned_industry filters."""
     with _connection() as connection:
-        if status and citizen_name:
-            rows = connection.execute(
-                "SELECT payload FROM problems WHERE json_extract(payload, '$.status') = ? AND json_extract(payload, '$.citizen_name') = ? ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?",
-                (status, citizen_name, limit, skip),
-            ).fetchall()
-        elif status:
-            rows = connection.execute(
-                "SELECT payload FROM problems WHERE json_extract(payload, '$.status') = ? ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?",
-                (status, limit, skip),
-            ).fetchall()
-        elif citizen_name:
-            rows = connection.execute(
-                "SELECT payload FROM problems WHERE json_extract(payload, '$.citizen_name') = ? ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?",
-                (citizen_name, limit, skip),
-            ).fetchall()
-        else:
-            rows = connection.execute(
-                "SELECT payload FROM problems ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?",
-                (limit, skip),
-            ).fetchall()
+        conditions = []
+        params = []
+        
+        if status:
+            conditions.append("json_extract(payload, '$.status') = ?")
+            params.append(status)
+        if citizen_name:
+            conditions.append("json_extract(payload, '$.citizen_name') = ?")
+            params.append(citizen_name)
+        if assigned_university:
+            conditions.append("json_extract(payload, '$.assigned_university') = ?")
+            params.append(assigned_university)
+        if assigned_industry:
+            conditions.append("json_extract(payload, '$.assigned_industry') = ?")
+            params.append(assigned_industry)
+        
+        where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
+        params.extend([limit, skip])
+        
+        rows = connection.execute(
+            f"SELECT payload FROM problems{where_clause} ORDER BY datetime(created_at) DESC LIMIT ? OFFSET ?",
+            params,
+        ).fetchall()
+    
     problems = [_deserialize(row["payload"]) for row in rows]
     return problems
 

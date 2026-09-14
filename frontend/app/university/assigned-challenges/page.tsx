@@ -48,18 +48,18 @@ export default function AssignedChallengesPage() {
         : sortBy === "priority"
         ? ["Critical", "High", "Medium", "Low"].indexOf(a.priority) -
           ["Critical", "High", "Medium", "Low"].indexOf(b.priority)
-        : b.id - a.id
+        : String(b.id).localeCompare(String(a.id))
     );
     return r;
   }, [challenges, search, filterDept, filterStatus, filterPriority, sortBy]);
 
-  const handleAccept = (id: number) => {
+  const handleAccept = (id: number | string) => {
     setChallenges((prev) =>
       prev.map((c) => (c.id === id ? { ...c, status: "Accepted" as const } : c))
     );
   };
 
-  const handleReject = (id: number, reason: string) => {
+  const handleReject = (id: number | string, reason: string) => {
     setChallenges((prev) =>
       prev.map((c) =>
         c.id === id ? { ...c, status: "Rejected" as const, rejectionReason: reason } : c
@@ -68,7 +68,7 @@ export default function AssignedChallengesPage() {
     setRejectingChallenge(null);
   };
 
-  const handleAssignMentor = (challengeId: number, mentorId: number, mentorName: string) => {
+  const handleAssignMentor = (challengeId: number | string, mentorId: number, mentorName: string) => {
     setChallenges((prev) =>
       prev.map((c) =>
         c.id === challengeId

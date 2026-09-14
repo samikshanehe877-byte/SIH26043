@@ -11,15 +11,10 @@ import ChallengeCard from "@/components/university/ChallengeCard";
 import ChallengeDetails from "@/components/university/ChallengeDetails";
 import RejectChallengeModal from "@/components/university/RejectChallengeModal";
 import MentorAssignmentModal from "@/components/university/MentorAssignmentModal";
-import {
-  universityCoordinator,
-  universityDepartments,
-  universityNotifications,
-} from "@/data/universityAppData";
-import { universityChallenges as initialChallenges } from "@/data/universityChallenges";
-import { UniversityChallenge } from "@/types/universityChallenge";
+import { useUniversityProblems } from "@/context/UniversityProblemsContext";
 import { useProblems } from "@/context/ProblemsContext";
 import { Problem } from "@/types/problem";
+import { UniversityChallenge, toUniversityChallenge } from "@/types/universityChallenge";
 
 const ACTIVITY = [
   { dot: "bg-green-500",  text: "Traffic Signal Optimization challenge completed successfully",    time: "4 days ago"  },
@@ -32,43 +27,25 @@ const ACTIVITY = [
 
 export default function UniversityDashboard() {
   const { publicProblems, volunteerForProblem, withdrawVolunteerRequest } = useProblems();
-  const [challenges, setChallenges] = useState<UniversityChallenge[]>(initialChallenges);
+  const { assignedProblems, isLoading, refreshProblems } = useUniversityProblems();
   const [selectedChallenge, setSelectedChallenge] = useState<UniversityChallenge | null>(null);
   const [rejectingChallenge, setRejectingChallenge] = useState<UniversityChallenge | null>(null);
   const [assigningMentorChallenge, setAssigningMentorChallenge] = useState<UniversityChallenge | null>(null);
 
-  const unread = universityNotifications.filter((n) => !n.isRead).length;
+  const unread = 0;
 
-  const handleAccept = (id: number) => {
-    setChallenges((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, status: "Accepted" as const } : c))
-    );
+  const handleAccept = (id: number | string) => {
+    // In real app, call API to accept challenge
+    setSelectedChallenge(null);
   };
 
-  const handleReject = (id: number, reason: string) => {
-    setChallenges((prev) =>
-      prev.map((c) =>
-        c.id === id ? { ...c, status: "Rejected" as const, rejectionReason: reason } : c
-      )
-    );
+  const handleReject = (id: number | string, reason: string) => {
+    // In real app, call API to reject challenge
     setRejectingChallenge(null);
   };
 
-  const handleAssignMentor = (challengeId: number, mentorId: number, mentorName: string) => {
-    setChallenges((prev) =>
-      prev.map((c) =>
-        c.id === challengeId
-          ? {
-              ...c,
-              status: "Mentor Assigned" as const,
-              assignedMentorId: mentorId,
-              assignedMentorName: mentorName,
-              currentStep: 7,
-              progress: Math.max(c.progress, 30),
-            }
-          : c
-      )
-    );
+  const handleAssignMentor = (challengeId: number | string, mentorId: number, mentorName: string) => {
+    // In real app, call API to assign mentor
     setAssigningMentorChallenge(null);
   };
 
@@ -78,18 +55,20 @@ export default function UniversityDashboard() {
     const success = await volunteerForProblem(problemId, "university", universityName, proposal);
     if (success) {
       setVolunteeredIds((prev) => new Set(prev).add(problemId));
+      refreshProblems();
     }
     return success;
   };
 
   const handleWithdrawVolunteer = async (problemId: string) => {
-    const success = await withdrawVolunteerRequest(problemId, "university", universityCoordinator.university);
+    const success = await withdrawVolunteerRequest(problemId, "university", "University Coordinator");
     if (success) {
       setVolunteeredIds((prev) => {
         const next = new Set(prev);
         next.delete(problemId);
         return next;
       });
+      refreshProblems();
     }
     return success;
   };
@@ -98,24 +77,34 @@ export default function UniversityDashboard() {
     (p: Problem) =>
       p.status === "Verified" &&
       !p.volunteers?.some(
-        (v) => v.solverType === "university" && v.solverName === universityCoordinator.university && v.status === "accepted"
+        (v) => v.solverType === "university" && v.solverName === "University Coordinator" && v.status === "accepted"
       )
   );
 
+  // Filter assigned problems by status
+  const awaitingDecision = assignedProblems.filter((p) => p.status === "Awaiting Decision");
+  const activeChallenges = assignedProblems.filter((p) => 
+    ["Accepted", "Mentor Assigned", "Active"].includes(p.status)
+  );
+  const completedChallenges = assignedProblems.filter((p) => p.status === "Completed");
+
   const stats = {
-    total:    challenges.length,
-    awaiting: challenges.filter((c) => c.status === "Awaiting Decision").length,
-    active:   challenges.filter((c) => ["Accepted", "Mentor Assigned", "Active"].includes(c.status)).length,
-    completed:challenges.filter((c) => c.status === "Completed").length,
+    total: assignedProblems.length,
+    awaiting: awaitingDecision.length,
+    active: activeChallenges.length,
+    completed: completedChallenges.length,
   };
 
-  const awaitingDecision = challenges.filter((c) => c.status === "Awaiting Decision");
-  const activeChallenges = challenges.filter((c) =>
-    ["Accepted", "Mentor Assigned", "Active"].includes(c.status)
-  );
-
-  // Mentor availability summary
+  // Mentor availability summary (mock for now)
   const mentorStats = { available: 5, limited: 3, fullyAssigned: 2 };
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <>
@@ -125,7 +114,7 @@ export default function UniversityDashboard() {
           <div>
             <p className="text-sm text-slate-500">Welcome back,</p>
             <h1 className="text-2xl font-bold text-slate-900">
-              {universityCoordinator.name} 👋
+              University Coordinator 👋
             </h1>
             <p className="mt-1 text-sm text-slate-500">
               Manage assigned societal challenges, mentor allocation, and solution progress.
@@ -169,7 +158,7 @@ export default function UniversityDashboard() {
               {availableProblems.map((problem) => {
                 const hasVolunteered = volunteeredIds.has(String(problem.id));
                 const existingVolunteer = problem.volunteers?.find(
-                  (v) => v.solverName === universityCoordinator.university
+                  (v) => v.solverName === "University Coordinator"
                 );
                 const showVolunteer = !hasVolunteered && !existingVolunteer;
                 const showWithdraw = hasVolunteered || (existingVolunteer && existingVolunteer.status === "volunteered");
@@ -202,7 +191,7 @@ export default function UniversityDashboard() {
                     <div className="flex gap-2">
                       {showVolunteer && (
                         <button
-                          onClick={() => handleVolunteer(String(problem.id), universityCoordinator.university, problem.requiredCapabilities?.join(", ") || "")}
+                          onClick={() => handleVolunteer(String(problem.id), "University Coordinator", problem.requiredCapabilities?.join(", ") || "")}
                           className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700"
                         >
                           <Handshake size={12} />
@@ -219,7 +208,7 @@ export default function UniversityDashboard() {
                         </button>
                       )}
                       <button
-                        onClick={() => setSelectedChallenge(problem as unknown as UniversityChallenge)}
+                        onClick={() => setSelectedChallenge(toUniversityChallenge(problem))}
                         className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
                       >
                         <Send size={12} />
@@ -281,7 +270,7 @@ export default function UniversityDashboard() {
                     onClick={() => setSelectedChallenge(challenge)}
                   >
                     <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-lg">
-                      {challenge.image}
+                      🏫
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-slate-900 truncate">{challenge.title}</p>
@@ -302,6 +291,9 @@ export default function UniversityDashboard() {
                     </div>
                   </div>
                 ))}
+                {activeChallenges.length === 0 && (
+                  <p className="text-sm text-slate-500 text-center py-4">No active challenges at the moment.</p>
+                )}
               </div>
             </div>
           </div>
@@ -320,29 +312,7 @@ export default function UniversityDashboard() {
                 </Link>
               </div>
               <div className="space-y-3">
-                {universityDepartments.map((dept) => (
-                  <div key={dept.id}>
-                    <div className="mb-1 flex items-center justify-between">
-                      <span className="text-xs font-semibold text-slate-700">{dept.shortName}</span>
-                      <span className="text-xs text-slate-500">
-                        {dept.primaryChallenges}P · {dept.supportingChallenges}S
-                      </span>
-                    </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                      <div
-                        className="h-1.5 rounded-full bg-indigo-500 transition-all"
-                        style={{
-                          width: `${Math.min(
-                            ((dept.primaryChallenges + dept.supportingChallenges) /
-                              (dept.primaryChallenges + dept.supportingChallenges + dept.completedChallenges)) *
-                              100,
-                            100
-                          )}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
+                <p className="text-sm text-slate-500">No department data available yet.</p>
               </div>
             </div>
 

@@ -8,7 +8,7 @@ import { universityMentors } from "@/data/universityAppData";
 interface MentorAssignmentModalProps {
   challenge: UniversityChallenge;
   onClose: () => void;
-  onAssign: (challengeId: number, mentorId: number, mentorName: string) => void;
+  onAssign: (challengeId: number | string, mentorId: number, mentorName: string) => void;
 }
 
 const availabilityStyle: Record<MentorAvailability, string> = {

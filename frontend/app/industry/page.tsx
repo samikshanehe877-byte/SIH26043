@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useIndustry } from "@/context/IndustryContext";
 import { useProblems } from "@/context/ProblemsContext";
+import { useIndustryProblems } from "@/context/IndustryProblemsContext";
 import { Problem } from "@/types/problem";
 import StatsCard from "@/components/StatsCard";
 import { Inbox, Handshake, Award, Activity, ArrowRight, Clock, Send } from "lucide-react";
@@ -11,11 +12,15 @@ import Link from "next/link";
 export default function IndustryDashboardPage() {
   const { company, requests, collaborations, impact } = useIndustry();
   const { publicProblems, volunteerForProblem, withdrawVolunteerRequest } = useProblems();
+  const { assignedProblems, isLoading, refreshProblems } = useIndustryProblems();
   const [volunteeredIds, setVolunteeredIds] = useState<Set<string>>(new Set());
 
   const handleVolunteer = async (problemId: string, proposal: string) => {
     const success = await volunteerForProblem(problemId, "industry", company.name, proposal);
-    if (success) setVolunteeredIds((prev) => new Set(prev).add(problemId));
+    if (success) {
+      setVolunteeredIds((prev) => new Set(prev).add(problemId));
+      refreshProblems();
+    }
     return success;
   };
 
@@ -27,6 +32,7 @@ export default function IndustryDashboardPage() {
         next.delete(problemId);
         return next;
       });
+      refreshProblems();
     }
     return success;
   };
@@ -42,7 +48,21 @@ export default function IndustryDashboardPage() {
   const pendingRequestsCount = requests.filter(r => r.status === "Received" || r.status === "Under Review" || r.status === "Clarification Needed").length;
   const activeCollaborationsCount = collaborations.filter(c => c.collaborationStatus === "In Progress" || c.collaborationStatus === "Support Delivered").length;
   const completedCollaborationsCount = collaborations.filter(c => c.collaborationStatus === "Completed").length + impact.completedSolutions;
-  
+
+  // Filter assigned problems by status
+  const activeCollaborations = assignedProblems.filter((p) => 
+    ["Assigned to University", "In Progress", "Collaboration with Industry"].includes(p.status)
+  );
+  const completedCollaborations = assignedProblems.filter((p) => p.status === "Completed");
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-6xl">
       {/* Header */}
@@ -65,13 +85,13 @@ export default function IndustryDashboardPage() {
         />
         <StatsCard
           label="Active Collaborations"
-          value={activeCollaborationsCount}
+          value={activeCollaborations.length}
           icon={Handshake}
           color="blue"
         />
         <StatsCard
           label="Completed"
-          value={completedCollaborationsCount}
+          value={completedCollaborations.length}
           icon={Award}
           color="green"
         />
@@ -219,7 +239,7 @@ export default function IndustryDashboardPage() {
             </div>
           </div>
 
-          {/* Active Collaborations */}
+          {/* Active Collaborations from assigned problems */}
           <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold text-slate-900">Active Collaborations</h2>
@@ -229,32 +249,32 @@ export default function IndustryDashboardPage() {
             </div>
             
             <div className="space-y-4">
-              {collaborations.slice(0, 2).map(collab => (
+              {activeCollaborations.slice(0, 2).map(collab => (
                 <div key={collab.id} className="rounded-xl border border-slate-100 p-4">
                   <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-bold text-slate-900">{collab.challengeTitle}</h3>
+                    <h3 className="font-bold text-slate-900">{collab.title}</h3>
                     <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-100">
-                      {collab.collaborationStatus}
+                      {collab.status}
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-slate-500 mb-4">
-                    <span>{collab.university.name}</span>
+                    <span>Citizen: {collab.citizenName}</span>
                     <span className="h-1 w-1 rounded-full bg-slate-300" />
-                    <span>Progress: {collab.projectProgress}%</span>
+                    <span>Progress: {collab.progress}%</span>
                   </div>
                   
                   <div className="mb-4">
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
                       <div 
                         className="h-full rounded-full bg-emerald-500"
-                        style={{ width: `${collab.projectProgress}%` }}
+                        style={{ width: `${collab.progress}%` }}
                       />
                     </div>
                   </div>
                   
                   <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-3">
                     <p className="text-xs text-slate-500">
-                      Support: <span className="font-semibold text-slate-700">{collab.industrySupport.length} items</span>
+                      Support: <span className="font-semibold text-slate-700">{collab.volunteers?.length || 0} items</span>
                     </p>
                     <Link href={`/industry/collaborations/${collab.id}`} className="text-sm font-semibold text-blue-600 hover:text-blue-700">
                       Manage Support
@@ -262,6 +282,9 @@ export default function IndustryDashboardPage() {
                   </div>
                 </div>
               ))}
+              {activeCollaborations.length === 0 && (
+                <p className="text-sm text-slate-500 text-center py-4">No active collaborations at the moment.</p>
+              )}
             </div>
           </div>
           

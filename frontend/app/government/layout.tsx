@@ -14,7 +14,7 @@ export default function GovernmentLayout({ children }: { children: React.ReactNo
     <AuthProvider>
       <div className="flex min-h-screen bg-slate-50">
         <GovernmentSidebar />
-        <main className="flex-1 lg:ml-72">
+        <main className="min-w-0 flex-1 lg:ml-72">
           <div className="mx-auto max-w-7xl px-4 py-6 pb-24 lg:pb-8">{children}</div>
         </main>
         <GovernmentBottomNavigation />
