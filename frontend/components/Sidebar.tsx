@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import {
   Home, Search, PlusCircle, FileText, Bell, User, Settings, LogOut,
 } from "lucide-react";
-import { currentUser } from "@/data/problems";
+import { useAuth } from "@/context/AuthContext";
 
 const navigation = [
   { name: "Home",             href: "/",             icon: Home       },
@@ -20,15 +20,19 @@ const navigation = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { user, logout } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
   useEffect(() => {
-    fetch(`${apiUrl}/notifications?citizen_name=${encodeURIComponent(currentUser.name)}`, { cache: "no-store" })
+    if (!user) return;
+    fetch(`${apiUrl}/notifications?citizen_name=${encodeURIComponent(user.name)}`, { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : []))
       .then((records) => setUnreadCount(Array.isArray(records) ? records.filter((record) => !record.is_read).length : 0))
       .catch(() => undefined);
-  }, [apiUrl, pathname]);
+  }, [apiUrl, pathname, user]);
+
+  if (!user) return null;
 
   return (
     <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-72 flex-col border-r border-slate-100 bg-white shadow-sm">
@@ -75,14 +79,17 @@ export default function Sidebar() {
       <div className="border-t border-slate-100 p-4">
         <div className="mb-2 flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
           <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-blue-700 text-sm font-bold text-white shadow-sm">
-            {currentUser.avatar}
+            {user.name.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-slate-800">{currentUser.name}</p>
-            <p className="text-xs text-blue-500 font-medium">{currentUser.role}</p>
+            <p className="truncate text-sm font-semibold text-slate-800">{user.name}</p>
+            <p className="text-xs text-blue-500 font-medium">Citizen</p>
           </div>
         </div>
-        <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-red-50 hover:text-red-500">
+        <button
+          onClick={logout}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-red-50 hover:text-red-500"
+        >
           <LogOut size={16} />
           Logout
         </button>

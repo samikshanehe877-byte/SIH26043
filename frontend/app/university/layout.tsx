@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
+import { AuthProvider } from "@/context/AuthContext";
+import { ProblemsProvider } from "@/context/ProblemsContext";
 import UniversitySidebar from "@/components/university/UniversitySidebar";
 import UniversityBottomNavigation from "@/components/university/UniversityBottomNavigation";
-import { ProblemsProvider } from "@/context/ProblemsContext";
 
 export const metadata: Metadata = {
   title: "SolveTogether — University Portal",
@@ -11,14 +12,16 @@ export const metadata: Metadata = {
 
 export default function UniversityLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ProblemsProvider>
-      <div className="flex min-h-screen bg-slate-50">
-        <UniversitySidebar />
-        <main className="flex-1 lg:ml-72">
-          <div className="mx-auto max-w-6xl px-4 py-6 pb-24 lg:pb-8">{children}</div>
-        </main>
-        <UniversityBottomNavigation />
-      </div>
-    </ProblemsProvider>
+    <AuthProvider>
+      <ProblemsProvider>
+        <div className="flex min-h-screen bg-slate-50">
+          <UniversitySidebar />
+          <main className="flex-1 lg:ml-72">
+            <div className="mx-auto max-w-6xl px-4 py-6 pb-24 lg:pb-8">{children}</div>
+          </main>
+          <UniversityBottomNavigation />
+        </div>
+      </ProblemsProvider>
+    </AuthProvider>
   );
 }
