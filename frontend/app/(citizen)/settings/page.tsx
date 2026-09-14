@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bell, Shield, Palette, Globe, ChevronRight, Check } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 interface ToggleProps {
   checked: boolean;
@@ -38,6 +40,8 @@ interface SettingSection {
 }
 
 export default function SettingsPage() {
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [settings, setSettings] = useState({
     emailNotifications:   true,
     pushNotifications:    true,
@@ -91,6 +95,19 @@ export default function SettingsPage() {
       ],
     },
   ];
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-600 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    router.push("/signin?callbackUrl=/settings");
+    return null;
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">

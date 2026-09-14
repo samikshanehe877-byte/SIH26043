@@ -30,7 +30,7 @@ const NAV_ITEMS = [
 export default function CitizenDashboard() {
   const router = useRouter();
   const { user, logout, isAuthenticated, isLoading: authLoading } = useAuth();
-  const { problems, myProblems, toggleSupport, toggleSave, isLoading: problemsLoading } = useProblems();
+  const { publicProblems, myProblems, toggleSupport, toggleSave, isLoading: problemsLoading, refreshProblems } = useProblems();
   const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
   const [search, setSearch] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -48,10 +48,7 @@ export default function CitizenDashboard() {
     return null;
   }
 
-  const dashboardProblems = Array.from(
-    new Map([...myProblems, ...problems].map((problem) => [String(problem.id), problem])).values()
-  );
-  const filtered = dashboardProblems.filter(
+  const filtered = publicProblems.filter(
     (p) =>
       p.title.toLowerCase().includes(search.toLowerCase()) ||
       p.description.toLowerCase().includes(search.toLowerCase()) ||
@@ -226,7 +223,7 @@ export default function CitizenDashboard() {
             </Link>
           </div>
 
-          {/* Feed */}
+          {/* Feed - Public/Verified Problems */}
           <div className="space-y-4 mb-8">
             {filtered.length === 0 ? (
               <div className="rounded-2xl border border-slate-100 bg-white py-16 text-center shadow-sm">
@@ -247,7 +244,7 @@ export default function CitizenDashboard() {
 
           {/* Right sidebar content - Stats & Trending */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:col-span-3">
-            {/* Stats */}
+            {/* Stats - User Specific */}
             <div className="lg:col-span-1 space-y-5">
               <div>
                 <h3 className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500">Your Impact</h3>

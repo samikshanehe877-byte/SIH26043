@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { X, MapPin, Calendar, Building2, ThumbsUp, Send, Users, Handshake, CheckCircle2, Trash2 } from "lucide-react";
 import { Problem } from "@/types/problem";
-import { currentUser } from "@/data/problems";
+import { useAuth } from "@/context/AuthContext";
 import { useProblems } from "@/context/ProblemsContext";
 import StatusBadge from "./StatusBadge";
 import ProgressTracker from "./ProgressTracker";
@@ -15,18 +15,19 @@ interface ProblemDetailsProps {
 }
 
 export default function ProblemDetails({ problem, onClose, onToggleSupport }: ProblemDetailsProps) {
+  const { user } = useAuth();
   const { selectVolunteer, withdrawVolunteerRequest } = useProblems();
   const [localProblem, setLocalProblem] = useState<Problem | null>(null);
   const displayProblem = localProblem ?? problem;
   const [commentText, setCommentText] = useState("");
   const [localComments, setLocalComments] = useState(problem.comments);
-  const isGiver = displayProblem.citizenName === currentUser.name;
+  const isGiver = user ? displayProblem.citizenName === user.name : false;
 
   const handleAddComment = () => {
     if (!commentText.trim()) return;
     setLocalComments((prev) => [
       ...prev,
-      { id: Date.now(), author: "Sarthak Nehe", avatar: "SN", text: commentText.trim(), timeAgo: "Just now" },
+      { id: Date.now(), author: user?.name || "You", avatar: user?.name.charAt(0).toUpperCase() || "U", text: commentText.trim(), timeAgo: "Just now" },
     ]);
     setCommentText("");
   };
@@ -381,7 +382,7 @@ export default function ProblemDetails({ problem, onClose, onToggleSupport }: Pr
               {/* Add comment */}
               <div className="mt-4 flex gap-2">
                 <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
-                  SN
+                  {user?.name.charAt(0).toUpperCase() || "U"}
                 </div>
                 <div className="flex flex-1 items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 focus-within:border-blue-300 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition">
                   <input

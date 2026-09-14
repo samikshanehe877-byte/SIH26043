@@ -1,11 +1,11 @@
 "use client";
 
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
-import { currentUser, initialProblems, myProblems as seededMyProblems } from "@/data/problems";
+import { useAuth } from "@/context/AuthContext";
 import { Problem } from "@/types/problem";
 
 interface ProblemsContextType {
-  problems: Problem[];
+  publicProblems: Problem[];
   myProblems: Problem[];
   addProblem: (problem: Problem) => Promise<string | number | null>;
   deleteProblem: (id: number | string) => Promise<boolean>;
@@ -16,70 +16,76 @@ interface ProblemsContextType {
   toggleSupport: (id: number | string) => void;
   toggleSave: (id: number | string) => void;
   isLoading: boolean;
+  refreshProblems: () => Promise<void>;
 }
 
 const ProblemsContext = createContext<ProblemsContextType | undefined>(undefined);
 
 export function ProblemsProvider({ children }: { children: ReactNode }) {
-  const [problems, setProblems] = useState<Problem[]>(initialProblems);
-  const [myProblems, setMyProblems] = useState<Problem[]>(seededMyProblems);
+  const { user, isAuthenticated } = useAuth();
+  const [publicProblems, setPublicProblems] = useState<Problem[]>([]);
+  const [myProblems, setMyProblems] = useState<Problem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadProblems() {
-      try {
-        const [publishedResponse, citizenResponse] = await Promise.all([
-          fetch(`${apiUrl}/problems?status=verified`, { cache: "no-store" }),
-          fetch(`${apiUrl}/problems?limit=500`, { cache: "no-store" }),
-        ]);
-        if (!publishedResponse.ok || !citizenResponse.ok) throw new Error("Problem API unavailable");
-        const publishedRecords = await publishedResponse.json();
-        const citizenRecords = await citizenResponse.json();
-        if (!cancelled && Array.isArray(publishedRecords)) {
-          setProblems(publishedRecords.map(toFrontendProblem));
-        }
-        if (!cancelled && Array.isArray(citizenRecords)) {
-          setMyProblems(
-            citizenRecords
-              .filter((record) => String(record.citizen_name ?? "") === currentUser.name)
-              .map(toFrontendProblem)
-          );
-        }
-      } catch {
-        // Keep the seeded demo data available when the optional API is offline.
-      } finally {
-        if (!cancelled) setIsLoading(false);
-      }
+  const fetchProblems = async () => {
+    if (!isAuthenticated || !user) {
+      setPublicProblems([]);
+      setMyProblems([]);
+      setIsLoading(false);
+      return;
     }
 
-    loadProblems();
-    return () => {
-      cancelled = true;
-    };
-  }, [apiUrl]);
+    try {
+      const [publishedResponse, myResponse] = await Promise.all([
+        fetch(`${apiUrl}/problems?status=verified`, { cache: "no-store" }),
+        fetch(`${apiUrl}/problems?citizen_name=${encodeURIComponent(user.name)}&limit=500`, { cache: "no-store" }),
+      ]);
+
+      if (!publishedResponse.ok || !myResponse.ok) throw new Error("Problem API unavailable");
+
+      const publishedRecords = await publishedResponse.json();
+      const myRecords = await myResponse.json();
+
+      if (Array.isArray(publishedRecords)) {
+        setPublicProblems(publishedRecords.map(toFrontendProblem));
+      }
+      if (Array.isArray(myRecords)) {
+        setMyProblems(myRecords.map(toFrontendProblem));
+      }
+    } catch (error) {
+      console.error("Failed to fetch problems:", error);
+      setPublicProblems([]);
+      setMyProblems([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProblems();
+  }, [apiUrl, isAuthenticated, user?.name]);
 
   const addProblem = async (problem: Problem): Promise<string | number | null> => {
-    // Submissions remain private until a government officer verifies them.
+    if (!user) return null;
+    
     try {
       const response = await fetch(`${apiUrl}/problems`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           problem_text: problem.description,
           title: problem.title,
           description: problem.description,
           category: problem.category,
           location: problem.location,
-          citizen_name: problem.citizenName,
-          citizen_avatar: problem.citizenAvatar,
-          date: problem.date,
+          citizen_name: user.name,
+          citizen_avatar: user.name.charAt(0).toUpperCase(),
+          date: new Date().toISOString(),
           status: "submitted",
-          supporters: problem.supporters,
-          progress: problem.progress,
-          current_step: problem.currentStep,
+          supporters: 0,
+          progress: 0,
+          current_step: 1,
           raw_input: problem.rawInput,
           problem_nature: problem.problemNature,
           affected_population: problem.affectedPopulation,
@@ -90,6 +96,7 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
           community_group_name: problem.communityGroupName,
         }),
       });
+
       if (!response.ok) {
         const contentType = response.headers.get("content-type") ?? "";
         let message = "";
@@ -101,8 +108,10 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
         }
         throw new Error(message || `Problem submission failed (${response.status})`);
       }
+
       const saved = await response.json();
-      setMyProblems((previous) => [toFrontendProblem(saved), ...previous]);
+      const newProblem = toFrontendProblem(saved);
+      setMyProblems((previous) => [newProblem, ...previous]);
       return saved.id ?? null;
     } catch {
       return null;
@@ -110,7 +119,18 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
   };
 
   const toggleSupport = (id: number | string) => {
-    setProblems((prev) =>
+    setPublicProblems((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? {
+              ...p,
+              supporters: p.isSupported ? p.supporters - 1 : p.supporters + 1,
+              isSupported: !p.isSupported,
+            }
+          : p
+      )
+    );
+    setMyProblems((prev) =>
       prev.map((p) =>
         p.id === id
           ? {
@@ -124,20 +144,24 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
   };
 
   const toggleSave = (id: number | string) => {
-    setProblems((prev) =>
+    setPublicProblems((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, isSaved: !p.isSaved } : p))
+    );
+    setMyProblems((prev) =>
       prev.map((p) => (p.id === id ? { ...p, isSaved: !p.isSaved } : p))
     );
   };
 
   const deleteProblem = async (id: number | string) => {
+    if (!user) return false;
     try {
       const response = await fetch(
-        `${apiUrl}/problems/${id}?citizen_name=${encodeURIComponent(currentUser.name)}`,
+        `${apiUrl}/problems/${id}?citizen_name=${encodeURIComponent(user.name)}`,
         { method: "DELETE" }
       );
       if (!response.ok) return false;
       setMyProblems((previous) => previous.filter((problem) => problem.id !== id));
-      setProblems((previous) => previous.filter((problem) => problem.id !== id));
+      setPublicProblems((previous) => previous.filter((problem) => problem.id !== id));
       return true;
     } catch {
       return false;
@@ -145,6 +169,7 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
   };
 
   const resubmitProblem = async (id: number | string, files: File[], note = "") => {
+    if (!user) return false;
     try {
       if (files.length > 0) {
         const formData = new FormData();
@@ -158,7 +183,7 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
       const response = await fetch(`${apiUrl}/problems/${id}/resubmit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ citizen_name: currentUser.name, note }),
+        body: JSON.stringify({ citizen_name: user.name, note }),
       });
       if (!response.ok) return false;
       const saved = toFrontendProblem(await response.json());
@@ -183,7 +208,7 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
       });
       if (!response.ok) return false;
       const saved = toFrontendProblem(await response.json());
-      setProblems((prev) => prev.map((p) => (p.id === id ? saved : p)));
+      setPublicProblems((prev) => prev.map((p) => (p.id === id ? saved : p)));
       setMyProblems((prev) => prev.map((p) => (p.id === id ? saved : p)));
       return true;
     } catch {
@@ -222,7 +247,7 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
       });
       if (!response.ok) return false;
       const saved = toFrontendProblem(await response.json());
-      setProblems((prev) => prev.map((p) => (p.id === id ? saved : p)));
+      setPublicProblems((prev) => prev.map((p) => (p.id === id ? saved : p)));
       setMyProblems((prev) => prev.map((p) => (p.id === id ? saved : p)));
       return true;
     } catch {
@@ -233,7 +258,7 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
   return (
     <ProblemsContext.Provider
       value={{
-        problems,
+        publicProblems,
         myProblems,
         addProblem,
         deleteProblem,
@@ -244,6 +269,7 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
         toggleSupport,
         toggleSave,
         isLoading,
+        refreshProblems: fetchProblems,
       }}
     >
       {children}

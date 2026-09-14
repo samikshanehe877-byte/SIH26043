@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { useIndustry } from "@/context/IndustryContext";
 import { useProblems } from "@/context/ProblemsContext";
+import { Problem } from "@/types/problem";
 import StatsCard from "@/components/StatsCard";
 import { Inbox, Handshake, Award, Activity, ArrowRight, Clock, Send } from "lucide-react";
 import Link from "next/link";
 
 export default function IndustryDashboardPage() {
   const { company, requests, collaborations, impact } = useIndustry();
-  const { problems, volunteerForProblem, withdrawVolunteerRequest } = useProblems();
+  const { publicProblems, volunteerForProblem, withdrawVolunteerRequest } = useProblems();
   const [volunteeredIds, setVolunteeredIds] = useState<Set<string>>(new Set());
 
   const handleVolunteer = async (problemId: string, proposal: string) => {
@@ -30,8 +31,8 @@ export default function IndustryDashboardPage() {
     return success;
   };
 
-  const availableProblems = problems.filter(
-    (p) =>
+  const availableProblems = publicProblems.filter(
+    (p: Problem) =>
       p.status === "Verified" &&
       !p.volunteers?.some(
         (v) => v.solverName === company.name && v.solverType === "industry" && v.status === "accepted"
