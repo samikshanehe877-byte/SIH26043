@@ -93,6 +93,7 @@ export interface Problem {
   assignedUniversity?: string;
   assignedIndustry?: string;
   assignedDepartment?: string;
+  assignedMentorName?: string;
   image?: string;
   evidenceAttachments?: EvidenceAttachment[];
   verificationHistory?: VerificationHistoryEntry[];
