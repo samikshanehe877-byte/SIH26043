@@ -216,14 +216,27 @@ def volunteer_for_problem_endpoint(problem_id: str, req: VolunteerRequest):
         raise HTTPException(status_code=409, detail=str(e))
     if not problem:
         raise HTTPException(status_code=404, detail="Problem not found")
+    title = problem.title or problem.problem_text
+    # Notify the citizen that someone volunteered
     create_notification(
         NotificationRecord(
             citizen_name=problem.citizen_name,
             type="info",
             title="New volunteer proposal",
-            message=f"{req.solver_name} ({req.solver_type}) volunteered to solve your problem '{problem.title or problem.problem_text}'.",
+            message=f"{req.solver_name} ({req.solver_type}) volunteered to solve your problem '{title}'.",
             problem_id=problem.id,
-            problem_title=problem.title or problem.problem_text,
+            problem_title=title,
+        )
+    )
+    # Notify the volunteer that their request was received
+    create_notification(
+        NotificationRecord(
+            citizen_name=req.solver_name,
+            type="info",
+            title="Volunteer request submitted",
+            message=f"Your volunteer proposal for '{title}' has been submitted and is awaiting the problem owner's decision.",
+            problem_id=problem.id,
+            problem_title=title,
         )
     )
     return problem
@@ -239,14 +252,27 @@ def withdraw_volunteer_endpoint(problem_id: str, req: VolunteerRequest):
         raise HTTPException(status_code=409, detail=str(e))
     if not problem:
         raise HTTPException(status_code=404, detail="Problem not found")
+    title = problem.title or problem.problem_text
+    # Notify the citizen
     create_notification(
         NotificationRecord(
             citizen_name=problem.citizen_name,
             type="info",
             title="Volunteer request withdrawn",
-            message=f"{req.solver_name} ({req.solver_type}) withdrew their proposal for '{problem.title or problem.problem_text}'.",
+            message=f"{req.solver_name} ({req.solver_type}) withdrew their proposal for '{title}'.",
             problem_id=problem.id,
-            problem_title=problem.title or problem.problem_text,
+            problem_title=title,
+        )
+    )
+    # Notify the volunteer that their withdrawal was processed
+    create_notification(
+        NotificationRecord(
+            citizen_name=req.solver_name,
+            type="info",
+            title="Volunteer request withdrawn",
+            message=f"Your volunteer proposal for '{title}' has been withdrawn successfully.",
+            problem_id=problem.id,
+            problem_title=title,
         )
     )
     return {"status": "withdrawn", "id": problem_id}
@@ -263,6 +289,7 @@ def select_volunteer_endpoint(problem_id: str, req: SelectVolunteerRequest):
     if not problem:
         raise HTTPException(status_code=404, detail="Problem not found")
     title = problem.title or problem.problem_text
+    # Notify the citizen that a volunteer was accepted
     create_notification(
         NotificationRecord(
             citizen_name=problem.citizen_name,
@@ -273,6 +300,18 @@ def select_volunteer_endpoint(problem_id: str, req: SelectVolunteerRequest):
             problem_title=title,
         )
     )
+    # Notify the accepted volunteer
+    create_notification(
+        NotificationRecord(
+            citizen_name=req.solver_name,
+            type="success",
+            title="Volunteer request accepted",
+            message=f"Your volunteer proposal for '{title}' has been accepted by the problem owner. You are now assigned to solve this problem.",
+            problem_id=problem.id,
+            problem_title=title,
+        )
+    )
+    # Notify rejected volunteers
     for v in problem.volunteers:
         if v["status"] == "rejected":
             create_notification(
@@ -516,6 +555,79 @@ def verify_problem_endpoint(problem_id: str, decision: VerificationDecision):
             problem_title=problem.title or problem.problem_text,
         )
     )
+    # Notify all volunteers about the verification decision
+    for v in problem.volunteers:
+        if v.get("status") in ("volunteered", "accepted"):
+            if decision.decision == "approve":
+                v_notif_type = "success"
+                v_title = "Problem verified"
+                v_message = f"The problem '{problem.title or problem.problem_text}' you volunteered for has been verified and published."
+            elif decision.decision == "reject":
+                v_notif_type = "update"
+                v_title = "Problem rejected"
+                v_message = f"The problem '{problem.title or problem.problem_text}' you volunteered for was rejected by the government."
+            else:
+                v_notif_type = "warning"
+                v_title = "Additional proof requested"
+                v_message = f"Additional proof has been requested for the problem '{problem.title or problem.problem_text}' you volunteered for."
+            create_notification(
+                NotificationRecord(
+                    citizen_name=v["solver_name"],
+                    type=v_notif_type,
+                    title=v_title,
+                    message=v_message,
+                    problem_id=problem.id,
+                    problem_title=problem.title or problem.problem_text,
+                )
+            )
+    # Notify assigned university if present
+    if problem.assigned_university:
+        if decision.decision == "approve":
+            u_notif_type = "success"
+            u_title = "Problem verified"
+            u_message = f"The problem '{problem.title or problem.problem_text}' assigned to your institution has been verified and published."
+        elif decision.decision == "reject":
+            u_notif_type = "update"
+            u_title = "Problem rejected"
+            u_message = f"The problem '{problem.title or problem.problem_text}' assigned to your institution was rejected by the government."
+        else:
+            u_notif_type = "warning"
+            u_title = "Additional proof requested"
+            u_message = f"Additional proof has been requested for the problem '{problem.title or problem.problem_text}' assigned to your institution."
+        create_notification(
+            NotificationRecord(
+                citizen_name=problem.assigned_university,
+                type=u_notif_type,
+                title=u_title,
+                message=u_message,
+                problem_id=problem.id,
+                problem_title=problem.title or problem.problem_text,
+            )
+        )
+    # Notify assigned industry partner if present
+    if problem.assigned_industry:
+        if decision.decision == "approve":
+            i_notif_type = "success"
+            i_title = "Problem verified"
+            i_message = f"The problem '{problem.title or problem.problem_text}' assigned to your organization has been verified and published."
+        elif decision.decision == "reject":
+            i_notif_type = "update"
+            i_title = "Problem rejected"
+            i_message = f"The problem '{problem.title or problem.problem_text}' assigned to your organization was rejected by the government."
+        else:
+            i_notif_type = "warning"
+            i_title = "Additional proof requested"
+            i_message = f"Additional proof has been requested for the problem '{problem.title or problem.problem_text}' assigned to your organization."
+        create_notification(
+            NotificationRecord(
+                citizen_name=problem.assigned_industry,
+                type=i_notif_type,
+                title=i_title,
+                message=i_message,
+                problem_id=problem.id,
+                problem_title=problem.title or problem.problem_text,
+            )
+        )
     return problem
 
 
@@ -587,25 +699,6 @@ def delete_problem_endpoint(problem_id: str, citizen_name: str):
     if not delete_problem(problem_id):
         raise HTTPException(status_code=404, detail="Problem not found")
     return {"status": "deleted", "id": problem_id}
-
-
-@app.get("/notifications")
-def get_notifications(citizen_name: str, limit: int = 100):
-    return list_notifications(citizen_name, limit=min(max(limit, 1), 500))
-
-
-@app.patch("/notifications/{notification_id}/read")
-def read_notification(notification_id: str):
-    notification = mark_notification_read(notification_id)
-    if not notification:
-        raise HTTPException(status_code=404, detail="Notification not found")
-    return notification
-
-
-@app.post("/notifications/read-all")
-def read_all_notifications(request: NotificationReadRequest):
-    mark_all_notifications_read(request.citizen_name)
-    return {"status": "ok"}
 
 
 @app.post("/analyze")

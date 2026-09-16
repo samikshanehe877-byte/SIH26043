@@ -13,7 +13,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { universityNotifications } from "@/data/universityAppData";
+import { useEffect, useState } from "react";
 
 const navItems = [
   { name: "Dashboard",           href: "/university",                     icon: LayoutDashboard },
@@ -28,7 +28,16 @@ const navItems = [
 export default function UniversitySidebar() {
   const pathname = usePathname();
   const { user, isLoading } = useAuth();
-  const unread = universityNotifications.filter((notification) => !notification.isRead).length;
+  const [unread, setUnread] = useState(0);
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+  useEffect(() => {
+    if (!user) return;
+    fetch(`${apiUrl}/notifications?citizen_name=${encodeURIComponent(user.name)}`, { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : []))
+      .then((records) => setUnread(Array.isArray(records) ? records.filter((record: any) => !record.is_read).length : 0))
+      .catch(() => undefined);
+  }, [apiUrl, pathname, user]);
 
   // Skeleton while auth loads
   if (isLoading) {

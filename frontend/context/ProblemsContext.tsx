@@ -113,8 +113,9 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
       const newProblem = toFrontendProblem(saved);
       setMyProblems((previous) => [newProblem, ...previous]);
       return saved.id ?? null;
-    } catch {
-      return null;
+    } catch (error) {
+      console.error("Failed to submit problem:", error);
+      throw error instanceof Error ? error : new Error("Failed to submit problem");
     }
   };
 

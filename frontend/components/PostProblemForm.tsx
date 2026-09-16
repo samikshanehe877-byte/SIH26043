@@ -225,7 +225,7 @@ export default function PostProblemForm({ onSubmitSuccess, ownerUserId, regionId
         setSubmittedProblemId(problem.id);
         setStep(3);
       } else {
-        setSubmitError("Problem created but callback failed.");
+        setSubmitError("Problem submission did not complete. Please try again.");
       }
     } catch (err) {
       console.error("Submit error:", err);

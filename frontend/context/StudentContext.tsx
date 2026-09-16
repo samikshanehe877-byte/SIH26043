@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { StudentDashboardData } from "@/types/student";
-import { studentMockData } from "@/data/studentMockData";
+import { emptyStudentDashboardData } from "@/data/studentMockData";
 
 interface StudentContextType extends StudentDashboardData {
   unreadNotificationsCount: number;
@@ -13,7 +13,7 @@ interface StudentContextType extends StudentDashboardData {
 const StudentContext = createContext<StudentContextType | undefined>(undefined);
 
 export function StudentProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<StudentDashboardData>(studentMockData);
+  const [data, setData] = useState<StudentDashboardData>(emptyStudentDashboardData);
 
   const unreadNotificationsCount = data.notifications.filter((n) => !n.isRead).length;
 

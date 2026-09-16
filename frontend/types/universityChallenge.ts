@@ -158,7 +158,7 @@ export interface UniversityMentor {
 }
 
 export interface UniversityNotification {
-  id: number;
+  id: number | string;
   type: "assignment" | "success" | "update" | "warning" | "info";
   title: string;
   message: string;

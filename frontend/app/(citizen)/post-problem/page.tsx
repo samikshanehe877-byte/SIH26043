@@ -21,7 +21,10 @@ export default function PostProblemPage() {
       const formData = new FormData();
       files.forEach((file) => formData.append("files", file));
       const evidenceResponse = await fetch(`${apiUrl}/problems/${problemId}/evidence`, { method: "POST", body: formData });
-      if (!evidenceResponse.ok) return false;
+      if (!evidenceResponse.ok) {
+        const detail = await evidenceResponse.text();
+        throw new Error(detail || `Evidence upload failed (${evidenceResponse.status})`);
+      }
     }
 
     void fetch(`${apiUrl}/problems/${problemId}/analyze`, { method: "POST" }).catch(() => undefined);

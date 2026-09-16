@@ -17,15 +17,15 @@ import {
   IndustryRequestDetails,
 } from "@/types/mentor";
 import {
-  initialMentorProfile,
-  initialStudents,
-  initialChallenges,
-  initialTeams,
-  initialTasks,
-  initialIndustryRequests,
-  initialUniversityUpdates,
-  initialMentorNotifications,
-  initialActivities,
+  emptyMentorProfile,
+  emptyStudents,
+  emptyChallenges,
+  emptyTeams,
+  emptyTasks,
+  emptyIndustryRequests,
+  emptyUniversityUpdates,
+  emptyMentorNotifications,
+  emptyActivities,
 } from "@/data/mentorMockData";
 
 interface CreateTeamParams {
@@ -106,15 +106,15 @@ interface MentorContextType {
 const MentorContext = createContext<MentorContextType | undefined>(undefined);
 
 export function MentorProvider({ children }: { children: React.ReactNode }) {
-  const [profile, setProfile] = useState<MentorProfile>(initialMentorProfile);
-  const [challenges, setChallenges] = useState<MentorChallenge[]>(initialChallenges);
-  const [teams, setTeams] = useState<Team[]>(initialTeams);
-  const [students, setStudents] = useState<Student[]>(initialStudents);
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
-  const [industryRequests, setIndustryRequests] = useState<IndustryCollaborationRequest[]>(initialIndustryRequests);
-  const [universityUpdates, setUniversityUpdates] = useState<UniversityProgressUpdate[]>(initialUniversityUpdates);
-  const [notifications, setNotifications] = useState<MentorNotification[]>(initialMentorNotifications);
-  const [activities, setActivities] = useState<MentorActivityItem[]>(initialActivities);
+  const [profile, setProfile] = useState<MentorProfile>(emptyMentorProfile);
+  const [challenges, setChallenges] = useState<MentorChallenge[]>(emptyChallenges);
+  const [teams, setTeams] = useState<Team[]>(emptyTeams);
+  const [students, setStudents] = useState<Student[]>(emptyStudents);
+  const [tasks, setTasks] = useState<Task[]>(emptyTasks);
+  const [industryRequests, setIndustryRequests] = useState<IndustryCollaborationRequest[]>(emptyIndustryRequests);
+  const [universityUpdates, setUniversityUpdates] = useState<UniversityProgressUpdate[]>(emptyUniversityUpdates);
+  const [notifications, setNotifications] = useState<MentorNotification[]>(emptyMentorNotifications);
+  const [activities, setActivities] = useState<MentorActivityItem[]>(emptyActivities);
 
   const unreadNotificationsCount = notifications.filter((n) => !n.isRead).length;
 
