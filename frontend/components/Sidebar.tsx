@@ -20,7 +20,6 @@ const navigation = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user } = useAuth();
   const { user, isLoading } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -30,7 +29,6 @@ export default function Sidebar() {
     fetch(`${apiUrl}/notifications?citizen_name=${encodeURIComponent(user.name)}`, { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : []))
       .then((records) => setUnreadCount(Array.isArray(records) ? records.filter((record) => !record.is_read).length : 0))
-      .then((records) => setUnreadCount(Array.isArray(records) ? records.filter((r) => !r.is_read).length : 0))
       .catch(() => undefined);
   }, [apiUrl, pathname, user]);
 
@@ -94,7 +92,6 @@ export default function Sidebar() {
               <Icon size={18} className={isActive ? "text-white" : "text-slate-400 group-hover:text-blue-500"} />
               <span className="flex-1">{item.name}</span>
               {item.name === "Notifications" && unreadCount > 0 && (
-                <span className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${isActive ? "bg-white text-blue-600" : "bg-red-500 text-white"}`}>
                 <span
                   className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${
                     isActive ? "bg-white text-blue-600" : "bg-red-500 text-white"
@@ -120,7 +117,6 @@ export default function Sidebar() {
           </div>
         </div>
         <button
-          onClick={() => { document.cookie = "auth_session=; path=/; max-age=0"; window.location.href = "/"; }}
           onClick={() => {
             document.cookie = "auth_session=; path=/; max-age=0";
             window.location.href = "/";

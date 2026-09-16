@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, ReactNode } from "react";
 import { IndustryDashboardData, CollaborationRequestStatus, SupportStatus } from "@/types/industry";
-import { industryMockData } from "@/data/industryMockData";
+import { emptyIndustryDashboardData } from "@/data/industryMockData";
 
 interface IndustryContextType extends IndustryDashboardData {
   unreadNotificationsCount: number;
@@ -14,7 +14,7 @@ interface IndustryContextType extends IndustryDashboardData {
 const IndustryContext = createContext<IndustryContextType | undefined>(undefined);
 
 export function IndustryProvider({ children }: { children: ReactNode }) {
-  const [data, setData] = useState<IndustryDashboardData>(industryMockData);
+  const [data, setData] = useState<IndustryDashboardData>(emptyIndustryDashboardData);
 
   const unreadNotificationsCount = data.notifications.filter((n) => !n.isRead).length;
 
