@@ -15,7 +15,7 @@ export default function NotificationsPage() {
   useEffect(() => {
     const fetchVerificationQueue = async () => {
       try {
-        const response = await fetch(`${apiUrl}/problems?status=under_review&limit=500`, {
+        const response = await fetch(`${apiUrl}/problems?status=under_review&limit=500&include_unverified=true`, {
           cache: "no-store",
         });
         if (!response.ok) throw new Error("Failed to fetch problems");

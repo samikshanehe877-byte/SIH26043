@@ -3,8 +3,8 @@
 import { useState, useMemo } from "react";
 import { Search, Mail, Phone, X } from "lucide-react";
 import { universityMentors, universityDepartments } from "@/data/universityAppData";
-import { universityChallenges } from "@/data/universityChallenges";
 import { UniversityMentor, MentorAvailability } from "@/types/universityChallenge";
+import { useUniversityProblems } from "@/context/UniversityProblemsContext";
 
 const availabilityStyle: Record<MentorAvailability, string> = {
   Available:          "bg-green-50 text-green-700 border border-green-200",
@@ -18,6 +18,8 @@ export default function MentorsPage() {
   const [filterDept, setFilterDept] = useState("");
   const [filterAvail, setFilterAvail] = useState("");
   const [selected, setSelected] = useState<UniversityMentor | null>(null);
+  // Only real problems assigned to this university (verified + accepted), never demo or unverified ones.
+  const { assignedProblems: universityChallenges } = useUniversityProblems();
 
   const filtered = useMemo(() => {
     let r = [...universityMentors];

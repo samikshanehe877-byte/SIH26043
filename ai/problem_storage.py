@@ -27,6 +27,11 @@ class ProblemStatus(str):
     COMPLETED = "completed"
     REJECTED = "rejected"
 
+
+# Statuses a problem can be browsed in. Anything earlier (submitted, under review, returned for
+# correction) or rejected is visible only to the citizen who reported it and to government reviewers.
+PUBLIC_PROBLEM_STATUSES = ["verified", "assigned", "in_progress", "completed"]
+
 class ProblemBase(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     problem_text: str
@@ -215,6 +220,18 @@ def initialize_storage() -> None:
             )
             """
         )
+        # Project workspace chat and progress updates (see project_storage.py)
+        for table in ("project_messages", "project_updates"):
+            connection.execute(
+                f"""
+                CREATE TABLE IF NOT EXISTS {table} (
+                    id TEXT PRIMARY KEY,
+                    problem_id TEXT NOT NULL,
+                    payload TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+                """
+            )
 
 
 def _serialize(problem: ProblemBase) -> str:
@@ -267,15 +284,21 @@ def list_problems(
     citizen_name: Optional[str] = None,
     assigned_university: Optional[str] = None,
     assigned_industry: Optional[str] = None,
+    statuses: Optional[List[str]] = None,
 ) -> List[ProblemInDB]:
-    """List problems with optional status, citizen_name, assigned_university, and assigned_industry filters."""
+    """List problems with optional status (or any of `statuses`), citizen_name, assigned_university, and assigned_industry filters."""
     with _connection() as connection:
         conditions = []
         params = []
-        
+
         if status:
             conditions.append("json_extract(payload, '$.status') = ?")
             params.append(status)
+        if statuses is not None:
+            if not statuses:
+                return []
+            conditions.append(f"json_extract(payload, '$.status') IN ({', '.join('?' for _ in statuses)})")
+            params.extend(statuses)
         if citizen_name:
             conditions.append("json_extract(payload, '$.citizen_name') = ?")
             params.append(citizen_name)
@@ -460,6 +483,8 @@ class CollaborationRequestRecord(BaseModel):
     category: Optional[str] = None
     support_types: List[str] = Field(default_factory=list)
     description: Optional[str] = None
+    # Written by the side extending the invitation so the receiver can judge the project before accepting.
+    progress_summary: Optional[str] = None
     status: str = "pending"  # pending | clarification_needed | accepted | rejected | withdrawn
     history: List[Dict] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.now)

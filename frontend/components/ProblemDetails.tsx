@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { X, MapPin, Calendar, Building2, ThumbsUp, Send, Users, Handshake, CheckCircle2, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { X, MapPin, Calendar, Building2, ThumbsUp, Send, Users, Handshake, CheckCircle2, Trash2, FolderKanban } from "lucide-react";
 import { Problem } from "@/types/problem";
 import { useAuth } from "@/context/AuthContext";
 import { useProblems } from "@/context/ProblemsContext";
@@ -32,8 +33,14 @@ export default function ProblemDetails({ problem, onClose, onToggleSupport }: Pr
     setCommentText("");
   };
 
+  const [selectError, setSelectError] = useState<string | null>(null);
+
   const handleSelectVolunteer = async (solverType: "university" | "industry", solverName: string) => {
+    setSelectError(null);
     const success = await selectVolunteer(displayProblem.id, solverType, solverName);
+    if (!success) {
+      setSelectError("Could not accept this volunteer. The problem must be verified and you must be its owner.");
+    }
     if (success) {
       const updatedVolunteers = (displayProblem.volunteers ?? []).map((v) => {
         if (v.solverType === solverType && v.solverName === solverName) {
@@ -227,6 +234,14 @@ export default function ProblemDetails({ problem, onClose, onToggleSupport }: Pr
                     </>
                   )}
                 </p>
+                {isGiver && displayProblem.assignedByGiver && (
+                  <Link
+                    href={`/projects/${displayProblem.id}`}
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700"
+                  >
+                    <FolderKanban size={14} /> Open project workspace
+                  </Link>
+                )}
               </div>
             )}
 
@@ -254,8 +269,11 @@ export default function ProblemDetails({ problem, onClose, onToggleSupport }: Pr
                   <h4 className="text-sm font-bold text-amber-900">Volunteer Solutions</h4>
                 </div>
                 <p className="text-xs text-amber-800">
-                  {activeVolunteers.length} {activeVolunteers.length === 1 ? "institution has" : "institutions have"} volunteered. Review and accept the best fit — the selected solver and the others will be notified.
+                  {activeVolunteers.length} {activeVolunteers.length === 1 ? "institution has" : "institutions have"} volunteered. Review and accept the best fit — the selected solver and the others will be notified, and a project workspace opens for you and the solver.
                 </p>
+                {selectError && (
+                  <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{selectError}</p>
+                )}
 
                 {activeVolunteers.map((v, idx) => (
                   <div key={idx} className="rounded-xl border border-slate-200 bg-white p-3 space-y-2">
@@ -270,7 +288,7 @@ export default function ProblemDetails({ problem, onClose, onToggleSupport }: Pr
                           {v.solverName} <span className="text-xs text-slate-500 font-normal">({v.solverType})</span>
                         </span>
                       </div>
-                      {isGiver && (
+                      {isGiver && displayProblem.status === "Verified" && (
                         <button
                           onClick={() => handleSelectVolunteer(v.solverType, v.solverName)}
                           className="inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700"

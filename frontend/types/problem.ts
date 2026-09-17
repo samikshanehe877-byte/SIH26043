@@ -140,4 +140,6 @@ export interface Notification {
   isRead: boolean;
   problemTitle?: string;
   problemId?: number | string;
+  /** "problem" | "volunteer" | "collaboration" | "project"; project alerts open the workspace. */
+  category?: string;
 }

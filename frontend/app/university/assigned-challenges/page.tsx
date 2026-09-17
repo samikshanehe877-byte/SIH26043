@@ -6,9 +6,10 @@ import ChallengeCard from "@/components/university/ChallengeCard";
 import ChallengeDetails from "@/components/university/ChallengeDetails";
 import RejectChallengeModal from "@/components/university/RejectChallengeModal";
 import MentorAssignmentModal from "@/components/university/MentorAssignmentModal";
-import { universityChallenges as initialChallenges } from "@/data/universityChallenges";
 import { universityDepartments } from "@/data/universityAppData";
 import { UniversityChallenge, ChallengeStatus, ChallengePriority } from "@/types/universityChallenge";
+import { useUniversityProblems } from "@/context/UniversityProblemsContext";
+import { getOrganizationName, useAuth } from "@/context/AuthContext";
 
 const STATUSES: ChallengeStatus[] = [
   "Awaiting Decision", "Accepted", "Mentor Assigned", "Active", "Completed", "Rejected",
@@ -16,7 +17,22 @@ const STATUSES: ChallengeStatus[] = [
 const PRIORITIES: ChallengePriority[] = ["Low", "Medium", "High", "Critical"];
 
 export default function AssignedChallengesPage() {
-  const [challenges, setChallenges] = useState<UniversityChallenge[]>(initialChallenges);
+  const { user } = useAuth();
+  // Real problems assigned to this university (verified + accepted by the problem giver), not demo data.
+  const { assignedProblems } = useUniversityProblems();
+  const [overrides, setOverrides] = useState<Record<string, Partial<UniversityChallenge>>>({});
+  const challenges = useMemo(
+    () => assignedProblems.map((c) => ({ ...c, ...overrides[String(c.id)] })),
+    [assignedProblems, overrides],
+  );
+  const setChallenges = (update: (prev: UniversityChallenge[]) => UniversityChallenge[]) => {
+    const next = update(challenges);
+    setOverrides((prev) => {
+      const merged = { ...prev };
+      next.forEach((c) => { merged[String(c.id)] = c; });
+      return merged;
+    });
+  };
   const [selectedChallenge, setSelectedChallenge] = useState<UniversityChallenge | null>(null);
   const [rejectingChallenge, setRejectingChallenge] = useState<UniversityChallenge | null>(null);
   const [assigningMentorChallenge, setAssigningMentorChallenge] = useState<UniversityChallenge | null>(null);
@@ -100,7 +116,7 @@ export default function AssignedChallengesPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Assigned Challenges</h1>
           <p className="mt-1 text-sm text-slate-500">
-            All societal challenges assigned to Bharati Vidyapeeth University.
+            Verified problems assigned to {getOrganizationName(user) || "your university"}.
           </p>
         </div>
 
