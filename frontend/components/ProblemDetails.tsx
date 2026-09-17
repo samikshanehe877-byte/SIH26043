@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { X, MapPin, Calendar, Building2, ThumbsUp, Send, Users, Handshake, CheckCircle2, Trash2, FolderKanban } from "lucide-react";
 import { Problem } from "@/types/problem";
+import { formatOwners, isOwner, ownerNames } from "@/lib/owners";
 import { useAuth } from "@/context/AuthContext";
 import { useProblems } from "@/context/ProblemsContext";
 import StatusBadge from "./StatusBadge";
@@ -22,7 +23,7 @@ export default function ProblemDetails({ problem, onClose, onToggleSupport }: Pr
   const displayProblem = localProblem ?? problem;
   const [commentText, setCommentText] = useState("");
   const [localComments, setLocalComments] = useState(problem.comments);
-  const isGiver = user ? displayProblem.citizenName === user.name : false;
+  const isGiver = user ? isOwner(displayProblem.citizenName, displayProblem.coOwners, user.name) : false;
 
   const handleAddComment = () => {
     if (!commentText.trim()) return;
@@ -136,9 +137,21 @@ export default function ProblemDetails({ problem, onClose, onToggleSupport }: Pr
                 <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
                   {displayProblem.citizenAvatar}
                 </div>
-                {displayProblem.citizenName}
+                {formatOwners(displayProblem.citizenName, displayProblem.coOwners)}
               </span>
             </div>
+
+            {(displayProblem.coOwners?.length ?? 0) > 0 && (
+              <div className="flex items-start gap-2 rounded-xl border border-indigo-100 bg-indigo-50/70 px-3 py-2">
+                <Users size={14} className="mt-0.5 flex-shrink-0 text-indigo-600" />
+                <p className="text-xs text-indigo-900">
+                  <span className="font-semibold">Jointly owned.</span> Duplicate reports of this
+                  problem were merged, so{" "}
+                  {ownerNames(displayProblem.citizenName, displayProblem.coOwners).join(", ")} share
+                  ownership and can each act on it.
+                </p>
+              </div>
+            )}
 
             {/* Structured Scope Card (if available) */}
             {(displayProblem.affectedPopulation || displayProblem.frequency || displayProblem.suggestedIntervention || (displayProblem.requiredCapabilities && displayProblem.requiredCapabilities.length > 0)) && (

@@ -6,6 +6,7 @@ import {
   ArrowLeft, Building2, CheckCircle2, Crown, Download, Factory, Handshake, Loader2, MapPin, Megaphone,
   MessageSquare, Paperclip, Send, User, X,
 } from "lucide-react";
+import { formatOwners, ownerNames } from "@/lib/owners";
 import AttachmentGallery, { DownloadStatus, useDownloader } from "./AttachmentGallery";
 import CollaborationRequestList from "./CollaborationRequestList";
 import {
@@ -123,7 +124,11 @@ export default function ProjectWorkspace({
         <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">{project.title}</h1>
         <p className="mt-1 text-sm leading-relaxed text-slate-600">{project.description}</p>
         <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-500">
-          <span className="flex items-center gap-1"><User size={13} /> Reported by {project.citizen_name}</span>
+          <span className="flex items-center gap-1">
+            <User size={13} />
+            {(project.co_owners?.length ?? 0) > 0 ? "Jointly reported by " : "Reported by "}
+            {formatOwners(project.citizen_name, project.co_owners)}
+          </span>
           {project.location && <span className="flex items-center gap-1"><MapPin size={13} /> {project.location}</span>}
         </div>
 
@@ -138,6 +143,13 @@ export default function ProjectWorkspace({
         </div>
 
         <div className="mt-4 flex flex-wrap gap-2">
+          {ownerNames(project.citizen_name, project.co_owners).map((name, index) => (
+            <span key={`owner-${name}`} className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-1.5 text-xs text-indigo-800">
+              <User size={13} />
+              <span className="font-semibold">{name}</span>
+              <span className="text-indigo-400">· {index === 0 ? "Reported by" : "Co-owner"}</span>
+            </span>
+          ))}
           {project.parties.map((party) => (
             <span key={`${party.type}-${party.name}`} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-100 bg-slate-50 px-3 py-1.5 text-xs text-slate-700">
               {party.type === "university" ? <Building2 size={13} /> : <Factory size={13} />}

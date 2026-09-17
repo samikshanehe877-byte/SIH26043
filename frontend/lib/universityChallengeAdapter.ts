@@ -18,6 +18,10 @@ const problemStatusToChallengeStatus: Record<ProblemStatus, ChallengeStatus> = {
   "Collaboration with Industry": "Active",
   "Solution Implemented": "Active",
   Completed: "Completed",
+  // A university never actually sees these -- both are dead-end statuses reached before a
+  // problem is ever assigned -- but the map must stay exhaustive over ProblemStatus.
+  Duplicate: "Rejected",
+  Merged: "Rejected",
 };
 
 export function toUniversityChallenge(problem: Problem): UniversityChallenge {

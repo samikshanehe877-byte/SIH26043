@@ -8,6 +8,7 @@ import {
   FileImage,
   FileText,
   AlertCircle,
+  AlertTriangle,
   User,
   Users,
   Sparkles,
@@ -16,8 +17,17 @@ import {
   ChevronDown,
   ArrowLeft,
   RefreshCw,
+  Search,
 } from "lucide-react";
-import { Problem, ProblemCategory, ProblemNature } from "@/types/problem";
+import { DuplicateCheckResult, Problem, ProblemCategory, ProblemNature, SimilarProblemMatch } from "@/types/problem";
+
+/** What a submission attempt resolved to -- "duplicate" means the create endpoint itself (the
+ * authoritative check) blocked it, which can differ from what the earlier advisory pre-check
+ * said if another near-identical report was created in between. */
+export type SubmitOutcome =
+  | { status: "success"; problem: Problem }
+  | { status: "duplicate"; problem: Problem }
+  | { status: "error"; message: string };
 
 const CATEGORIES: ProblemCategory[] = [
   "Infrastructure",
@@ -71,9 +81,58 @@ interface UploadedFile {
 }
 
 interface PostProblemFormProps {
-  onSubmitSuccess: (problem: Problem, files: File[]) => boolean | Promise<boolean>;
+  onSubmitSuccess: (problem: Problem, files: File[]) => Promise<SubmitOutcome>;
   ownerUserId: string;
   regionId: string;
+}
+
+function ScoreBar({ label, value }: { label: string; value: number | null }) {
+  return (
+    <div>
+      <div className="mb-0.5 flex items-center justify-between text-[11px]">
+        <span className="text-slate-500">{label}</span>
+        <span className="font-semibold text-slate-700">{value === null ? "N/A" : `${Math.round(value * 100)}%`}</span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+        <div
+          className={`h-full rounded-full ${value === null ? "bg-slate-200" : "bg-amber-500"}`}
+          style={{ width: `${value === null ? 0 : Math.round(value * 100)}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function SimilarProblemCard({ match, unavailableKeys = [] }: { match: SimilarProblemMatch; unavailableKeys?: string[] }) {
+  const at = (key: string, value: number) => (unavailableKeys.includes(key) ? null : value);
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <p className="text-sm font-bold text-slate-900">{match.title}</p>
+        <span className="flex-shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-800">
+          {Math.round(match.overall * 100)}% similar
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
+        <ScoreBar label="Text similarity" value={at("semantic", match.semantic)} />
+        <ScoreBar label="Location" value={at("location", match.location)} />
+        <ScoreBar label="Category" value={at("domain", match.domain)} />
+      </div>
+      {match.reasons.length > 0 && (
+        <ul className="mt-3 space-y-1 border-t border-slate-100 pt-2 text-xs text-slate-600">
+          {match.reasons.slice(0, 4).map((reason, i) => (
+            <li key={i} className="flex items-start gap-1.5">
+              <span className="mt-1 h-1 w-1 flex-shrink-0 rounded-full bg-slate-400" />
+              {reason}
+            </li>
+          ))}
+        </ul>
+      )}
+      {match.supporters > 0 && (
+        <p className="mt-2 text-xs text-slate-500">{match.supporters} people already support this report.</p>
+      )}
+    </div>
+  );
 }
 
 export default function PostProblemForm({ onSubmitSuccess, ownerUserId, regionId }: PostProblemFormProps) {
@@ -99,9 +158,18 @@ export default function PostProblemForm({ onSubmitSuccess, ownerUserId, regionId
   const [confirmedByGiver, setConfirmedByGiver] = useState(false);
   const [isStructuring, setIsStructuring] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingDuplicates, setIsCheckingDuplicates] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submittedProblemId, setSubmittedProblemId] = useState<string | number>("");
+
+  // Duplicate-detection pipeline. `duplicateCheck` holds the advisory pre-check result while the
+  // warning modal is open; `blockedMatch` holds whichever match caused a block -- either from the
+  // pre-check (the common case) or from the create response itself (the rare race case where a
+  // near-identical report was created moments before this one; see api.py's SUBMISSION_LOCK).
+  const [duplicateCheck, setDuplicateCheck] = useState<DuplicateCheckResult | null>(null);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [blockedMatch, setBlockedMatch] = useState<SimilarProblemMatch | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -183,17 +251,10 @@ export default function PostProblemForm({ onSubmitSuccess, ownerUserId, regionId
     }
   };
 
-  const handleFinalSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (step !== 2 || !confirmedByGiver) return;
-
-    setIsSubmitting(true);
-    setSubmitError("");
-
+  const buildProblem = (): Problem => {
     const citizenName =
       giverType === "individual" ? "Sarthak Nehe" : communityGroupName.trim() || "Community Action Group";
-
-    const problem: Problem = {
+    return {
       id: crypto.randomUUID(),
       title: draftTitle.trim() || "Community Societal Challenge",
       description: draftStatement.trim(),
@@ -218,20 +279,89 @@ export default function PostProblemForm({ onSubmitSuccess, ownerUserId, regionId
       problemGiverType: giverType,
       communityGroupName: giverType !== "individual" ? communityGroupName.trim() : undefined,
     };
+  };
 
+  const submitNow = async () => {
+    setIsSubmitting(true);
+    setSubmitError("");
+    const problem = buildProblem();
     try {
-      const success = await onSubmitSuccess(problem, files.map((item) => item.file));
-      if (success) {
-        setSubmittedProblemId(problem.id);
+      const outcome = await onSubmitSuccess(problem, files.map((item) => item.file));
+      if (outcome.status === "success") {
+        setSubmittedProblemId(outcome.problem.id);
         setStep(3);
+      } else if (outcome.status === "duplicate") {
+        // The authoritative check (at the moment of creation) caught this, even though the
+        // pre-check below may have said it looked fine -- e.g. someone else submitted the same
+        // report a moment ago. Show the same block screen either way.
+        setBlockedMatch({
+          problem_id: outcome.problem.duplicateOfId ?? "",
+          title: "an existing report",
+          status: "verified",
+          citizen_name: "",
+          supporters: 0,
+          semantic: outcome.problem.duplicateBreakdown?.semantic ?? 0,
+          location: outcome.problem.duplicateBreakdown?.location ?? 0,
+          domain: outcome.problem.duplicateBreakdown?.domain ?? 0,
+          affected_area: outcome.problem.duplicateBreakdown?.affected_area ?? 0,
+          characteristics: outcome.problem.duplicateBreakdown?.characteristics ?? 0,
+          overall: outcome.problem.duplicateScore ?? 0.9,
+          reasons: outcome.problem.duplicateReasons ?? [],
+          unavailable: outcome.problem.duplicateBreakdown?.unavailable ?? [],
+        });
+        setDuplicateCheck(null);
+        setStep(4);
       } else {
-        setSubmitError("Problem submission did not complete. Please try again.");
+        setSubmitError(outcome.message);
       }
     } catch (err) {
       console.error("Submit error:", err);
       setSubmitError(err instanceof Error ? err.message : "Failed to submit problem. Please try again.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleFinalSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (step !== 2 || !confirmedByGiver) return;
+
+    setIsCheckingDuplicates(true);
+    setSubmitError("");
+    try {
+      const response = await fetch(`${apiUrl}/problems/check-duplicates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: draftTitle.trim(),
+          problem_text: draftStatement.trim() || rawText.trim(),
+          category: draftCategory || undefined,
+          location: draftArea.trim() || undefined,
+          affected_population: draftPopulation.trim() || undefined,
+          required_capabilities: capabilities,
+          problem_nature: draftNature || undefined,
+        }),
+      });
+      const result: DuplicateCheckResult = response.ok
+        ? await response.json()
+        : { tier: "normal", best_match: null, candidates: [] };
+
+      if (result.tier === "block" && result.best_match) {
+        setBlockedMatch(result.best_match);
+        setStep(4);
+        return;
+      }
+      if (result.tier === "warning" && result.best_match) {
+        setDuplicateCheck(result);
+        setShowDuplicateWarning(true);
+        return;
+      }
+      await submitNow();
+    } catch (err) {
+      console.error("Duplicate check failed, submitting anyway:", err);
+      await submitNow(); // never let a broken check block a real submission
+    } finally {
+      setIsCheckingDuplicates(false);
     }
   };
 
@@ -257,11 +387,56 @@ export default function PostProblemForm({ onSubmitSuccess, ownerUserId, regionId
     setConfirmedByGiver(false);
     setSubmitError("");
     setSubmittedProblemId("");
+    setDuplicateCheck(null);
+    setShowDuplicateWarning(false);
+    setBlockedMatch(null);
   };
 
   // -------------------------------------------------------------
   // Step 3: Submission Success View
   // -------------------------------------------------------------
+  // -------------------------------------------------------------
+  // Step 4: Blocked as a duplicate (>=90% match) -- never sent for government review.
+  // -------------------------------------------------------------
+  if (step === 4 && blockedMatch) {
+    return (
+      <div className="flex flex-col items-center rounded-3xl border border-amber-200 bg-amber-50/60 p-8 text-center shadow-sm sm:p-10">
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-100 text-amber-600 shadow-sm">
+          <AlertTriangle size={32} />
+        </div>
+        <h3 className="text-2xl font-bold text-slate-900">Similar Problem Already Reported</h3>
+        <p className="mt-3 max-w-lg text-sm text-slate-600">
+          This looks like the same issue as a report already on file, so it{" "}
+          <strong className="text-slate-800">was not sent for government review</strong>. If this is genuinely a
+          different problem, go back and add more specific details (exact location, who is affected, what makes it
+          different) and try again.
+        </p>
+
+        <div className="mt-6 w-full max-w-lg text-left">
+          <SimilarProblemCard match={blockedMatch} unavailableKeys={blockedMatch.unavailable} />
+        </div>
+
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => setStep(2)}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            <ArrowLeft size={14} />
+            Edit and Try Again
+          </button>
+          <a
+            href="/explore"
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700"
+          >
+            <Search size={14} />
+            Find and Support the Existing Report
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   if (step === 3) {
     return (
       <div className="flex flex-col items-center rounded-3xl border border-emerald-100 bg-emerald-50/70 p-10 text-center shadow-sm">
@@ -317,6 +492,7 @@ export default function PostProblemForm({ onSubmitSuccess, ownerUserId, regionId
   }
 
   return (
+    <>
     <form onSubmit={handleFinalSubmit} className="space-y-5" noValidate>
       {submitError && (
         <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">{submitError}</p>
@@ -848,14 +1024,19 @@ export default function PostProblemForm({ onSubmitSuccess, ownerUserId, regionId
 
             <button
               type="submit"
-              disabled={!confirmedByGiver || isSubmitting}
+              disabled={!confirmedByGiver || isSubmitting || isCheckingDuplicates}
               className={`w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl px-7 py-3 text-sm font-bold text-white shadow-md transition ${
-                confirmedByGiver && !isSubmitting
+                confirmedByGiver && !isSubmitting && !isCheckingDuplicates
                   ? "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200 hover:shadow-lg active:scale-[0.98]"
                   : "bg-slate-300 cursor-not-allowed text-slate-500 shadow-none"
               }`}
             >
-              {isSubmitting ? (
+              {isCheckingDuplicates ? (
+                <>
+                  <RefreshCw size={16} className="animate-spin" />
+                  Checking for similar reports...
+                </>
+              ) : isSubmitting ? (
                 <>
                   <RefreshCw size={16} className="animate-spin" />
                   Submitting for Verification...
@@ -871,5 +1052,52 @@ export default function PostProblemForm({ onSubmitSuccess, ownerUserId, regionId
         </div>
       )}
     </form>
+
+    {/* Warning tier (60-89% similar): the citizen decides whether to continue -- the AI only
+        flags it, it never decides on its own. Government still reviews it either way. */}
+    {showDuplicateWarning && duplicateCheck?.best_match && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
+        <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-3xl border border-slate-100 bg-white p-6 shadow-2xl">
+          <div className="mb-4 flex items-start gap-3">
+            <div className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-amber-100 text-amber-600">
+              <AlertTriangle size={22} />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-900">A Similar Problem Already Exists</h2>
+              <p className="text-xs text-slate-500">
+                It may still be worth reporting separately if the details genuinely differ. Government will review
+                both and decide.
+              </p>
+            </div>
+          </div>
+
+          <SimilarProblemCard match={duplicateCheck.best_match} unavailableKeys={duplicateCheck.best_match.unavailable} />
+
+          <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => {
+                setShowDuplicateWarning(false);
+                setStep(2);
+              }}
+              className="flex-1 rounded-xl border border-slate-200 py-2.5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+            >
+              Go Back and Edit
+            </button>
+            <button
+              type="button"
+              onClick={async () => {
+                setShowDuplicateWarning(false);
+                await submitNow();
+              }}
+              className="flex-1 rounded-xl bg-amber-600 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-amber-700"
+            >
+              Continue Anyway, Submit for Review
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
