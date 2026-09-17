@@ -1,7 +1,9 @@
 ﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ShieldCheck, XCircle, Clock, AlertTriangle, User, FileText, MapPin, BadgeCheck } from "lucide-react";
+import {
+  ShieldCheck, XCircle, Clock, AlertTriangle, User, FileText, MapPin, BadgeCheck, Copy, GitMerge, CheckCircle2,
+} from "lucide-react";
 import { officials } from "@/data/governmentData";
 import { EvidenceAttachment } from "@/types/problem";
 
@@ -19,8 +21,40 @@ type ReviewProblem = {
   verification_history?: { officer: string; timestamp: string; note: string; previous_status: string; decision: string; status: string }[];
   correctionCount?: number;
   correctionReasons?: string[];
+  duplicate_decision?: string;
+  duplicate_score?: number;
+  duplicate_of_id?: string;
+  duplicate_reasons?: string[];
   [key: string]: unknown;
 };
+
+type SimilarityRow = {
+  other_problem_id: string;
+  other_problem_title: string;
+  other_problem_status: string | null;
+  semantic_score: number;
+  location_score: number;
+  domain_score: number;
+  affected_area_score: number;
+  characteristics_score: number;
+  overall_score: number;
+  tier: string;
+  created_at: string;
+};
+
+function SimilarityBar({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <div className="mb-0.5 flex items-center justify-between text-[11px]">
+        <span className="text-slate-500">{label}</span>
+        <span className="font-semibold text-slate-700">{Math.round(value * 100)}%</span>
+      </div>
+      <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
+        <div className="h-full rounded-full bg-amber-500" style={{ width: `${Math.round(value * 100)}%` }} />
+      </div>
+    </div>
+  );
+}
 
 type QueueItem = {
   id: number | string;
@@ -42,6 +76,9 @@ const statusConfig: Record<string, { color: string; bg: string; icon: typeof Shi
   Verified: { color: "text-emerald-600", bg: "bg-emerald-50", icon: BadgeCheck },
   Rejected: { color: "text-red-600", bg: "bg-red-50", icon: XCircle },
   "Returned for Correction": { color: "text-amber-600", bg: "bg-amber-50", icon: AlertTriangle },
+  Duplicate: { color: "text-slate-600", bg: "bg-slate-100", icon: Copy },
+  "Merge Pending": { color: "text-blue-700", bg: "bg-blue-50", icon: GitMerge },
+  Merged: { color: "text-indigo-700", bg: "bg-indigo-50", icon: GitMerge },
 };
 
 const priorityConfig: Record<string, { color: string; bg: string }> = {
@@ -57,6 +94,17 @@ export default function VerifyPage() {
   const [queueState, setQueueState] = useState<QueueItem[]>([]);
   const [selectedProblemId, setSelectedProblemId] = useState<number | string | null>(null);
   const [decisionNote, setDecisionNote] = useState("");
+  const [similarities, setSimilarities] = useState<SimilarityRow[]>([]);
+  const [duplicateNote, setDuplicateNote] = useState("");
+  const [isResolvingDuplicate, setIsResolvingDuplicate] = useState(false);
+  const [duplicateActionError, setDuplicateActionError] = useState("");
+  const [showMergeModal, setShowMergeModal] = useState(false);
+  const [mergeCandidateIds, setMergeCandidateIds] = useState<Set<string>>(new Set());
+  const [mergeNote, setMergeNote] = useState("");
+  const [isSubmittingMerge, setIsSubmittingMerge] = useState(false);
+  const [mergeError, setMergeError] = useState("");
+  const [mergeRequestSent, setMergeRequestSent] = useState(false);
+  const MAX_MERGE_CANDIDATES = 2; // must match problem_storage.MAX_CO_OWNERS on the backend
 
   useEffect(() => {
     let cancelled = false;
@@ -124,6 +172,117 @@ export default function VerifyPage() {
     () => problemState.find((problem) => problem.id === selectedProblemId) ?? problemState[0] ?? null,
     [problemState, selectedProblemId]
   );
+
+  // Fetch the similarity audit trail only for a problem that's actually flagged -- the
+  // overwhelming majority of problems never resembled anything else on file.
+  useEffect(() => {
+    setSimilarities([]);
+    setDuplicateNote("");
+    setDuplicateActionError("");
+    if (!selectedProblem || selectedProblem.duplicate_decision !== "potential_duplicate") return;
+    let cancelled = false;
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+    fetch(`${apiUrl}/problems/${selectedProblem.id}/similarities`)
+      .then((response) => (response.ok ? response.json() : []))
+      .then((rows) => { if (!cancelled && Array.isArray(rows)) setSimilarities(rows); })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [selectedProblem]);
+
+  const resolveDuplicate = async (decision: "distinct" | "duplicate") => {
+    if (!selectedProblem) return;
+    if (decision === "duplicate" && !duplicateNote.trim()) {
+      setDuplicateActionError("A note explaining the decision is required.");
+      return;
+    }
+    setIsResolvingDuplicate(true);
+    setDuplicateActionError("");
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+      const response = await fetch(`${apiUrl}/problems/${selectedProblem.id}/duplicate-decision`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          decision,
+          note: duplicateNote.trim() || undefined,
+          officer: "Dr. Anita Sharma",
+        }),
+      });
+      const saved = await response.json();
+      if (!response.ok) throw new Error(saved.detail || "Could not save the decision");
+
+      setProblemState((prev) =>
+        prev.map((problem) =>
+          problem.id === selectedProblem.id
+            ? {
+                ...problem,
+                duplicate_decision: saved.duplicate_decision,
+                verificationStatus: decision === "duplicate" ? "Duplicate" : problem.verificationStatus,
+              }
+            : problem
+        )
+      );
+      if (decision === "duplicate") {
+        // Ends the problem's life in the normal queue -- same dead-end as a rejection,
+        // but labeled distinctly so it isn't confused with a content-quality rejection.
+        setQueueState((prev) =>
+          prev.map((item) => (item.problemId === selectedProblem.id ? { ...item, status: "Duplicate" } : item))
+        );
+      }
+      setDuplicateNote("");
+    } catch (err) {
+      setDuplicateActionError(err instanceof Error ? err.message : "Could not save the decision.");
+    } finally {
+      setIsResolvingDuplicate(false);
+    }
+  };
+
+  const openMergeModal = () => {
+    if (!selectedProblem) return;
+    setMergeCandidateIds(new Set([String(selectedProblem.id)]));
+    setMergeNote("");
+    setMergeError("");
+    setMergeRequestSent(false);
+    setShowMergeModal(true);
+  };
+
+  const toggleMergeCandidate = (problemId: string) => {
+    setMergeCandidateIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(problemId)) {
+        next.delete(problemId);
+      } else if (next.size < MAX_MERGE_CANDIDATES) {
+        next.add(problemId);
+      }
+      return next;
+    });
+  };
+
+  const submitMergeRequest = async () => {
+    if (!selectedProblem || !selectedProblem.duplicate_of_id) return;
+    setIsSubmittingMerge(true);
+    setMergeError("");
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+      const response = await fetch(`${apiUrl}/merge-requests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          primary_problem_id: selectedProblem.duplicate_of_id,
+          candidate_problem_ids: Array.from(mergeCandidateIds),
+          officer: "Dr. Anita Sharma",
+          note: mergeNote.trim() || undefined,
+        }),
+      });
+      const saved = await response.json();
+      if (!response.ok) throw new Error(saved.detail || "Could not send the merge request");
+      setMergeRequestSent(true);
+    } catch (err) {
+      setMergeError(err instanceof Error ? err.message : "Could not send the merge request");
+    } finally {
+      setIsSubmittingMerge(false);
+    }
+  };
 
   const filtered = queueState.filter((item) => {
     if (filter === "All") return true;
@@ -243,7 +402,14 @@ export default function VerifyPage() {
                   <div className="flex items-start gap-3">
                     <StatusIcon size={20} className={`mt-0.5 flex-shrink-0 ${cfg.color}`} />
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-base font-bold text-slate-900">{item.problemTitle}</h3>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-base font-bold text-slate-900">{item.problemTitle}</h3>
+                        {problem?.duplicate_decision === "potential_duplicate" && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
+                            <Copy size={10} /> {Math.round((problem.duplicate_score ?? 0) * 100)}% similar
+                          </span>
+                        )}
+                      </div>
                       <p className="mt-1 text-sm text-slate-500 line-clamp-2">{problem?.description}</p>
                       <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-400">
                         <span className="flex items-center gap-1">
@@ -317,6 +483,100 @@ export default function VerifyPage() {
                     <ul className="mt-2 list-disc space-y-1 pl-4 text-xs text-amber-900">
                       {selectedProblem.correctionReasons?.map((reason, index) => <li key={`${reason}-${index}`}>{reason}</li>)}
                     </ul>
+                  </div>
+                )}
+
+                {/* Similarity review: the AI only ever flags a 60-89% match -- it never
+                    auto-decides. This problem still goes through the normal approve/reject/proof
+                    pipeline above independently; this section just resolves the similarity flag. */}
+                {selectedProblem.duplicate_decision === "potential_duplicate" && (
+                  <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50/70 p-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-amber-800">
+                        <Copy size={13} /> Similarity Review
+                      </p>
+                      <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[11px] font-bold text-amber-900">
+                        {Math.round((selectedProblem.duplicate_score ?? 0) * 100)}% match
+                      </span>
+                    </div>
+
+                    {similarities
+                      .filter((row) => row.other_problem_id === selectedProblem.duplicate_of_id)
+                      .slice(0, 1)
+                      .map((row) => (
+                        <div key={row.other_problem_id} className="space-y-3">
+                          <div className="rounded-lg bg-white p-3">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-400">
+                              Existing report
+                            </p>
+                            <p className="mt-0.5 text-sm font-semibold text-slate-800">{row.other_problem_title}</p>
+                            {row.other_problem_status && (
+                              <p className="mt-0.5 text-xs text-slate-500">Status: {row.other_problem_status}</p>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3">
+                            <SimilarityBar label="Text similarity" value={row.semantic_score} />
+                            <SimilarityBar label="Location" value={row.location_score} />
+                            <SimilarityBar label="Category" value={row.domain_score} />
+                            <SimilarityBar label="Affected area" value={row.affected_area_score} />
+                            <SimilarityBar label="Capabilities" value={row.characteristics_score} />
+                          </div>
+                        </div>
+                      ))}
+
+                    {selectedProblem.duplicate_reasons && selectedProblem.duplicate_reasons.length > 0 && (
+                      <ul className="mt-3 space-y-1 border-t border-amber-200 pt-2 text-xs text-amber-900">
+                        {selectedProblem.duplicate_reasons.map((reason, index) => (
+                          <li key={index} className="flex items-start gap-1.5">
+                            <span className="mt-1 h-1 w-1 flex-shrink-0 rounded-full bg-amber-500" />
+                            {reason}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    <div className="mt-3 space-y-2">
+                      <textarea
+                        value={duplicateNote}
+                        onChange={(e) => setDuplicateNote(e.target.value)}
+                        rows={2}
+                        placeholder="Required for Reject as Duplicate -- explain the decision..."
+                        className="w-full rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+                      />
+                      {duplicateActionError && <p className="text-xs font-semibold text-red-600">{duplicateActionError}</p>}
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        <button
+                          type="button"
+                          onClick={() => resolveDuplicate("distinct")}
+                          disabled={isResolvingDuplicate}
+                          className="flex items-center justify-center gap-1.5 rounded-lg bg-white border border-emerald-200 px-2 py-2 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-50"
+                        >
+                          <CheckCircle2 size={13} /> Accept as Distinct
+                        </button>
+                        <button
+                          type="button"
+                          onClick={openMergeModal}
+                          disabled={isResolvingDuplicate}
+                          className="flex items-center justify-center gap-1.5 rounded-lg bg-white border border-blue-200 px-2 py-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-50 disabled:opacity-50"
+                        >
+                          <GitMerge size={13} /> Propose Merge
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => resolveDuplicate("duplicate")}
+                          disabled={isResolvingDuplicate}
+                          className="flex items-center justify-center gap-1.5 rounded-lg bg-white border border-red-200 px-2 py-2 text-xs font-semibold text-red-700 transition hover:bg-red-50 disabled:opacity-50"
+                        >
+                          <XCircle size={13} /> Reject as Duplicate
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedProblem.duplicate_decision === "distinct" && (
+                  <div className="mt-4 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">
+                    <CheckCircle2 size={14} /> Similarity reviewed and cleared as a distinct problem.
                   </div>
                 )}
 
@@ -455,6 +715,101 @@ export default function VerifyPage() {
           </div>
         </div>
       </div>
+
+      {showMergeModal && selectedProblem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+            {mergeRequestSent ? (
+              <>
+                <div className="flex items-center gap-2 text-emerald-700">
+                  <CheckCircle2 size={18} />
+                  <h3 className="text-sm font-bold">Merge request sent</h3>
+                </div>
+                <p className="mt-2 text-sm text-slate-600">
+                  Each candidate owner will be asked to accept or decline. The original owner will need to
+                  approve anyone who accepts before they become a co-owner -- nothing is merged automatically.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setShowMergeModal(false)}
+                  className="mt-4 w-full rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-800"
+                >
+                  Done
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-1.5 text-blue-800">
+                  <GitMerge size={16} />
+                  <h3 className="text-sm font-bold">Propose a merge</h3>
+                </div>
+                <p className="mt-2 text-xs text-slate-500">
+                  This sends a request to each candidate&apos;s owner to accept or decline joining
+                  {" "}
+                  <span className="font-semibold text-slate-700">
+                    {similarities.find((row) => row.other_problem_id === selectedProblem.duplicate_of_id)?.other_problem_title ?? "the existing report"}
+                  </span>
+                  {" "}as a co-owner. Nothing merges until the original owner approves each acceptance.
+                </p>
+
+                <div className="mt-3 space-y-1.5">
+                  {similarities.filter((row) => row.tier !== "normal").map((row) => {
+                    const isCurrentProblem = row.other_problem_id === selectedProblem.duplicate_of_id;
+                    const candidateId = isCurrentProblem ? String(selectedProblem.id) : row.other_problem_id;
+                    const label = isCurrentProblem
+                      ? `${selectedProblem.title} (this report)`
+                      : row.other_problem_title;
+                    const checked = mergeCandidateIds.has(candidateId);
+                    return (
+                      <label
+                        key={candidateId}
+                        className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-xs ${checked ? "border-blue-300 bg-blue-50" : "border-slate-200"}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={isCurrentProblem || (!checked && mergeCandidateIds.size >= MAX_MERGE_CANDIDATES)}
+                          onChange={() => toggleMergeCandidate(candidateId)}
+                        />
+                        <span className="flex-1 truncate text-slate-700">{label}</span>
+                        <span className="text-slate-400">{Math.round(row.overall_score * 100)}%</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400">Up to {MAX_MERGE_CANDIDATES} candidates per request (3 owners total, including the original).</p>
+
+                <textarea
+                  value={mergeNote}
+                  onChange={(e) => setMergeNote(e.target.value)}
+                  rows={2}
+                  placeholder="Optional note for the affected owners..."
+                  className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-xs text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                />
+                {mergeError && <p className="mt-2 text-xs font-semibold text-red-600">{mergeError}</p>}
+
+                <div className="mt-4 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowMergeModal(false)}
+                    className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={submitMergeRequest}
+                    disabled={isSubmittingMerge || mergeCandidateIds.size === 0}
+                    className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    Send merge request
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

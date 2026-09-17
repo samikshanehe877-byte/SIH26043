@@ -18,7 +18,7 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
 import problem_storage
-from problem_storage import ProblemInDB, list_collaboration_requests, list_problems
+from problem_storage import ProblemInDB, is_owner, list_collaboration_requests, list_problems
 
 PROJECT_STATUSES = {"assigned", "in_progress", "completed"}
 
@@ -86,11 +86,14 @@ def get_project_parties(problem: ProblemInDB) -> List[Dict[str, str]]:
 
 
 def get_viewer_role(problem: ProblemInDB, parties: List[Dict[str, str]], viewer_type: str, viewer_name: str) -> Optional[str]:
-    """'owner' for the citizen who reported the problem, else the party's role. None if they may not see the workspace."""
+    """'owner' for any citizen who owns the problem, else the party's role. None if they may not
+    see the workspace. Co-owners (gained through an approved merge request) are owners here too:
+    their report was folded into this one, so they get the same workspace access as the citizen
+    who filed it first."""
     if not parties:
         return None  # no workspace until a volunteer is accepted
     if viewer_type == "citizen":
-        return "owner" if viewer_name == problem.citizen_name else None
+        return "owner" if is_owner(problem, viewer_name) else None
     return next((p["role"] for p in parties if p["type"] == viewer_type and p["name"] == viewer_name), None)
 
 

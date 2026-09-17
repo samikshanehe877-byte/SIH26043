@@ -2,7 +2,7 @@
 
 import { Lightbulb } from "lucide-react";
 import { useRouter } from "next/navigation";
-import PostProblemForm from "@/components/PostProblemForm";
+import PostProblemForm, { SubmitOutcome } from "@/components/PostProblemForm";
 import { useProblems } from "@/context/ProblemsContext";
 import { useAuth } from "@/context/AuthContext";
 import { Problem } from "@/types/problem";
@@ -12,23 +12,30 @@ export default function PostProblemPage() {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { addProblem } = useProblems();
 
-  const handleSubmitSuccess = async (problem: Problem, files: File[]): Promise<boolean> => {
-    const problemId = await addProblem(problem);
-    if (!problemId) return false;
+  const handleSubmitSuccess = async (problem: Problem, files: File[]): Promise<SubmitOutcome> => {
+    const saved = await addProblem(problem);
+    if (!saved) return { status: "error", message: "Problem submission did not complete. Please try again." };
+
+    // The create endpoint is the authoritative duplicate check (an earlier pre-check is only
+    // advisory) -- even if the pre-check said this was fine, the create response is what
+    // actually decides, so this is the one place that must be trusted.
+    if (saved.duplicateDecision === "duplicate") {
+      return { status: "duplicate", problem: saved };
+    }
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
     if (files.length > 0) {
       const formData = new FormData();
       files.forEach((file) => formData.append("files", file));
-      const evidenceResponse = await fetch(`${apiUrl}/problems/${problemId}/evidence`, { method: "POST", body: formData });
+      const evidenceResponse = await fetch(`${apiUrl}/problems/${saved.id}/evidence`, { method: "POST", body: formData });
       if (!evidenceResponse.ok) {
         const detail = await evidenceResponse.text();
-        throw new Error(detail || `Evidence upload failed (${evidenceResponse.status})`);
+        return { status: "error", message: detail || `Evidence upload failed (${evidenceResponse.status})` };
       }
     }
 
-    void fetch(`${apiUrl}/problems/${problemId}/analyze`, { method: "POST" }).catch(() => undefined);
-    return true;
+    void fetch(`${apiUrl}/problems/${saved.id}/analyze`, { method: "POST" }).catch(() => undefined);
+    return { status: "success", problem: saved };
   };
 
   if (authLoading) {

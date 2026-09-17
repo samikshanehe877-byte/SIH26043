@@ -62,6 +62,8 @@ export interface ProjectSummary {
   category: string | null;
   location: string | null;
   citizen_name: string;
+  /** Citizens who became joint owners through an approved merge request. */
+  co_owners?: string[];
   status: "assigned" | "in_progress" | "completed";
   progress: number;
   required_capabilities: string[];

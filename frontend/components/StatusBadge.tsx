@@ -11,6 +11,8 @@ const styles: Record<ProblemStatus, string> = {
   "Collaboration with Industry":"bg-purple-50 text-purple-700 border border-purple-200",
   "Solution Implemented":       "bg-teal-50 text-teal-700 border border-teal-200",
   Completed:                    "bg-green-50 text-green-700 border border-green-200",
+  Duplicate:                    "bg-slate-100 text-slate-600 border border-slate-200",
+  Merged:                       "bg-indigo-50 text-indigo-700 border border-indigo-200",
 };
 
 const dots: Record<ProblemStatus, string> = {
@@ -24,6 +26,8 @@ const dots: Record<ProblemStatus, string> = {
   "Collaboration with Industry":"bg-purple-500",
   "Solution Implemented":       "bg-teal-500",
   Completed:                    "bg-green-500",
+  Duplicate:                    "bg-slate-400",
+  Merged:                       "bg-indigo-500",
 };
 
 export default function StatusBadge({ status }: { status: ProblemStatus }) {

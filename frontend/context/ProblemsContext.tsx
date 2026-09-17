@@ -7,7 +7,10 @@ import { Problem } from "@/types/problem";
 interface ProblemsContextType {
   publicProblems: Problem[];
   myProblems: Problem[];
-  addProblem: (problem: Problem) => Promise<string | number | null>;
+  // Resolves to the saved record (so the caller can check duplicateDecision -- the create
+  // endpoint is the authoritative duplicate-detection gate, not just an earlier pre-check),
+  // or null if the request failed outright.
+  addProblem: (problem: Problem) => Promise<Problem | null>;
   deleteProblem: (id: number | string) => Promise<boolean>;
   resubmitProblem: (id: number | string, files: File[], note?: string) => Promise<boolean>;
   volunteerForProblem: (id: number | string, solverType: "university" | "industry", solverName: string, proposal?: string) => Promise<boolean>;
@@ -74,7 +77,7 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
     fetchProblems();
   }, [apiUrl, isAuthenticated, user?.name]);
 
-  const addProblem = async (problem: Problem): Promise<string | number | null> => {
+  const addProblem = async (problem: Problem): Promise<Problem | null> => {
     if (!user) return null;
     
     try {
@@ -119,8 +122,11 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
 
       const saved = await response.json();
       const newProblem = toFrontendProblem(saved);
+      // Shown in My Problems either way -- a blocked duplicate still gets a record, with a
+      // "Duplicate" badge, so the citizen can see what happened to it (see api.py's audit-trail
+      // rationale for this) rather than it just silently vanishing.
       setMyProblems((previous) => [newProblem, ...previous]);
-      return saved.id ?? null;
+      return newProblem;
     } catch (error) {
       console.error("Failed to submit problem:", error);
       throw error instanceof Error ? error : new Error("Failed to submit problem");
@@ -323,6 +329,13 @@ function toFrontendProblem(record: Record<string, unknown>): Problem {
         }))
       : undefined,
     assignedByGiver: record.assigned_by_giver as boolean | undefined,
+    duplicateDecision: (record.duplicate_decision as Problem["duplicateDecision"]) ?? "none",
+    duplicateScore: record.duplicate_score as number | undefined,
+    duplicateOfId: record.duplicate_of_id as string | undefined,
+    duplicateReasons: Array.isArray(record.duplicate_reasons) ? (record.duplicate_reasons as string[]) : undefined,
+    duplicateBreakdown: record.duplicate_breakdown as Problem["duplicateBreakdown"],
+    mergedIntoId: record.merged_into_id as string | undefined,
+    coOwners: Array.isArray(record.co_owners) ? (record.co_owners as string[]) : undefined,
   };
 }
 
@@ -336,6 +349,8 @@ function toFrontendStatus(status: string): Problem["status"] {
     verified: "Verified",
     returned_for_correction: "Needs Proof",
     rejected: "Rejected",
+    duplicate_rejected: "Duplicate",
+    merged: "Merged",
   };
   return statuses[status] ?? "Submitted";
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { MapPin, Clock, ThumbsUp, MessageCircle, Share2, Bookmark, ChevronRight, Users, Building2 } from "lucide-react";
 import { Problem } from "@/types/problem";
+import { formatOwners } from "@/lib/owners";
 import StatusBadge from "./StatusBadge";
 
 interface ProblemCardProps {
@@ -41,7 +42,9 @@ export default function ProblemCard({ problem, onViewDetails, onToggleSupport, o
             {problem.citizenAvatar}
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-800">{problem.citizenName}</p>
+            <p className="text-sm font-semibold text-slate-800">
+              {formatOwners(problem.citizenName, problem.coOwners)}
+            </p>
             <div className="flex items-center gap-1 text-xs text-slate-400">
               <MapPin size={11} />
               <span>{problem.location}</span>

@@ -114,6 +114,8 @@ function toFrontendStatus(status: string): Problem["status"] {
     verified: "Verified",
     returned_for_correction: "Needs Proof",
     rejected: "Rejected",
+    duplicate_rejected: "Duplicate",
+    merged: "Merged",
   };
   return statuses[status] ?? "Submitted";
 }

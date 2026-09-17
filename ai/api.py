@@ -36,6 +36,7 @@ LIMITATIONS (read before wiring up the frontend):
       deployment.
 """
 
+import contextlib
 import logging
 import os
 import re
@@ -70,25 +71,39 @@ from department_matcher import list_departments_for_university, match_department
 from problem_structurer import structure_raw_problem, StructuredProblemDraft
 from problem_storage import (
     COLLABORATION_PARTIES,
+    MAX_CO_OWNERS,
     NOTIFICATION_AUDIENCES,
     PUBLIC_PROBLEM_STATUSES,
     CollaborationRequestRecord,
+    DuplicateDecision,
+    MergeRequestRecord,
     ProblemBase,
+    ProblemStatus,
     ProblemUpdate,
     NotificationRecord,
+    approve_merge_request_member,
     create_collaboration_request,
+    create_merge_request,
     create_problem,
     create_notification,
     get_collaboration_request,
+    get_merge_request,
     get_problem,
+    is_owner,
     list_collaboration_requests,
+    list_merge_requests,
     list_notifications,
+    list_problem_similarities,
     list_problems,
     mark_all_notifications_read,
     mark_notification_read,
+    respond_to_merge_request,
     transition_collaboration_request,
     update_problem,
 )
+# duplicate_engine pulls in sentence-transformers (via embeddings.py), the same heavy/optional
+# dependency ai_pipeline.py has -- imported lazily inside the endpoints that use it (below) so a
+# broken or missing sentence-transformers install can't take down the whole API at startup.
 
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.join(os.path.dirname(__file__), "data", "uploads"))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -271,10 +286,169 @@ def structure_problem_endpoint(req: StructureProblemRequest):
     )
 
 
+_duplicate_engine_module = None  # cached: None = not tried yet, False = import failed, module = loaded
+
+
+def _get_duplicate_engine():
+    """Lazily imports duplicate_engine once and caches the result (success or failure) so a
+    broken sentence-transformers install doesn't retry (and re-fail slowly) on every request."""
+    global _duplicate_engine_module
+    if _duplicate_engine_module is None:
+        try:
+            import duplicate_engine
+            _duplicate_engine_module = duplicate_engine
+        except Exception as e:
+            logger.warning("duplicate_engine unavailable, duplicate checks will be skipped: %s", e)
+            _duplicate_engine_module = False
+    return _duplicate_engine_module or None
+
+
+def _safe_duplicate_check(fields: Dict[str, Any], **kwargs) -> Dict[str, Any]:
+    """Runs duplicate_engine.duplicate_check(), but degrades to "no duplicate found" instead
+    of breaking problem submission entirely if duplicate_engine (or its sentence-transformers
+    dependency) can't be imported -- same fail-open principle duplicate_check() itself already
+    applies to a scoring error, just one layer further out."""
+    engine = _get_duplicate_engine()
+    if engine is None:
+        return {"tier": "normal", "best_match": None, "candidates": [], "error": "duplicate_engine_unavailable"}
+    return engine.duplicate_check(fields, **kwargs)
+
+
+def _notify_owners(problem: ProblemBase, *, exclude: Optional[str] = None, **fields) -> None:
+    """Sends one notification to every citizen who owns this problem.
+
+    After a merge a problem can have co-owners with the same rights as the original reporter
+    (see problem_storage.is_owner), so anything the owner needs to hear about, all of them do --
+    otherwise a co-owner could accept a volunteer and nobody else would ever find out.
+    """
+    for name in [problem.citizen_name, *(problem.co_owners or [])]:
+        if name == exclude:
+            continue
+        create_notification(
+            NotificationRecord(
+                citizen_name=name,
+                problem_id=problem.id,
+                problem_title=problem.title or problem.problem_text,
+                **fields,
+            )
+        )
+
+
+def _duplicate_check_fields(problem: ProblemBase) -> Dict[str, Any]:
+    return {
+        "title": problem.title,
+        "problem_text": problem.problem_text,
+        "description": problem.description,
+        "category": problem.category,
+        "location": problem.location,
+        "district": problem.district,
+        "block": problem.block,
+        "village": problem.village,
+        "latitude": problem.latitude,
+        "longitude": problem.longitude,
+        "affected_population": problem.affected_population,
+        "required_capabilities": problem.required_capabilities,
+        "problem_nature": problem.problem_nature,
+    }
+
+
+class DuplicateCheckRequest(BaseModel):
+    """Same shape as the fields a submission provides; used for the advisory
+    pre-check before the citizen commits to submitting."""
+    title: Optional[str] = None
+    problem_text: str
+    description: Optional[str] = None
+    category: Optional[str] = None
+    location: Optional[str] = None
+    district: Optional[str] = None
+    block: Optional[str] = None
+    village: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    affected_population: Optional[str] = None
+    required_capabilities: List[str] = []
+    problem_nature: Optional[str] = None
+    exclude_problem_id: Optional[str] = None  # when re-checking an existing draft/problem
+
+
+@app.post("/problems/check-duplicates")
+def check_duplicates_endpoint(req: DuplicateCheckRequest):
+    """
+    Advisory pre-check the frontend calls right after AI structuring, before the
+    citizen commits to submitting -- lets the UI show a block screen or a
+    "continue anyway" warning ahead of time. This is NOT the authoritative
+    check: POST /problems independently re-runs the same logic at the moment
+    of creation, since only that request is guarded against a second
+    submission racing in between (see duplicate_engine.SUBMISSION_LOCK).
+    Nothing here is persisted -- this may be checking a draft that never
+    becomes a real problem.
+    """
+    if not req.problem_text.strip():
+        raise HTTPException(status_code=400, detail="problem_text cannot be empty")
+    return _safe_duplicate_check(req.model_dump(exclude={"exclude_problem_id"}), exclude_problem_id=req.exclude_problem_id)
+
+
 @app.post("/problems", response_model=ProblemBase)
 def create_problem_endpoint(problem: ProblemBase):
-    """Persist a citizen problem for later review and public discovery."""
-    created = create_problem(problem)
+    """
+    Persist a citizen problem for later review and public discovery.
+
+    This is the AUTHORITATIVE duplicate-detection gate (the frontend's
+    /problems/check-duplicates call is advisory only). Under SUBMISSION_LOCK,
+    every existing eligible problem is re-scored fresh against this
+    submission, so a second citizen submitting the same thing moments after
+    the first one still gets caught, even if their own pre-check ran before
+    either existed:
+
+        score >= 90%   -> still created (audit trail), but routed straight to
+                          DUPLICATE_REJECTED; never enters government review
+        score 60-89%   -> created normally; flagged POTENTIAL_DUPLICATE for a
+                          human (government) to resolve during verification
+        score < 60%    -> created normally, no flag
+    """
+    engine = _get_duplicate_engine()
+    lock = engine.SUBMISSION_LOCK if engine else contextlib.nullcontext()
+    with lock:
+        result = (
+            engine.duplicate_check(_duplicate_check_fields(problem), persist_similarities_for=problem.id)
+            if engine else {"tier": "normal", "best_match": None, "candidates": []}
+        )
+        best = result["best_match"]
+
+        if result["tier"] == "block" and best:
+            problem.status = ProblemStatus.DUPLICATE_REJECTED
+            problem.duplicate_decision = DuplicateDecision.DUPLICATE
+            problem.duplicate_of_id = best["problem_id"]
+            problem.duplicate_score = best["overall"]
+            problem.duplicate_reasons = best["reasons"]
+            problem.duplicate_breakdown = {k: best[k] for k in ("semantic", "location", "domain", "affected_area", "characteristics")}
+            created = create_problem(problem)
+            title = created.title or created.problem_text
+            create_notification(
+                NotificationRecord(
+                    citizen_name=created.citizen_name,
+                    type="warning",
+                    title="Not submitted -- duplicate found",
+                    message=(
+                        f"'{title}' looks like the same issue as an existing report "
+                        f"('{best['title']}'), so it wasn't sent for government review. "
+                        f"You can support the existing report instead."
+                    ),
+                    problem_id=created.id,
+                    problem_title=title,
+                )
+            )
+            return created
+
+        if result["tier"] == "warning" and best:
+            problem.duplicate_decision = DuplicateDecision.POTENTIAL_DUPLICATE
+            problem.duplicate_of_id = best["problem_id"]
+            problem.duplicate_score = best["overall"]
+            problem.duplicate_reasons = best["reasons"]
+            problem.duplicate_breakdown = {k: best[k] for k in ("semantic", "location", "domain", "affected_area", "characteristics")}
+
+        created = create_problem(problem)
+
     title = created.title or created.problem_text
     create_notification(
         NotificationRecord(
@@ -306,17 +480,13 @@ def volunteer_for_problem_endpoint(problem_id: str, req: VolunteerRequest):
     if not problem:
         raise HTTPException(status_code=404, detail="Problem not found")
     title = problem.title or problem.problem_text
-    # Notify the citizen that someone volunteered
-    create_notification(
-        NotificationRecord(
-            citizen_name=problem.citizen_name,
-            category="volunteer",
-            type="info",
-            title="New volunteer proposal",
-            message=f"{req.solver_name} ({req.solver_type}) volunteered to solve your problem '{title}'.",
-            problem_id=problem.id,
-            problem_title=title,
-        )
+    # Notify the citizen owners that someone volunteered
+    _notify_owners(
+        problem,
+        category="volunteer",
+        type="info",
+        title="New volunteer proposal",
+        message=f"{req.solver_name} ({req.solver_type}) volunteered to solve your problem '{title}'.",
     )
     # Notify the volunteer that their request was received
     create_notification(
@@ -346,17 +516,13 @@ def withdraw_volunteer_endpoint(problem_id: str, req: VolunteerRequest):
     if not problem:
         raise HTTPException(status_code=404, detail="Problem not found")
     title = problem.title or problem.problem_text
-    # Notify the citizen
-    create_notification(
-        NotificationRecord(
-            citizen_name=problem.citizen_name,
-            category="volunteer",
-            type="info",
-            title="Volunteer request withdrawn",
-            message=f"{req.solver_name} ({req.solver_type}) withdrew their proposal for '{title}'.",
-            problem_id=problem.id,
-            problem_title=title,
-        )
+    # Notify the citizen owners
+    _notify_owners(
+        problem,
+        category="volunteer",
+        type="info",
+        title="Volunteer request withdrawn",
+        message=f"{req.solver_name} ({req.solver_type}) withdrew their proposal for '{title}'.",
     )
     # Notify the volunteer that their withdrawal was processed
     create_notification(
@@ -384,7 +550,7 @@ def select_volunteer_endpoint(problem_id: str, req: SelectVolunteerRequest):
     current = get_problem(problem_id)
     if not current:
         raise HTTPException(status_code=404, detail="Problem not found")
-    if current.citizen_name != req.citizen_name:
+    if not is_owner(current, req.citizen_name):
         raise HTTPException(status_code=403, detail="Only the problem giver can accept a volunteer")
     if current.status != "verified":
         raise HTTPException(status_code=409, detail="A volunteer can only be accepted on a verified problem")
@@ -395,17 +561,15 @@ def select_volunteer_endpoint(problem_id: str, req: SelectVolunteerRequest):
     if not problem:
         raise HTTPException(status_code=404, detail="Problem not found")
     title = problem.title or problem.problem_text
-    # Notify the citizen that a volunteer was accepted
-    create_notification(
-        NotificationRecord(
-            citizen_name=problem.citizen_name,
-            category="volunteer",
-            type="success",
-            title="Volunteer accepted",
-            message=f"Your problem '{title}' has been assigned to {req.solver_name} ({req.solver_type}).",
-            problem_id=problem.id,
-            problem_title=title,
-        )
+    # Notify the citizen owners that a volunteer was accepted. Any owner can accept one, so the
+    # others are told who did it rather than being left to wonder.
+    accepted_by = "" if req.citizen_name == problem.citizen_name and not problem.co_owners else f" (accepted by {req.citizen_name})"
+    _notify_owners(
+        problem,
+        category="volunteer",
+        type="success",
+        title="Volunteer accepted",
+        message=f"Your problem '{title}' has been assigned to {req.solver_name} ({req.solver_type}).{accepted_by}",
     )
     # Notify the accepted volunteer
     create_notification(
@@ -702,16 +866,12 @@ def act_on_collaboration_request_endpoint(request_id: str, req: CollaborationAct
                     problem_title=problem_title,
                 )
             )
-        create_notification(
-            NotificationRecord(
-                citizen_name=problem.citizen_name,
-                category="project",
-                type="info",
-                title="New partner on your problem",
-                message=f"{actor} joined {record.party_name(record.requested_by)} to work on '{problem_title}'.",
-                problem_id=problem.id,
-                problem_title=problem_title,
-            )
+        _notify_owners(
+            problem,
+            category="project",
+            type="info",
+            title="New partner on your problem",
+            message=f"{actor} joined {record.party_name(record.requested_by)} to work on '{problem_title}'.",
         )
     return record
 
@@ -745,6 +905,7 @@ def _project_summary(problem: ProblemBase, parties: List[Dict[str, str]], my_rol
         "category": problem.category,
         "location": problem.location,
         "citizen_name": problem.citizen_name,
+        "co_owners": problem.co_owners,
         "status": problem.status,
         "progress": problem.progress,
         "required_capabilities": problem.required_capabilities,
@@ -986,16 +1147,12 @@ def _create_project_update(
         problem, parties, party_type, party_name, "update", "New project update",
         f"{party_name} posted '{title}' on '{problem_title}'.{progress_note}{files_note}",
     )
-    create_notification(
-        NotificationRecord(
-            citizen_name=problem.citizen_name,
-            category="project",
-            type="success" if progress == 100 else "update",
-            title="Problem solved" if progress == 100 else "Progress update on your problem",
-            message=f"{party_name}: {title}.{progress_note}{files_note}",
-            problem_id=problem.id,
-            problem_title=problem_title,
-        )
+    _notify_owners(
+        problem,
+        category="project",
+        type="success" if progress == 100 else "update",
+        title="Problem solved" if progress == 100 else "Progress update on your problem",
+        message=f"{party_name}: {title}.{progress_note}{files_note}",
     )
     return update
 
@@ -1077,17 +1234,13 @@ async def add_project_update_attachments_endpoint(
     names = ", ".join(a["name"] for a in new_attachments)
     message = f"{party_name} added {names} to their update '{update.title}' on '{problem_title}'."
     _notify_other_parties(problem, parties, party_type, party_name, "update", "New attachment on project update", message)
-    # The citizen can view the workspace too, so they hear about new files the same as new updates.
-    create_notification(
-        NotificationRecord(
-            citizen_name=problem.citizen_name,
-            category="project",
-            type="update",
-            title="New files on your problem's progress",
-            message=message,
-            problem_id=problem.id,
-            problem_title=problem_title,
-        )
+    # The citizen owners can view the workspace too, so they hear about new files the same as new updates.
+    _notify_owners(
+        problem,
+        category="project",
+        type="update",
+        title="New files on your problem's progress",
+        message=message,
     )
     return updated
 
@@ -1285,15 +1438,11 @@ async def upload_evidence_endpoint(problem_id: str, files: List[UploadFile] = Fi
     )
     if not updated:
         raise HTTPException(status_code=404, detail="Problem not found")
-    create_notification(
-        NotificationRecord(
-            citizen_name=updated.citizen_name,
-            type="info",
-            title="Evidence submitted",
-            message=f"Evidence for your problem '{updated.title or updated.problem_text}' was submitted for government review.",
-            problem_id=updated.id,
-            problem_title=updated.title or updated.problem_text,
-        )
+    _notify_owners(
+        updated,
+        type="info",
+        title="Evidence submitted",
+        message=f"Evidence for your problem '{updated.title or updated.problem_text}' was submitted for government review.",
     )
     return updated
 
@@ -1360,13 +1509,302 @@ def verify_problem_endpoint(problem_id: str, decision: VerificationDecision):
     return problem
 
 
+@app.get("/problems/{problem_id}/similarities")
+def get_problem_similarities_endpoint(problem_id: str):
+    """The full similarity audit trail for one problem -- every existing problem it was
+    compared against at submission time, with the score breakdown, for the government
+    dashboard's 'why was this flagged' view."""
+    if not get_problem(problem_id):
+        raise HTTPException(status_code=404, detail="Problem not found")
+    rows = list_problem_similarities(problem_id)
+    results = []
+    for row in rows:
+        other_id = row["problem_b_id"] if row["problem_a_id"] == problem_id else row["problem_a_id"]
+        other = get_problem(other_id)
+        results.append({
+            "other_problem_id": other_id,
+            "other_problem_title": (other.title or other.problem_text) if other else "(deleted problem)",
+            "other_problem_status": other.status if other else None,
+            "semantic_score": row["semantic_score"],
+            "location_score": row["location_score"],
+            "domain_score": row["domain_score"],
+            "affected_area_score": row["affected_area_score"],
+            "characteristics_score": row["characteristics_score"],
+            "overall_score": row["overall_score"],
+            "tier": row["tier"],
+            "created_at": row["created_at"],
+        })
+    return results
+
+
+class DuplicateReviewDecision(BaseModel):
+    decision: Literal["distinct", "duplicate"]
+    officer: str = "Government Officer"
+    note: Optional[str] = None
+    merged_into_id: Optional[str] = None  # only for "duplicate"; defaults to duplicate_of_id
+
+
+@app.post("/problems/{problem_id}/duplicate-decision", response_model=ProblemBase)
+def duplicate_decision_endpoint(problem_id: str, decision: DuplicateReviewDecision):
+    """
+    Government resolves a POTENTIAL_DUPLICATE flag (the 60-89% tier): the AI only ever
+    recommends here, it never auto-decides.
+
+        distinct  -> clears the flag; the problem carries on through normal verification
+        duplicate -> ends this problem as a duplicate of the other one (same terminal
+                      status the auto-block tier uses, so both paths look the same
+                      to the citizen and to any dashboard filtering on status)
+
+    Merging two or more genuinely-the-same reports into one is a separate, negotiated
+    workflow -- see POST /merge-requests -- since it changes who owns the resulting problem
+    and requires each affected citizen's consent, not just a government call.
+    """
+    problem = get_problem(problem_id)
+    if not problem:
+        raise HTTPException(status_code=404, detail="Problem not found")
+    if decision.decision == "duplicate" and not (decision.note or "").strip():
+        raise HTTPException(status_code=400, detail="A note explaining the decision is required")
+
+    title = problem.title or problem.problem_text
+
+    if decision.decision == "distinct":
+        updated = update_problem(problem_id, ProblemUpdate(duplicate_decision=DuplicateDecision.DISTINCT))
+        create_notification(
+            NotificationRecord(
+                citizen_name=problem.citizen_name,
+                type="update",
+                title="Similarity review cleared",
+                message=f"'{title}' was reviewed and is being treated as a distinct problem.",
+                problem_id=problem.id,
+                problem_title=title,
+            )
+        )
+        return updated
+
+    if decision.decision == "duplicate":
+        updated = update_problem(problem_id, ProblemUpdate(
+            status=ProblemStatus.DUPLICATE_REJECTED,
+            duplicate_decision=DuplicateDecision.DUPLICATE,
+            duplicate_of_id=decision.merged_into_id or problem.duplicate_of_id,
+            verification_notes=decision.note,
+        ))
+        create_notification(
+            NotificationRecord(
+                citizen_name=problem.citizen_name,
+                type="update",
+                title="Problem rejected as a duplicate",
+                message=f"'{title}' was reviewed and closed as a duplicate: {decision.note}",
+                problem_id=problem.id,
+                problem_title=title,
+            )
+        )
+        return updated
+
+    # duplicate
+    updated = update_problem(problem_id, ProblemUpdate(
+        status=ProblemStatus.DUPLICATE_REJECTED,
+        duplicate_decision=DuplicateDecision.DUPLICATE,
+        duplicate_of_id=decision.merged_into_id or problem.duplicate_of_id,
+        verification_notes=decision.note,
+    ))
+    create_notification(
+        NotificationRecord(
+            citizen_name=problem.citizen_name,
+            type="update",
+            title="Problem rejected as a duplicate",
+            message=f"'{title}' was reviewed and closed as a duplicate: {decision.note}",
+            problem_id=problem.id,
+            problem_title=title,
+        )
+    )
+    return updated
+
+
+NON_MERGEABLE_STATUSES = {"assigned", "in_progress", "completed", "duplicate_rejected", "merged"}
+
+
+class CreateMergeRequestBody(BaseModel):
+    primary_problem_id: str
+    candidate_problem_ids: List[str]
+    officer: str = "Government Officer"
+    note: Optional[str] = None
+
+
+@app.post("/merge-requests", response_model=MergeRequestRecord)
+def create_merge_request_endpoint(body: CreateMergeRequestBody):
+    """Government proposes that up to MAX_CO_OWNERS other reports are the same problem as
+    `primary_problem_id`. Nothing is merged yet -- each candidate owner must accept, and then
+    the primary owner must separately approve each acceptance (see /respond and /approve)."""
+    if not body.candidate_problem_ids:
+        raise HTTPException(status_code=400, detail="At least one candidate problem is required")
+    if len(body.candidate_problem_ids) > MAX_CO_OWNERS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"A merge request can include at most {MAX_CO_OWNERS} candidate problems (3 owners total)",
+        )
+    if body.primary_problem_id in body.candidate_problem_ids:
+        raise HTTPException(status_code=400, detail="The primary problem cannot also be a candidate")
+
+    primary = get_problem(body.primary_problem_id)
+    if not primary:
+        raise HTTPException(status_code=404, detail="Primary problem not found")
+    if primary.status in NON_MERGEABLE_STATUSES:
+        raise HTTPException(status_code=409, detail="The primary problem is not in a state that can receive a merge")
+
+    candidates = []
+    for candidate_id in body.candidate_problem_ids:
+        candidate = get_problem(candidate_id)
+        if not candidate:
+            raise HTTPException(status_code=404, detail=f"Candidate problem {candidate_id} not found")
+        if candidate.status in NON_MERGEABLE_STATUSES:
+            raise HTTPException(
+                status_code=409,
+                detail=f"'{candidate.title or candidate.problem_text}' cannot be merged (status: {candidate.status})",
+            )
+        candidates.append(candidate)
+
+    try:
+        record = create_merge_request(primary, candidates, body.officer, body.note)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    for candidate in candidates:
+        create_notification(
+            NotificationRecord(
+                citizen_name=candidate.citizen_name,
+                type="info",
+                title="Is this the same problem as an existing report?",
+                message=(
+                    f"A government officer thinks your report '{candidate.title or candidate.problem_text}' "
+                    f"may be the same problem as '{primary.title or primary.problem_text}' "
+                    f"(reported by {primary.citizen_name}). If you agree, you can accept and join as a "
+                    f"co-owner of that report."
+                ),
+                problem_id=candidate.id,
+                problem_title=candidate.title or candidate.problem_text,
+            )
+        )
+    create_notification(
+        NotificationRecord(
+            citizen_name=primary.citizen_name,
+            type="info",
+            title="Merge request sent",
+            message=(
+                f"You proposed merging {len(candidates)} similar report(s) into "
+                f"'{primary.title or primary.problem_text}'. You'll be notified as each owner responds, "
+                f"and you'll need to approve anyone who accepts before they become a co-owner."
+            ),
+            problem_id=primary.id,
+            problem_title=primary.title or primary.problem_text,
+        )
+    )
+    return record
+
+
+@app.get("/merge-requests", response_model=List[MergeRequestRecord])
+def list_merge_requests_endpoint(citizen_name: Optional[str] = None, problem_id: Optional[str] = None, limit: int = 200):
+    return list_merge_requests(citizen_name=citizen_name, problem_id=problem_id, limit=min(max(limit, 1), 500))
+
+
+@app.get("/merge-requests/{request_id}", response_model=MergeRequestRecord)
+def get_merge_request_endpoint(request_id: str):
+    record = get_merge_request(request_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Merge request not found")
+    return record
+
+
+class MergeRequestResponseBody(BaseModel):
+    problem_id: str
+    citizen_name: str
+    response: Literal["accepted", "declined"]
+
+
+@app.post("/merge-requests/{request_id}/respond", response_model=MergeRequestRecord)
+def respond_to_merge_request_endpoint(request_id: str, body: MergeRequestResponseBody):
+    """A candidate problem's owner accepts or declines. Accepting alone does not make them a
+    co-owner yet -- the primary owner still has to approve (see /approve)."""
+    try:
+        record = respond_to_merge_request(request_id, body.problem_id, body.citizen_name, body.response)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+    member = next(m for m in record.members if m.problem_id == body.problem_id)
+    verb = "accepted" if body.response == "accepted" else "declined"
+    create_notification(
+        NotificationRecord(
+            citizen_name=record.primary_citizen_name,
+            type="update",
+            title=f"Merge request {verb}",
+            message=(
+                f"{member.citizen_name} {verb} the request to merge '{member.problem_title}' into "
+                f"'{record.primary_problem_title}'."
+                + (" You can now approve them as a co-owner." if body.response == "accepted" else "")
+            ),
+            problem_id=record.primary_problem_id,
+            problem_title=record.primary_problem_title,
+        )
+    )
+    return record
+
+
+class ApproveMergeRequestBody(BaseModel):
+    problem_id: str
+    citizen_name: str  # must be the primary problem's owner
+
+
+@app.post("/merge-requests/{request_id}/approve", response_model=MergeRequestRecord)
+def approve_merge_request_endpoint(request_id: str, body: ApproveMergeRequestBody):
+    """The primary owner approves a candidate who already accepted. This is the point at which
+    the candidate's problem is actually retired and its owner becomes a co-owner of the primary."""
+    try:
+        record, member = approve_merge_request_member(request_id, body.problem_id, body.citizen_name)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+    primary = get_problem(record.primary_problem_id)
+    candidate = get_problem(body.problem_id)
+    if primary and candidate:
+        new_co_owners = list(dict.fromkeys([*primary.co_owners, candidate.citizen_name]))
+        update_problem(primary.id, ProblemUpdate(
+            co_owners=new_co_owners,
+            supporters=primary.supporters + candidate.supporters,
+            evidence_attachments=[*primary.evidence_attachments, *candidate.evidence_attachments],
+        ))
+        update_problem(candidate.id, ProblemUpdate(
+            status=ProblemStatus.MERGED,
+            duplicate_decision=DuplicateDecision.MERGED,
+            merged_into_id=primary.id,
+            merge_reason=f"Joined as a co-owner of '{primary.title or primary.problem_text}'",
+        ))
+        create_notification(
+            NotificationRecord(
+                citizen_name=candidate.citizen_name,
+                type="success",
+                title="You're now a co-owner",
+                message=(
+                    f"{primary.citizen_name} approved your request to join "
+                    f"'{primary.title or primary.problem_text}'. You can now see and act on it from your "
+                    f"problems list."
+                ),
+                problem_id=primary.id,
+                problem_title=primary.title or primary.problem_text,
+            )
+        )
+    return record
+
+
 @app.post("/problems/{problem_id}/resubmit", response_model=ProblemBase)
 def resubmit_problem_endpoint(problem_id: str, action: CitizenProblemAction):
     """Let the owning citizen respond to a proof request and return a problem to review."""
     problem = get_problem(problem_id)
     if not problem:
         raise HTTPException(status_code=404, detail="Problem not found")
-    if problem.citizen_name != action.citizen_name:
+    if not is_owner(problem, action.citizen_name):
         raise HTTPException(status_code=403, detail="You can only update your own problems")
     if problem.status != "returned_for_correction":
         raise HTTPException(status_code=409, detail="Only problems sent back for correction can be resubmitted")
@@ -1391,15 +1829,11 @@ def resubmit_problem_endpoint(problem_id: str, action: CitizenProblemAction):
     if not updated:
         raise HTTPException(status_code=404, detail="Problem not found")
     title = updated.title or updated.problem_text
-    create_notification(
-        NotificationRecord(
-            citizen_name=updated.citizen_name,
-            type="success",
-            title="Problem resubmitted",
-            message=f"Your problem '{title}' was resubmitted for government review.",
-            problem_id=updated.id,
-            problem_title=title,
-        )
+    _notify_owners(
+        updated,
+        type="success",
+        title="Problem resubmitted",
+        message=f"Your problem '{title}' was resubmitted for government review.",
     )
     return updated
 
@@ -1410,19 +1844,15 @@ def delete_problem_endpoint(problem_id: str, citizen_name: str):
     problem = get_problem(problem_id)
     if not problem:
         raise HTTPException(status_code=404, detail="Problem not found")
-    if problem.citizen_name != citizen_name:
+    if not is_owner(problem, citizen_name):
         raise HTTPException(status_code=403, detail="You can only delete your own problems")
     if problem.status == "verified":
         raise HTTPException(status_code=409, detail="Verified problems cannot be deleted")
-    create_notification(
-        NotificationRecord(
-            citizen_name=problem.citizen_name,
-            type="info",
-            title="Problem deleted",
-            message=f"Your problem '{problem.title or problem.problem_text}' was deleted.",
-            problem_id=problem.id,
-            problem_title=problem.title or problem.problem_text,
-        )
+    _notify_owners(
+        problem,
+        type="info",
+        title="Problem deleted",
+        message=f"Your problem '{problem.title or problem.problem_text}' was deleted by {citizen_name}.",
     )
     # Volunteers still waiting on (or assigned to) this problem need to know it is gone.
     for volunteer in problem.volunteers:

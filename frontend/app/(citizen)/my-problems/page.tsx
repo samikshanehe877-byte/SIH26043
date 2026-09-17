@@ -1,15 +1,156 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, Building2, Eye, FileText, Clock, CheckCircle2, Trash2, Upload } from "lucide-react";
-import { Problem } from "@/types/problem";
+import { Calendar, Building2, Eye, FileText, Clock, CheckCircle2, Trash2, Upload, GitMerge, Check, X } from "lucide-react";
+import { MergeRequest, Problem } from "@/types/problem";
 import StatusBadge from "@/components/StatusBadge";
 import ProblemDetails from "@/components/ProblemDetails";
 import StatsCard from "@/components/StatsCard";
 import { useProblems } from "@/context/ProblemsContext";
+import { useAuth } from "@/context/AuthContext";
+
+function MergeRequestsPanel({ citizenName, onResolved }: { citizenName: string; onResolved: () => void }) {
+  const [requests, setRequests] = useState<MergeRequest[]>([]);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+
+  const load = () => {
+    fetch(`${apiUrl}/merge-requests?citizen_name=${encodeURIComponent(citizenName)}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => { if (Array.isArray(data)) setRequests(data.filter((r: MergeRequest) => r.status === "open")); })
+      .catch(() => undefined);
+  };
+
+  useEffect(load, [citizenName]);
+
+  const respond = async (request: MergeRequest, problemId: string, response: "accepted" | "declined") => {
+    setBusyKey(`${request.id}-${problemId}`);
+    setError("");
+    try {
+      const res = await fetch(`${apiUrl}/merge-requests/${request.id}/respond`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ problem_id: problemId, citizen_name: citizenName, response }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Could not respond to this merge request");
+      load();
+      onResolved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not respond to this merge request");
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const approve = async (request: MergeRequest, problemId: string) => {
+    setBusyKey(`${request.id}-${problemId}`);
+    setError("");
+    try {
+      const res = await fetch(`${apiUrl}/merge-requests/${request.id}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ problem_id: problemId, citizen_name: citizenName }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Could not approve this co-owner");
+      load();
+      onResolved();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not approve this co-owner");
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  if (requests.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      {error && <p className="text-xs font-semibold text-red-600">{error}</p>}
+      {requests.map((request) => {
+        const asCandidate = request.members.find((m) => m.citizen_name === citizenName);
+        const isPrimary = request.primary_citizen_name === citizenName;
+        return (
+          <div key={request.id} className="rounded-2xl border border-blue-200 bg-blue-50/60 p-4">
+            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.12em] text-blue-800">
+              <GitMerge size={13} /> Merge request
+            </div>
+
+            {!isPrimary && asCandidate && asCandidate.response === "pending" && (
+              <>
+                <p className="mt-2 text-sm text-slate-700">
+                  A government officer thinks your report{" "}
+                  <span className="font-semibold">&ldquo;{asCandidate.problem_title}&rdquo;</span> may be the same
+                  problem as <span className="font-semibold">&ldquo;{request.primary_problem_title}&rdquo;</span>{" "}
+                  (reported by {request.primary_citizen_name}). If you agree, you can join as a co-owner of that
+                  report.
+                </p>
+                {request.note && <p className="mt-1 text-xs italic text-slate-500">Officer&apos;s note: {request.note}</p>}
+                <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={() => respond(request, asCandidate.problem_id, "accepted")}
+                    disabled={busyKey === `${request.id}-${asCandidate.problem_id}`}
+                    className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    <Check size={13} /> Agree, this is the same problem
+                  </button>
+                  <button
+                    onClick={() => respond(request, asCandidate.problem_id, "declined")}
+                    disabled={busyKey === `${request.id}-${asCandidate.problem_id}`}
+                    className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                  >
+                    <X size={13} /> No, keep separate
+                  </button>
+                </div>
+              </>
+            )}
+
+            {!isPrimary && asCandidate && asCandidate.response !== "pending" && (
+              <p className="mt-2 text-sm text-slate-600">
+                You {asCandidate.response} this request
+                {asCandidate.response === "accepted" && !asCandidate.approved
+                  ? " -- waiting for the original owner to approve you as a co-owner."
+                  : ""}
+              </p>
+            )}
+
+            {isPrimary && (
+              <div className="mt-2 space-y-2">
+                <p className="text-sm text-slate-700">
+                  You proposed merging {request.members.length} similar report(s) into{" "}
+                  <span className="font-semibold">&ldquo;{request.primary_problem_title}&rdquo;</span>.
+                </p>
+                {request.members.map((member) => (
+                  <div key={member.problem_id} className="flex items-center justify-between rounded-lg bg-white px-3 py-2">
+                    <div>
+                      <p className="text-xs font-semibold text-slate-800">{member.problem_title}</p>
+                      <p className="text-xs text-slate-500">{member.citizen_name} -- {member.response}{member.approved ? ", approved" : ""}</p>
+                    </div>
+                    {member.response === "accepted" && !member.approved && (
+                      <button
+                        onClick={() => approve(request, member.problem_id)}
+                        disabled={busyKey === `${request.id}-${member.problem_id}`}
+                        className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        <Check size={13} /> Approve as co-owner
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 export default function MyProblemsPage() {
-  const { myProblems, toggleSupport, deleteProblem, resubmitProblem } = useProblems();
+  const { myProblems, toggleSupport, deleteProblem, resubmitProblem, refreshProblems } = useProblems();
+  const { user } = useAuth();
   const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
   const [proofFiles, setProofFiles] = useState<Record<string, File[]>>({});
   const [proofNotes, setProofNotes] = useState<Record<string, string>>({});
@@ -67,6 +208,8 @@ export default function MyProblemsPage() {
             Track the status and progress of all problems you have submitted.
           </p>
         </div>
+
+        {user && <MergeRequestsPanel citizenName={user.name} onResolved={refreshProblems} />}
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <StatsCard label="Total Submitted" value={problems.length} icon={FileText} color="blue" />

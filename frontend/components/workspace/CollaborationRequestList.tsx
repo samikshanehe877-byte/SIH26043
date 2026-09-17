@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import AttachmentGallery from "./AttachmentGallery";
+import { formatOwners } from "@/lib/owners";
 import { Building2, ChevronDown, ChevronUp, Factory, Inbox, MapPin, User } from "lucide-react";
 import {
   apiJson, CollaborationPreview, CollaborationRequestRecord, formatRelativeTime, notifyCollaborationRequestsChanged,
@@ -301,7 +302,11 @@ function ProblemPreview({ requestId, viewerType, viewerName }: { requestId: stri
         </div>
         <p className="mt-1 whitespace-pre-line text-sm text-slate-600">{project.description}</p>
         <div className="mt-1.5 flex flex-wrap gap-3 text-xs text-slate-500">
-          <span className="flex items-center gap-1"><User size={12} /> Reported by {project.citizen_name}</span>
+          <span className="flex items-center gap-1">
+            <User size={12} />
+            {(project.co_owners?.length ?? 0) > 0 ? "Jointly reported by " : "Reported by "}
+            {formatOwners(project.citizen_name, project.co_owners)}
+          </span>
           {project.location && <span className="flex items-center gap-1"><MapPin size={12} /> {project.location}</span>}
         </div>
       </div>

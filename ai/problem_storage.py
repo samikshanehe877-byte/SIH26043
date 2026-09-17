@@ -26,11 +26,27 @@ class ProblemStatus(str):
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     REJECTED = "rejected"
+    DUPLICATE_REJECTED = "duplicate_rejected"  # auto- or government-flagged as a duplicate; dead end
+    MERGED = "merged"  # government merged this into another problem; see merged_into_id
+
+
+class DuplicateDecision(str):
+    """Where a problem stands in the duplicate-detection pipeline (see duplicate_engine.py)."""
+    NONE = "none"                              # no meaningful match found
+    POTENTIAL_DUPLICATE = "potential_duplicate"  # 60-89% match; created normally, flagged for government
+    DUPLICATE = "duplicate"                     # >=90% match; blocked from the normal pipeline
+    DISTINCT = "distinct"                       # government reviewed a potential duplicate and cleared it
+    MERGED = "merged"                           # government merged this into another problem
 
 
 # Statuses a problem can be browsed in. Anything earlier (submitted, under review, returned for
 # correction) or rejected is visible only to the citizen who reported it and to government reviewers.
 PUBLIC_PROBLEM_STATUSES = ["verified", "assigned", "in_progress", "completed"]
+
+# Existing problems compared against when checking a new submission for duplicates.
+# A problem that's already a dead end (rejected outright, already flagged as a duplicate,
+# or merged away) contributes nothing useful to compare against.
+DUPLICATE_CHECK_EXCLUDED_STATUSES = {"rejected", "duplicate_rejected", "merged"}
 
 class ProblemBase(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -72,7 +88,19 @@ class ProblemBase(BaseModel):
     classification: Optional[Dict] = None
     priority: Optional[Dict] = None
     summary: Optional[Dict] = None
-    duplicates: List[Dict] = Field(default_factory=list)
+    duplicates: List[Dict] = Field(default_factory=list)  # legacy text-only check from /analyze
+    # Persistent composite duplicate-detection pipeline (semantic + location + domain +
+    # affected-area + characteristics); see duplicate_engine.py. Independent of `duplicates` above.
+    duplicate_score: Optional[float] = None
+    duplicate_of_id: Optional[str] = None
+    duplicate_decision: str = DuplicateDecision.NONE
+    duplicate_reasons: List[str] = Field(default_factory=list)
+    duplicate_breakdown: Optional[Dict] = None  # {"semantic":.., "location":.., "domain":.., ...}
+    merged_into_id: Optional[str] = None
+    merge_reason: Optional[str] = None
+    # Additional owners gained through a negotiated merge request (see merge_requests below).
+    # citizen_name remains the primary/original owner; co_owners is capped at 2 (3 owners total).
+    co_owners: List[str] = Field(default_factory=list)
     image_analysis: Optional[Dict] = None  # New field for image analysis
     # Matching results (to be filled after matching)
     universities: Optional[List[Dict]] = None
@@ -152,6 +180,14 @@ class ProblemUpdate(BaseModel):
     priority: Optional[Dict] = None
     summary: Optional[Dict] = None
     duplicates: Optional[List[Dict]] = None
+    duplicate_score: Optional[float] = None
+    duplicate_of_id: Optional[str] = None
+    duplicate_decision: Optional[str] = None
+    duplicate_reasons: Optional[List[str]] = None
+    duplicate_breakdown: Optional[Dict] = None
+    merged_into_id: Optional[str] = None
+    merge_reason: Optional[str] = None
+    co_owners: Optional[List[str]] = None
     universities: Optional[List[Dict]] = None
     mentors: Optional[List[Dict]] = None
     industry_partners: Optional[List[Dict]] = None
@@ -178,7 +214,15 @@ _JSON_FIELDS = {
     "verification_history",
     "required_capabilities",
     "volunteers",
+    "duplicate_reasons",
+    "duplicate_breakdown",
+    "co_owners",
 }
+
+
+def is_owner(problem: ProblemBase, citizen_name: str) -> bool:
+    """True if `citizen_name` is the primary owner or a co-owner gained through a merge request."""
+    return citizen_name == problem.citizen_name or citizen_name in (problem.co_owners or [])
 
 
 def _connection() -> sqlite3.Connection:
@@ -220,6 +264,19 @@ def initialize_storage() -> None:
             )
             """
         )
+        # Negotiated multi-party merge requests: government proposes merging up to 2 candidate
+        # problems into a primary one; each candidate owner accepts/declines, and the primary
+        # owner must separately approve each acceptance before that owner becomes a co-owner.
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS merge_requests (
+                id TEXT PRIMARY KEY,
+                payload TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
         # Project workspace chat and progress updates (see project_storage.py)
         for table in ("project_messages", "project_updates"):
             connection.execute(
@@ -232,6 +289,39 @@ def initialize_storage() -> None:
                 )
                 """
             )
+        # Persistent duplicate-detection pipeline (see duplicate_engine.py): one cached embedding
+        # per problem so repeated checks don't re-embed the whole corpus every time, plus an
+        # audit trail of every pairwise comparison a submission ever triggered.
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS problem_embeddings (
+                problem_id TEXT PRIMARY KEY,
+                embedding TEXT NOT NULL,
+                model TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS problem_similarities (
+                id TEXT PRIMARY KEY,
+                problem_a_id TEXT NOT NULL,
+                problem_b_id TEXT NOT NULL,
+                semantic_score REAL NOT NULL,
+                location_score REAL NOT NULL,
+                domain_score REAL NOT NULL,
+                affected_area_score REAL NOT NULL,
+                characteristics_score REAL NOT NULL,
+                overall_score REAL NOT NULL,
+                tier TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_problem_similarities_a ON problem_similarities(problem_a_id)"
+        )
 
 
 def _serialize(problem: ProblemBase) -> str:
@@ -300,8 +390,15 @@ def list_problems(
             conditions.append(f"json_extract(payload, '$.status') IN ({', '.join('?' for _ in statuses)})")
             params.extend(statuses)
         if citizen_name:
-            conditions.append("json_extract(payload, '$.citizen_name') = ?")
+            # Matches the primary owner, or a co-owner gained through an approved merge
+            # request. co_owners is a small JSON array of plain names, so a quoted-substring
+            # match is a safe, portable stand-in for a real array-membership check here.
+            conditions.append(
+                "(json_extract(payload, '$.citizen_name') = ? OR "
+                "json_extract(payload, '$.co_owners') LIKE ?)"
+            )
             params.append(citizen_name)
+            params.append(f'%"{citizen_name}"%')
         if assigned_university:
             conditions.append("json_extract(payload, '$.assigned_university') = ?")
             params.append(assigned_university)
@@ -321,10 +418,71 @@ def list_problems(
     return problems
 
 def delete_problem(problem_id: str) -> bool:
-    """Delete a problem."""
+    """Delete a problem, and any embedding/similarity rows that reference it."""
     with _connection() as connection:
         cursor = connection.execute("DELETE FROM problems WHERE id = ?", (problem_id,))
+        connection.execute("DELETE FROM problem_embeddings WHERE problem_id = ?", (problem_id,))
+        connection.execute(
+            "DELETE FROM problem_similarities WHERE problem_a_id = ? OR problem_b_id = ?",
+            (problem_id, problem_id),
+        )
     return cursor.rowcount > 0
+
+
+# ---------------------------------------------------------------------------
+# Persistent duplicate-detection pipeline: cached embeddings + a similarity audit trail.
+# See duplicate_engine.py for the scoring logic that populates these.
+# ---------------------------------------------------------------------------
+
+def save_problem_embedding(problem_id: str, vector: List[float], model: str) -> None:
+    with _connection() as connection:
+        connection.execute(
+            """
+            INSERT INTO problem_embeddings (problem_id, embedding, model, created_at)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(problem_id) DO UPDATE SET
+                embedding = excluded.embedding, model = excluded.model, created_at = excluded.created_at
+            """,
+            (problem_id, json.dumps([float(x) for x in vector]), model, datetime.now().isoformat()),
+        )
+
+
+def get_problem_embedding(problem_id: str) -> Optional[List[float]]:
+    with _connection() as connection:
+        row = connection.execute(
+            "SELECT embedding FROM problem_embeddings WHERE problem_id = ?", (problem_id,)
+        ).fetchone()
+    return json.loads(row["embedding"]) if row else None
+
+
+def save_problem_similarity(problem_a_id: str, problem_b_id: str, scores: Dict[str, float], tier: str) -> None:
+    """Records one pairwise comparison a submission triggered, for the government dashboard's
+    'why was this flagged' view and for later audit."""
+    with _connection() as connection:
+        connection.execute(
+            """
+            INSERT INTO problem_similarities
+                (id, problem_a_id, problem_b_id, semantic_score, location_score, domain_score,
+                 affected_area_score, characteristics_score, overall_score, tier, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                str(uuid.uuid4()), problem_a_id, problem_b_id,
+                scores["semantic"], scores["location"], scores["domain"],
+                scores["affected_area"], scores["characteristics"], scores["overall"],
+                tier, datetime.now().isoformat(),
+            ),
+        )
+
+
+def list_problem_similarities(problem_id: str) -> List[Dict]:
+    with _connection() as connection:
+        rows = connection.execute(
+            "SELECT * FROM problem_similarities WHERE problem_a_id = ? OR problem_b_id = ? "
+            "ORDER BY datetime(created_at) DESC",
+            (problem_id, problem_id),
+        ).fetchall()
+    return [dict(row) for row in rows]
 
 def create_notification(notification: NotificationRecord) -> NotificationRecord:
     with _connection() as connection:
@@ -609,3 +767,179 @@ def transition_collaboration_request(
     }]
     record.updated_at = datetime.now()
     return _save_collaboration_request(record)
+
+
+# ---------------------------------------------------------------------------
+# Negotiated multi-party merge requests.
+#
+# A government officer proposes merging one or more "candidate" problems into a "primary"
+# problem. Each candidate's owner independently accepts or declines. Accepting does not, by
+# itself, make that owner a co-owner -- the primary owner must separately approve each
+# acceptance. Only then is that candidate's problem retired (status "merged") and its owner
+# added to the primary problem's co_owners. At most 2 candidates may be approved onto a given
+# primary problem, for 3 owners total (primary + 2 co-owners).
+# ---------------------------------------------------------------------------
+
+MAX_CO_OWNERS = 2  # + the primary owner = 3 total
+
+
+class MergeRequestMember(BaseModel):
+    problem_id: str
+    citizen_name: str
+    problem_title: str
+    response: str = "pending"  # pending | accepted | declined
+    approved: bool = False
+    responded_at: Optional[str] = None
+    approved_at: Optional[str] = None
+
+
+class MergeRequestRecord(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    primary_problem_id: str
+    primary_citizen_name: str
+    primary_problem_title: str
+    initiated_by: str  # the government officer who proposed the merge
+    note: Optional[str] = None
+    status: str = "open"  # open | closed
+    members: List[MergeRequestMember] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+
+def _save_merge_request(record: MergeRequestRecord, insert: bool = False) -> MergeRequestRecord:
+    record.updated_at = datetime.now()
+    with _connection() as connection:
+        if insert:
+            connection.execute(
+                "INSERT INTO merge_requests (id, payload, created_at, updated_at) VALUES (?, ?, ?, ?)",
+                (record.id, record.model_dump_json(), record.created_at.isoformat(), record.updated_at.isoformat()),
+            )
+        else:
+            connection.execute(
+                "UPDATE merge_requests SET payload = ?, updated_at = ? WHERE id = ?",
+                (record.model_dump_json(), record.updated_at.isoformat(), record.id),
+            )
+    return record
+
+
+def _is_merge_request_resolved(record: MergeRequestRecord) -> bool:
+    """True once every member has either declined or been approved -- nothing left pending
+    or merely accepted-but-unapproved."""
+    return all(m.response == "declined" or m.approved for m in record.members)
+
+
+def create_merge_request(
+    primary_problem: ProblemBase, candidates: List[ProblemBase], initiated_by: str, note: Optional[str] = None
+) -> MergeRequestRecord:
+    if not candidates:
+        raise ValueError("At least one candidate problem is required")
+    if len(candidates) > MAX_CO_OWNERS:
+        raise ValueError(f"A merge request can include at most {MAX_CO_OWNERS} candidate problems")
+    record = MergeRequestRecord(
+        primary_problem_id=primary_problem.id,
+        primary_citizen_name=primary_problem.citizen_name,
+        primary_problem_title=primary_problem.title or primary_problem.problem_text,
+        initiated_by=initiated_by,
+        note=note,
+        members=[
+            MergeRequestMember(
+                problem_id=candidate.id,
+                citizen_name=candidate.citizen_name,
+                problem_title=candidate.title or candidate.problem_text,
+            )
+            for candidate in candidates
+        ],
+    )
+    return _save_merge_request(record, insert=True)
+
+
+def get_merge_request(request_id: str) -> Optional[MergeRequestRecord]:
+    with _connection() as connection:
+        row = connection.execute("SELECT payload FROM merge_requests WHERE id = ?", (request_id,)).fetchone()
+    return MergeRequestRecord.model_validate(json.loads(row["payload"])) if row else None
+
+
+def list_merge_requests(
+    citizen_name: Optional[str] = None,
+    problem_id: Optional[str] = None,
+    status: Optional[str] = None,
+    limit: int = 200,
+) -> List[MergeRequestRecord]:
+    """Merge-request volume is expected to stay tiny, so filtering (beyond `status`, which is a
+    flat field) happens in Python against the small full set rather than via nested JSON SQL."""
+    conditions = []
+    params: list = []
+    if status:
+        conditions.append("json_extract(payload, '$.status') = ?")
+        params.append(status)
+    where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
+    with _connection() as connection:
+        rows = connection.execute(
+            f"SELECT payload FROM merge_requests{where_clause} ORDER BY datetime(created_at) DESC LIMIT ?",
+            [*params, limit],
+        ).fetchall()
+    records = [MergeRequestRecord.model_validate(json.loads(row["payload"])) for row in rows]
+    if problem_id:
+        records = [
+            r for r in records
+            if r.primary_problem_id == problem_id or any(m.problem_id == problem_id for m in r.members)
+        ]
+    if citizen_name:
+        records = [
+            r for r in records
+            if r.primary_citizen_name == citizen_name or any(m.citizen_name == citizen_name for m in r.members)
+        ]
+    return records
+
+
+def respond_to_merge_request(request_id: str, problem_id: str, citizen_name: str, response: str) -> MergeRequestRecord:
+    """A candidate owner accepts or declines. Raises ValueError for a bad state, PermissionError
+    if `citizen_name` doesn't own that candidate problem."""
+    if response not in ("accepted", "declined"):
+        raise ValueError("response must be 'accepted' or 'declined'")
+    record = get_merge_request(request_id)
+    if not record:
+        raise ValueError("Merge request not found")
+    if record.status != "open":
+        raise ValueError("This merge request is closed")
+    member = next((m for m in record.members if m.problem_id == problem_id), None)
+    if not member:
+        raise ValueError("That problem is not part of this merge request")
+    if member.citizen_name != citizen_name:
+        raise PermissionError("Only the owner of that problem can respond to this merge request")
+    if member.response != "pending":
+        raise ValueError(f"Already responded ({member.response})")
+
+    member.response = response
+    member.responded_at = datetime.now().isoformat()
+    if _is_merge_request_resolved(record):
+        record.status = "closed"
+    return _save_merge_request(record)
+
+
+def approve_merge_request_member(request_id: str, problem_id: str, primary_citizen_name: str) -> "tuple[MergeRequestRecord, MergeRequestMember]":
+    """The primary owner approves a candidate who already accepted, making them a co-owner.
+    Raises PermissionError if the caller isn't the primary owner, ValueError for a bad state
+    or if the 3-owner cap would be exceeded."""
+    record = get_merge_request(request_id)
+    if not record:
+        raise ValueError("Merge request not found")
+    if record.primary_citizen_name != primary_citizen_name:
+        raise PermissionError("Only the primary problem's owner can approve a co-owner")
+    member = next((m for m in record.members if m.problem_id == problem_id), None)
+    if not member:
+        raise ValueError("That problem is not part of this merge request")
+    if member.response != "accepted":
+        raise ValueError("This owner has not accepted the merge request yet")
+    if member.approved:
+        raise ValueError("Already approved")
+    already_approved = sum(1 for m in record.members if m.approved)
+    if already_approved >= MAX_CO_OWNERS:
+        raise ValueError(f"This problem already has the maximum of {MAX_CO_OWNERS + 1} owners")
+
+    member.approved = True
+    member.approved_at = datetime.now().isoformat()
+    if _is_merge_request_resolved(record):
+        record.status = "closed"
+    saved = _save_merge_request(record)
+    return saved, next(m for m in saved.members if m.problem_id == problem_id)
