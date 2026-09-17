@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { getOrganizationName, useAuth } from "@/context/AuthContext";
 import { Problem } from "@/types/problem";
 
 interface IndustryProblemsContextType {
@@ -27,7 +27,7 @@ export function IndustryProblemsProvider({ children }: { children: ReactNode }) 
 
     try {
       const response = await fetch(
-        `${apiUrl}/problems?assigned_industry=${encodeURIComponent(user.name)}&limit=500`,
+        `${apiUrl}/problems?assigned_industry=${encodeURIComponent(getOrganizationName(user))}&limit=500`,
         { cache: "no-store" }
       );
 
@@ -47,7 +47,7 @@ export function IndustryProblemsProvider({ children }: { children: ReactNode }) 
 
   useEffect(() => {
     fetchProblems();
-  }, [apiUrl, isAuthenticated, user?.name]);
+  }, [apiUrl, isAuthenticated, user?.name, user?.organizationName]);
 
   return (
     <IndustryProblemsContext.Provider

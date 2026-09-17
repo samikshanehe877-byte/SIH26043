@@ -52,16 +52,23 @@ from frontend_adapter import to_university_challenge, to_university_mentor
 from department_matcher import list_departments_for_university, match_departments
 from problem_structurer import structure_raw_problem, StructuredProblemDraft
 from problem_storage import (
+    COLLABORATION_PARTIES,
+    NOTIFICATION_AUDIENCES,
+    CollaborationRequestRecord,
     ProblemBase,
     ProblemUpdate,
     NotificationRecord,
+    create_collaboration_request,
     create_problem,
     create_notification,
+    get_collaboration_request,
     get_problem,
+    list_collaboration_requests,
     list_notifications,
     list_problems,
     mark_all_notifications_read,
     mark_notification_read,
+    transition_collaboration_request,
     update_problem,
 )
 
@@ -132,6 +139,7 @@ class VerificationDecision(BaseModel):
 
 class NotificationReadRequest(BaseModel):
     citizen_name: str
+    audience: Optional[str] = None
 
 class CitizenProblemAction(BaseModel):
     citizen_name: str
@@ -164,6 +172,34 @@ class VolunteerRequest(BaseModel):
 class SelectVolunteerRequest(BaseModel):
     solver_type: str
     solver_name: str
+
+
+class CreateCollaborationRequest(BaseModel):
+    requested_by: str  # "university" | "industry"
+    university_name: str
+    industry_name: str
+    requester_contact: Optional[str] = None
+    problem_id: Optional[str] = None
+    challenge_title: str
+    problem_description: Optional[str] = None
+    category: Optional[str] = None
+    support_types: List[str] = []
+    description: Optional[str] = None
+
+
+class CollaborationAction(BaseModel):
+    actor_type: str  # "university" | "industry"
+    actor_name: str
+    action: Literal["accept", "reject", "clarify", "reply", "withdraw"]
+    note: Optional[str] = None
+
+
+def _validate_solver(solver_type: str, solver_name: str) -> None:
+    """Volunteer alerts are delivered to solver_name, so it must be a real organisation."""
+    if solver_type not in COLLABORATION_PARTIES:
+        raise HTTPException(status_code=400, detail="solver_type must be 'university' or 'industry'")
+    if not solver_name or not solver_name.strip():
+        raise HTTPException(status_code=400, detail="solver_name is required")
 
 
 @app.get("/health")
@@ -210,6 +246,7 @@ def create_problem_endpoint(problem: ProblemBase):
 def volunteer_for_problem_endpoint(problem_id: str, req: VolunteerRequest):
     """University or industry volunteers to solve a verified problem."""
     from problem_storage import add_volunteer, create_notification
+    _validate_solver(req.solver_type, req.solver_name)
     try:
         problem = add_volunteer(problem_id, req.solver_type, req.solver_name, req.proposal or "")
     except ValueError as e:
@@ -221,6 +258,7 @@ def volunteer_for_problem_endpoint(problem_id: str, req: VolunteerRequest):
     create_notification(
         NotificationRecord(
             citizen_name=problem.citizen_name,
+            category="volunteer",
             type="info",
             title="New volunteer proposal",
             message=f"{req.solver_name} ({req.solver_type}) volunteered to solve your problem '{title}'.",
@@ -232,6 +270,8 @@ def volunteer_for_problem_endpoint(problem_id: str, req: VolunteerRequest):
     create_notification(
         NotificationRecord(
             citizen_name=req.solver_name,
+            audience=req.solver_type,
+            category="volunteer",
             type="info",
             title="Volunteer request submitted",
             message=f"Your volunteer proposal for '{title}' has been submitted and is awaiting the problem owner's decision.",
@@ -246,6 +286,7 @@ def volunteer_for_problem_endpoint(problem_id: str, req: VolunteerRequest):
 def withdraw_volunteer_endpoint(problem_id: str, req: VolunteerRequest):
     """A volunteer withdraws their proposal before the giver has accepted anyone."""
     from problem_storage import withdraw_volunteer, create_notification
+    _validate_solver(req.solver_type, req.solver_name)
     try:
         problem = withdraw_volunteer(problem_id, req.solver_type, req.solver_name)
     except ValueError as e:
@@ -257,6 +298,7 @@ def withdraw_volunteer_endpoint(problem_id: str, req: VolunteerRequest):
     create_notification(
         NotificationRecord(
             citizen_name=problem.citizen_name,
+            category="volunteer",
             type="info",
             title="Volunteer request withdrawn",
             message=f"{req.solver_name} ({req.solver_type}) withdrew their proposal for '{title}'.",
@@ -268,6 +310,8 @@ def withdraw_volunteer_endpoint(problem_id: str, req: VolunteerRequest):
     create_notification(
         NotificationRecord(
             citizen_name=req.solver_name,
+            audience=req.solver_type,
+            category="volunteer",
             type="info",
             title="Volunteer request withdrawn",
             message=f"Your volunteer proposal for '{title}' has been withdrawn successfully.",
@@ -282,6 +326,7 @@ def withdraw_volunteer_endpoint(problem_id: str, req: VolunteerRequest):
 def select_volunteer_endpoint(problem_id: str, req: SelectVolunteerRequest):
     """Giver selects one volunteer; chosen is accepted, others are rejected."""
     from problem_storage import select_volunteer, create_notification
+    _validate_solver(req.solver_type, req.solver_name)
     try:
         problem = select_volunteer(problem_id, req.solver_type, req.solver_name)
     except ValueError as e:
@@ -293,6 +338,7 @@ def select_volunteer_endpoint(problem_id: str, req: SelectVolunteerRequest):
     create_notification(
         NotificationRecord(
             citizen_name=problem.citizen_name,
+            category="volunteer",
             type="success",
             title="Volunteer accepted",
             message=f"Your problem '{title}' has been assigned to {req.solver_name} ({req.solver_type}).",
@@ -304,6 +350,8 @@ def select_volunteer_endpoint(problem_id: str, req: SelectVolunteerRequest):
     create_notification(
         NotificationRecord(
             citizen_name=req.solver_name,
+            audience=req.solver_type,
+            category="volunteer",
             type="success",
             title="Volunteer request accepted",
             message=f"Your volunteer proposal for '{title}' has been accepted by the problem owner. You are now assigned to solve this problem.",
@@ -317,6 +365,8 @@ def select_volunteer_endpoint(problem_id: str, req: SelectVolunteerRequest):
             create_notification(
                 NotificationRecord(
                     citizen_name=v["solver_name"],
+                    audience=v["solver_type"],
+                    category="volunteer",
                     type="update",
                     title="Volunteer request not selected",
                     message=f"Your proposal for '{title}' was not selected. Another solver has been chosen.",
@@ -341,9 +391,17 @@ def get_problem_endpoint(problem_id: str):
     return problem
 
 
+def _check_audience(audience: Optional[str]) -> None:
+    if audience and audience not in NOTIFICATION_AUDIENCES:
+        raise HTTPException(status_code=400, detail=f"audience must be one of {sorted(NOTIFICATION_AUDIENCES)}")
+
+
 @app.get("/notifications")
-def get_notifications(citizen_name: str, limit: int = 100):
-    return list_notifications(citizen_name, limit=min(max(limit, 1), 500))
+def get_notifications(citizen_name: str, limit: int = 100, audience: Optional[str] = None):
+    """`citizen_name` is the recipient (a citizen name or an organisation name);
+    pass `audience` so each portal only sees its own alerts."""
+    _check_audience(audience)
+    return list_notifications(citizen_name, limit=min(max(limit, 1), 500), audience=audience)
 
 
 @app.patch("/notifications/{notification_id}/read")
@@ -356,8 +414,123 @@ def read_notification(notification_id: str):
 
 @app.post("/notifications/read-all")
 def read_all_notifications(request: NotificationReadRequest):
-    mark_all_notifications_read(request.citizen_name)
+    _check_audience(request.audience)
+    mark_all_notifications_read(request.citizen_name, audience=request.audience)
     return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# University <-> industry collaboration requests
+# ---------------------------------------------------------------------------
+
+def _notify_party(record: CollaborationRequestRecord, party: str, type: str, title: str, message: str) -> None:
+    create_notification(
+        NotificationRecord(
+            citizen_name=record.party_name(party),
+            audience=party,
+            category="collaboration",
+            type=type,
+            title=title,
+            message=message,
+            problem_id=record.problem_id,
+            problem_title=record.challenge_title,
+            collaboration_request_id=record.id,
+        )
+    )
+
+
+@app.post("/collaboration-requests", response_model=CollaborationRequestRecord, status_code=201)
+def create_collaboration_request_endpoint(req: CreateCollaborationRequest):
+    """A university asks an industry partner for support (or vice versa). Alerts both sides."""
+    if req.requested_by not in COLLABORATION_PARTIES:
+        raise HTTPException(status_code=400, detail="requested_by must be 'university' or 'industry'")
+    if not req.university_name.strip() or not req.industry_name.strip():
+        raise HTTPException(status_code=400, detail="university_name and industry_name are required")
+    if not req.challenge_title.strip():
+        raise HTTPException(status_code=400, detail="challenge_title is required")
+    if req.problem_id and not get_problem(req.problem_id):
+        raise HTTPException(status_code=404, detail="Problem not found")
+
+    open_duplicates = [
+        existing for existing in list_collaboration_requests(
+            university_name=req.university_name, industry_name=req.industry_name, problem_id=req.problem_id,
+        )
+        if existing.status in ("pending", "clarification_needed") and existing.challenge_title == req.challenge_title
+    ]
+    if open_duplicates:
+        raise HTTPException(status_code=409, detail="An open collaboration request for this challenge already exists")
+
+    record = create_collaboration_request(CollaborationRequestRecord(**req.model_dump()))
+    requester, responder = record.requested_by, record.responder
+    support = ", ".join(record.support_types) or "collaboration"
+    _notify_party(
+        record, responder, "info", "New collaboration request",
+        f"{record.party_name(requester)} requested {support} for '{record.challenge_title}'.",
+    )
+    _notify_party(
+        record, requester, "info", "Collaboration request sent",
+        f"Your request to {record.party_name(responder)} for '{record.challenge_title}' is awaiting their response.",
+    )
+    return record
+
+
+@app.get("/collaboration-requests", response_model=List[CollaborationRequestRecord])
+def list_collaboration_requests_endpoint(
+    university_name: Optional[str] = None,
+    industry_name: Optional[str] = None,
+    status: Optional[str] = None,
+    problem_id: Optional[str] = None,
+    limit: int = 100,
+):
+    return list_collaboration_requests(
+        university_name=university_name, industry_name=industry_name,
+        status=status, problem_id=problem_id, limit=min(max(limit, 1), 500),
+    )
+
+
+@app.get("/collaboration-requests/{request_id}", response_model=CollaborationRequestRecord)
+def get_collaboration_request_endpoint(request_id: str):
+    record = get_collaboration_request(request_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Collaboration request not found")
+    return record
+
+
+@app.post("/collaboration-requests/{request_id}/actions", response_model=CollaborationRequestRecord)
+def act_on_collaboration_request_endpoint(request_id: str, req: CollaborationAction):
+    """Accept / reject / ask for clarification (receiver), or reply / withdraw (requester).
+    Every step alerts the other side."""
+    note = (req.note or "").strip()
+    if req.action in ("reject", "clarify", "reply") and not note:
+        raise HTTPException(status_code=400, detail=f"A note is required to {req.action}")
+    try:
+        record = transition_collaboration_request(request_id, req.actor_type, req.actor_name, req.action, note)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    if not record:
+        raise HTTPException(status_code=404, detail="Collaboration request not found")
+
+    title = record.challenge_title
+    actor = record.party_name(req.actor_type)
+    other = record.responder if req.actor_type == record.requested_by else record.requested_by
+    alerts = {
+        "accept": ("success", "Collaboration request accepted", f"{actor} accepted your collaboration request for '{title}'."),
+        "reject": ("update", "Collaboration request declined", f"{actor} declined your collaboration request for '{title}': {note}"),
+        "clarify": ("warning", "Clarification requested", f"{actor} needs more details on your request for '{title}': {note}"),
+        "reply": ("info", "Clarification provided", f"{actor} replied on the collaboration request for '{title}': {note}"),
+        "withdraw": ("update", "Collaboration request withdrawn", f"{actor} withdrew their collaboration request for '{title}'."),
+    }
+    alert_type, alert_title, alert_message = alerts[req.action]
+    _notify_party(record, other, alert_type, alert_title, alert_message)
+
+    if req.action == "accept" and record.problem_id:
+        # Link the industry partner to the problem so it shows under their active collaborations.
+        problem = get_problem(record.problem_id)
+        if problem and not problem.assigned_industry:
+            update_problem(record.problem_id, ProblemUpdate(assigned_industry=record.industry_name))
+    return record
 
 
 @app.post("/problems/{problem_id}/analyze", response_model=AnalyzeStoredProblemResponse)
@@ -555,79 +728,6 @@ def verify_problem_endpoint(problem_id: str, decision: VerificationDecision):
             problem_title=problem.title or problem.problem_text,
         )
     )
-    # Notify all volunteers about the verification decision
-    for v in problem.volunteers:
-        if v.get("status") in ("volunteered", "accepted"):
-            if decision.decision == "approve":
-                v_notif_type = "success"
-                v_title = "Problem verified"
-                v_message = f"The problem '{problem.title or problem.problem_text}' you volunteered for has been verified and published."
-            elif decision.decision == "reject":
-                v_notif_type = "update"
-                v_title = "Problem rejected"
-                v_message = f"The problem '{problem.title or problem.problem_text}' you volunteered for was rejected by the government."
-            else:
-                v_notif_type = "warning"
-                v_title = "Additional proof requested"
-                v_message = f"Additional proof has been requested for the problem '{problem.title or problem.problem_text}' you volunteered for."
-            create_notification(
-                NotificationRecord(
-                    citizen_name=v["solver_name"],
-                    type=v_notif_type,
-                    title=v_title,
-                    message=v_message,
-                    problem_id=problem.id,
-                    problem_title=problem.title or problem.problem_text,
-                )
-            )
-    # Notify assigned university if present
-    if problem.assigned_university:
-        if decision.decision == "approve":
-            u_notif_type = "success"
-            u_title = "Problem verified"
-            u_message = f"The problem '{problem.title or problem.problem_text}' assigned to your institution has been verified and published."
-        elif decision.decision == "reject":
-            u_notif_type = "update"
-            u_title = "Problem rejected"
-            u_message = f"The problem '{problem.title or problem.problem_text}' assigned to your institution was rejected by the government."
-        else:
-            u_notif_type = "warning"
-            u_title = "Additional proof requested"
-            u_message = f"Additional proof has been requested for the problem '{problem.title or problem.problem_text}' assigned to your institution."
-        create_notification(
-            NotificationRecord(
-                citizen_name=problem.assigned_university,
-                type=u_notif_type,
-                title=u_title,
-                message=u_message,
-                problem_id=problem.id,
-                problem_title=problem.title or problem.problem_text,
-            )
-        )
-    # Notify assigned industry partner if present
-    if problem.assigned_industry:
-        if decision.decision == "approve":
-            i_notif_type = "success"
-            i_title = "Problem verified"
-            i_message = f"The problem '{problem.title or problem.problem_text}' assigned to your organization has been verified and published."
-        elif decision.decision == "reject":
-            i_notif_type = "update"
-            i_title = "Problem rejected"
-            i_message = f"The problem '{problem.title or problem.problem_text}' assigned to your organization was rejected by the government."
-        else:
-            i_notif_type = "warning"
-            i_title = "Additional proof requested"
-            i_message = f"Additional proof has been requested for the problem '{problem.title or problem.problem_text}' assigned to your organization."
-        create_notification(
-            NotificationRecord(
-                citizen_name=problem.assigned_industry,
-                type=i_notif_type,
-                title=i_title,
-                message=i_message,
-                problem_id=problem.id,
-                problem_title=problem.title or problem.problem_text,
-            )
-        )
     return problem
 
 
@@ -695,6 +795,21 @@ def delete_problem_endpoint(problem_id: str, citizen_name: str):
             problem_title=problem.title or problem.problem_text,
         )
     )
+    # Volunteers still waiting on (or assigned to) this problem need to know it is gone.
+    for volunteer in problem.volunteers:
+        if volunteer.get("status") in ("volunteered", "accepted") and volunteer.get("solver_name"):
+            create_notification(
+                NotificationRecord(
+                    citizen_name=volunteer["solver_name"],
+                    audience=volunteer.get("solver_type", "university"),
+                    category="volunteer",
+                    type="warning",
+                    title="Problem withdrawn by owner",
+                    message=f"'{problem.title or problem.problem_text}' was deleted by its owner, so your volunteer proposal is closed.",
+                    problem_id=problem.id,
+                    problem_title=problem.title or problem.problem_text,
+                )
+            )
     from problem_storage import delete_problem
     if not delete_problem(problem_id):
         raise HTTPException(status_code=404, detail="Problem not found")

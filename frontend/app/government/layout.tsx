@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { AuthProvider } from "@/context/AuthContext";
 import GovernmentSidebar from "@/components/government/GovernmentSidebar";
 import GovernmentBottomNavigation from "@/components/government/GovernmentBottomNavigation";
+import { requirePortalRole } from "@/lib/requirePortalRole";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "SolveTogether — Government Portal",
@@ -9,7 +12,9 @@ export const metadata: Metadata = {
     "Government-governed regional platform for verification, monitoring, and impact oversight of societal problem-solving projects.",
 };
 
-export default function GovernmentLayout({ children }: { children: React.ReactNode }) {
+export default async function GovernmentLayout({ children }: { children: React.ReactNode }) {
+  await requirePortalRole(["GOVERNMENT_OFFICER", "ADMIN"], "/government");
+
   return (
     <AuthProvider>
       <div className="flex min-h-screen bg-slate-50">

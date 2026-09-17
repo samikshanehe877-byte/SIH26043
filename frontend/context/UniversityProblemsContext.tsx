@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, ReactNode, useContext, useEffect, useState } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { getOrganizationName, useAuth } from "@/context/AuthContext";
 import { Problem } from "@/types/problem";
 
 import { UniversityChallenge, toUniversityChallenge } from "@/types/universityChallenge";
@@ -29,7 +29,7 @@ export function UniversityProblemsProvider({ children }: { children: ReactNode }
 
     try {
       const response = await fetch(
-        `${apiUrl}/problems?assigned_university=${encodeURIComponent(user.name)}&limit=500`,
+        `${apiUrl}/problems?assigned_university=${encodeURIComponent(getOrganizationName(user))}&limit=500`,
         { cache: "no-store" }
       );
 
@@ -49,7 +49,7 @@ export function UniversityProblemsProvider({ children }: { children: ReactNode }
 
   useEffect(() => {
     fetchProblems();
-  }, [apiUrl, isAuthenticated, user?.name]);
+  }, [apiUrl, isAuthenticated, user?.name, user?.organizationName]);
 
   return (
     <UniversityProblemsContext.Provider

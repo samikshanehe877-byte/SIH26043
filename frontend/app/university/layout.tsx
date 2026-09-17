@@ -4,6 +4,9 @@ import { ProblemsProvider } from "@/context/ProblemsContext";
 import { UniversityProblemsProvider } from "@/context/UniversityProblemsContext";
 import UniversitySidebar from "@/components/university/UniversitySidebar";
 import UniversityBottomNavigation from "@/components/university/UniversityBottomNavigation";
+import { requirePortalRole } from "@/lib/requirePortalRole";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "SolveTogether — University Portal",
@@ -11,7 +14,9 @@ export const metadata: Metadata = {
     "University coordinator dashboard for managing assigned societal challenges, mentor allocation, and solution progress.",
 };
 
-export default function UniversityLayout({ children }: { children: React.ReactNode }) {
+export default async function UniversityLayout({ children }: { children: React.ReactNode }) {
+  await requirePortalRole(["FACULTY"], "/university");
+
   return (
     <AuthProvider>
       <ProblemsProvider>

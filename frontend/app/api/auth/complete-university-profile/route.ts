@@ -1,41 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
-import { cookies } from "next/headers";
+import { requireApiRole } from "@/lib/api-auth";
 
 const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get("auth_session");
-
-    if (!sessionCookie) {
-      return NextResponse.json(
-        { success: false, message: "Not authenticated" },
-        { status: 401 }
-      );
-    }
-
-    let sessionData;
-    try {
-      sessionData = JSON.parse(sessionCookie.value);
-    } catch {
-      return NextResponse.json(
-        { success: false, message: "Invalid session" },
-        { status: 401 }
-      );
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: sessionData.userId },
-    });
-
-    if (!user || user.role !== "FACULTY") {
-      return NextResponse.json(
-        { success: false, message: "Unauthorized" },
-        { status: 403 }
-      );
-    }
+    const auth = await requireApiRole(["FACULTY"]);
+    if (auth instanceof NextResponse) return auth;
+    const user = auth;
 
     const body = await request.json();
     const {

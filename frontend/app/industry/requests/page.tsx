@@ -24,7 +24,8 @@ export default function IndustryRequestsPage() {
       case "Under Review": return "bg-amber-50 text-amber-700 border-amber-200";
       case "Clarification Needed": return "bg-red-50 text-red-700 border-red-200";
       case "Approved": return "bg-emerald-50 text-emerald-700 border-emerald-200";
-      case "Rejected": return "bg-slate-100 text-slate-700 border-slate-200";
+      case "Rejected":
+      case "Withdrawn": return "bg-slate-100 text-slate-700 border-slate-200";
       default: return "bg-slate-100 text-slate-700 border-slate-200";
     }
   };
@@ -51,7 +52,7 @@ export default function IndustryRequestsPage() {
           />
         </div>
         <div className="flex gap-2 overflow-x-auto pb-1 sm:pb-0">
-          {["All", "Received", "Under Review", "Clarification Needed", "Approved"].map(status => (
+          {["All", "Received", "Clarification Needed", "Approved", "Rejected", "Withdrawn"].map(status => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
@@ -92,7 +93,9 @@ export default function IndustryRequestsPage() {
                     </div>
                     <div className="flex items-center gap-1.5 text-slate-600">
                       <Users size={16} className="text-slate-400" />
-                      <span className="font-medium">{req.studentTeam.name} ({req.studentTeam.size} members)</span>
+                      <span className="font-medium">
+                        {req.studentTeam.size > 0 ? `${req.studentTeam.name} (${req.studentTeam.size} members)` : req.mentor.name}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -111,10 +114,14 @@ export default function IndustryRequestsPage() {
                   </div>
                   
                   <div className="flex items-center justify-between mt-auto">
-                    <div>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">AI Match</p>
-                      <p className="text-sm font-bold text-emerald-600">{req.aiAnalysis.matchScore}% Score</p>
-                    </div>
+                    {typeof req.aiAnalysis.matchScore === "number" ? (
+                      <div>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">AI Match</p>
+                        <p className="text-sm font-bold text-emerald-600">{req.aiAnalysis.matchScore}% Score</p>
+                      </div>
+                    ) : (
+                      <span className="text-xs font-semibold text-slate-500">Review request</span>
+                    )}
                     <div className="flex items-center justify-center h-10 w-10 rounded-xl bg-slate-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition">
                       <ArrowRight size={20} />
                     </div>

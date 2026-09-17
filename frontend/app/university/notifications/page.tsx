@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { CheckCheck, Bell } from "lucide-react";
 import UniversityNotificationItem from "@/components/university/UniversityNotificationItem";
-import { useAuth } from "@/context/AuthContext";
+import { getOrganizationName, useAuth } from "@/context/AuthContext";
 import { UniversityNotification } from "@/types/universityChallenge";
 
 export default function UniversityNotificationsPage() {
@@ -21,7 +21,7 @@ export default function UniversityNotificationsPage() {
     const fetchNotifications = async () => {
       try {
         const response = await fetch(
-          `${apiUrl}/notifications?citizen_name=${encodeURIComponent(user.name)}`,
+          `${apiUrl}/notifications?citizen_name=${encodeURIComponent(getOrganizationName(user))}&audience=university`,
           { cache: "no-store" }
         );
         if (!response.ok) throw new Error("Failed to fetch notifications");
@@ -55,7 +55,7 @@ export default function UniversityNotificationsPage() {
       await fetch(`${apiUrl}/notifications/read-all`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ citizen_name: user.name }),
+        body: JSON.stringify({ citizen_name: getOrganizationName(user), audience: "university" }),
       });
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch (error) {

@@ -34,7 +34,10 @@ function SignInForm() {
     const result = await login(email, password);
 
     if (result.success) {
-      router.push(result.redirectTo || callbackUrl);
+      const requestedPath = callbackUrl.startsWith("/") && !callbackUrl.startsWith("//")
+        ? callbackUrl
+        : "/";
+      router.replace(requestedPath !== "/" ? requestedPath : (result.redirectTo || "/"));
       router.refresh();
     } else {
       setError(result.message || "Login failed. Please try again.");

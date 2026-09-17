@@ -5,7 +5,7 @@ import { Check, Info, CheckCircle2, AlertTriangle, RefreshCw } from "lucide-reac
 import { IndustryNotification } from "@/types/industry";
 
 export default function IndustryNotificationsPage() {
-  const { notifications, markNotificationAsRead } = useIndustry();
+  const { notifications, markNotificationAsRead, markAllNotificationsAsRead } = useIndustry();
 
   const getIconConfig = (type: string) => {
     switch (type) {
@@ -22,14 +22,10 @@ export default function IndustryNotificationsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Notifications</h1>
-          <p className="mt-1 text-slate-500">Stay updated on collaboration requests and project milestones.</p>
+          <p className="mt-1 text-slate-500">Stay updated on university collaboration requests and your volunteer proposals.</p>
         </div>
         <button 
-          onClick={() => {
-            notifications.forEach(n => {
-              if (!n.isRead) markNotificationAsRead(n.id);
-            });
-          }}
+          onClick={markAllNotificationsAsRead}
           className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600 hover:text-blue-700"
         >
           <Check size={16} /> Mark all as read

@@ -15,7 +15,18 @@ interface AuthUser {
   regionId?: string;
   universityId?: string;
   industryId?: string;
+  organizationName?: string;
   needsProfileCompletion?: boolean;
+}
+
+/**
+ * Name a university/industry user acts under: volunteer proposals, assignments,
+ * collaboration requests and their alerts are all keyed by the organisation,
+ * so every coordinator/employee of the same organisation shares them.
+ */
+export function getOrganizationName(user: Pick<AuthUser, "name" | "organizationName"> | null): string {
+  if (!user) return "";
+  return user.organizationName?.trim() || user.name;
 }
 
 interface AuthContextType {
@@ -65,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = async () => {
     try {
-      const res = await fetch("/api/auth/me");
+      const res = await fetch("/api/auth/me", { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
@@ -88,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
       const data = await res.json();
       if (data.success && data.user) {
@@ -116,9 +127,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });
-      setUser(null);
     } catch (error) {
       console.error("Logout failed:", error);
+    } finally {
+      setUser(null);
     }
   };
 

@@ -95,14 +95,23 @@ class ProblemBase(BaseModel):
 class ProblemInDB(ProblemBase):
     pass
 
+NOTIFICATION_AUDIENCES = {"citizen", "university", "industry"}
+
+
 class NotificationRecord(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    # Recipient: a citizen's display name, or a university/industry organisation name.
     citizen_name: str
+    # Which portal the alert belongs to, so a university/industry inbox never
+    # shows citizen-government alerts even when two recipients share a name.
+    audience: str = "citizen"
+    category: Optional[str] = None  # "problem" | "volunteer" | "collaboration"
     type: str
     title: str
     message: str
-    problem_id: str
+    problem_id: Optional[str] = None
     problem_title: Optional[str] = None
+    collaboration_request_id: Optional[str] = None
     is_read: bool = False
     created_at: datetime = Field(default_factory=datetime.now)
 
@@ -193,6 +202,16 @@ def initialize_storage() -> None:
                 citizen_name TEXT NOT NULL,
                 payload TEXT NOT NULL,
                 created_at TEXT NOT NULL
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS collaboration_requests (
+                id TEXT PRIMARY KEY,
+                payload TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
             )
             """
         )
@@ -292,12 +311,22 @@ def create_notification(notification: NotificationRecord) -> NotificationRecord:
         )
     return notification
 
-def list_notifications(citizen_name: str, limit: int = 100) -> List[NotificationRecord]:
+_AUDIENCE_SQL = "COALESCE(json_extract(payload, '$.audience'), 'citizen') = ?"
+
+
+def list_notifications(citizen_name: str, limit: int = 100, audience: Optional[str] = None) -> List[NotificationRecord]:
+    """List a recipient's notifications, optionally only those for one portal audience.
+    Rows written before `audience` existed are treated as citizen notifications."""
+    query = "SELECT payload FROM notifications WHERE citizen_name = ?"
+    params: list = [citizen_name]
+    if audience:
+        query += f" AND {_AUDIENCE_SQL}"
+        params.append(audience)
+    # created_at is an ISO string; the tiebreak keeps sub-second order that datetime() truncates.
+    query += " ORDER BY datetime(created_at) DESC, created_at DESC LIMIT ?"
+    params.append(limit)
     with _connection() as connection:
-        rows = connection.execute(
-            "SELECT payload FROM notifications WHERE citizen_name = ? ORDER BY datetime(created_at) DESC LIMIT ?",
-            (citizen_name, limit),
-        ).fetchall()
+        rows = connection.execute(query, params).fetchall()
     return [NotificationRecord.model_validate(json.loads(row["payload"])) for row in rows]
 
 def mark_notification_read(notification_id: str) -> Optional[NotificationRecord]:
@@ -313,12 +342,14 @@ def mark_notification_read(notification_id: str) -> Optional[NotificationRecord]
         )
     return notification
 
-def mark_all_notifications_read(citizen_name: str) -> None:
+def mark_all_notifications_read(citizen_name: str, audience: Optional[str] = None) -> None:
+    query = "SELECT id, payload FROM notifications WHERE citizen_name = ? AND json_extract(payload, '$.is_read') = 0"
+    params: list = [citizen_name]
+    if audience:
+        query += f" AND {_AUDIENCE_SQL}"
+        params.append(audience)
     with _connection() as connection:
-        rows = connection.execute(
-            "SELECT id, payload FROM notifications WHERE citizen_name = ? AND json_extract(payload, '$.is_read') = 0",
-            (citizen_name,),
-        ).fetchall()
+        rows = connection.execute(query, params).fetchall()
         for row in rows:
             notification = NotificationRecord.model_validate(json.loads(row["payload"]))
             notification.is_read = True
@@ -407,3 +438,149 @@ def select_volunteer(problem_id: str, solver_type: str, solver_name: str) -> Pro
     elif solver_type == "industry":
         assignment_update.assigned_industry = solver_name
     return update_problem(problem_id, assignment_update)
+
+
+# ---------------------------------------------------------------------------
+# University <-> industry collaboration requests
+# ---------------------------------------------------------------------------
+
+COLLABORATION_PARTIES = {"university", "industry"}
+OPEN_COLLABORATION_STATUSES = {"pending", "clarification_needed"}
+
+
+class CollaborationRequestRecord(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    requested_by: str  # "university" | "industry" -- the side that opened the request
+    university_name: str
+    industry_name: str
+    requester_contact: Optional[str] = None  # the person who submitted it
+    problem_id: Optional[str] = None
+    challenge_title: str
+    problem_description: Optional[str] = None
+    category: Optional[str] = None
+    support_types: List[str] = Field(default_factory=list)
+    description: Optional[str] = None
+    status: str = "pending"  # pending | clarification_needed | accepted | rejected | withdrawn
+    history: List[Dict] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+    def party_name(self, party: str) -> str:
+        return self.university_name if party == "university" else self.industry_name
+
+    @property
+    def responder(self) -> str:
+        return "industry" if self.requested_by == "university" else "university"
+
+
+def _save_collaboration_request(record: CollaborationRequestRecord, insert: bool = False) -> CollaborationRequestRecord:
+    with _connection() as connection:
+        if insert:
+            connection.execute(
+                "INSERT INTO collaboration_requests (id, payload, created_at, updated_at) VALUES (?, ?, ?, ?)",
+                (record.id, record.model_dump_json(), record.created_at.isoformat(), record.updated_at.isoformat()),
+            )
+        else:
+            connection.execute(
+                "UPDATE collaboration_requests SET payload = ?, updated_at = ? WHERE id = ?",
+                (record.model_dump_json(), record.updated_at.isoformat(), record.id),
+            )
+    return record
+
+
+def create_collaboration_request(record: CollaborationRequestRecord) -> CollaborationRequestRecord:
+    record.history = [{
+        "actor_type": record.requested_by,
+        "actor_name": record.party_name(record.requested_by),
+        "action": "requested",
+        "note": record.description or "",
+        "timestamp": datetime.now().isoformat(),
+    }]
+    return _save_collaboration_request(record, insert=True)
+
+
+def get_collaboration_request(request_id: str) -> Optional[CollaborationRequestRecord]:
+    with _connection() as connection:
+        row = connection.execute("SELECT payload FROM collaboration_requests WHERE id = ?", (request_id,)).fetchone()
+    return CollaborationRequestRecord.model_validate(json.loads(row["payload"])) if row else None
+
+
+def list_collaboration_requests(
+    university_name: Optional[str] = None,
+    industry_name: Optional[str] = None,
+    status: Optional[str] = None,
+    problem_id: Optional[str] = None,
+    limit: int = 100,
+) -> List[CollaborationRequestRecord]:
+    conditions = []
+    params: list = []
+    for field, value in (
+        ("university_name", university_name),
+        ("industry_name", industry_name),
+        ("status", status),
+        ("problem_id", problem_id),
+    ):
+        if value:
+            conditions.append(f"json_extract(payload, '$.{field}') = ?")
+            params.append(value)
+    where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
+    params.append(limit)
+    with _connection() as connection:
+        rows = connection.execute(
+            f"SELECT payload FROM collaboration_requests{where_clause} ORDER BY datetime(created_at) DESC, created_at DESC LIMIT ?",
+            params,
+        ).fetchall()
+    return [CollaborationRequestRecord.model_validate(json.loads(row["payload"])) for row in rows]
+
+
+def transition_collaboration_request(
+    request_id: str,
+    actor_type: str,
+    actor_name: str,
+    action: str,
+    note: str = "",
+) -> Optional[CollaborationRequestRecord]:
+    """Apply one workflow step. Raises PermissionError if the actor may not take
+    this action, ValueError if the request is not in a state that allows it.
+
+    - accept / reject / clarify: only the receiving party, while the request is open
+    - reply: only the requester, after the receiver asked for clarification
+    - withdraw: only the requester, while the request is open
+    """
+    record = get_collaboration_request(request_id)
+    if not record:
+        return None
+
+    if action in ("accept", "reject", "clarify"):
+        allowed_party = record.responder
+        allowed_statuses = OPEN_COLLABORATION_STATUSES
+    elif action == "reply":
+        allowed_party = record.requested_by
+        allowed_statuses = {"clarification_needed"}
+    elif action == "withdraw":
+        allowed_party = record.requested_by
+        allowed_statuses = OPEN_COLLABORATION_STATUSES
+    else:
+        raise ValueError(f"Unknown action '{action}'")
+
+    if actor_type != allowed_party or actor_name != record.party_name(allowed_party):
+        raise PermissionError(f"Only the {allowed_party} on this request can {action} it")
+    if record.status not in allowed_statuses:
+        raise ValueError(f"Cannot {action} a request that is '{record.status}'")
+
+    record.status = {
+        "accept": "accepted",
+        "reject": "rejected",
+        "clarify": "clarification_needed",
+        "reply": "pending",
+        "withdraw": "withdrawn",
+    }[action]
+    record.history = [*record.history, {
+        "actor_type": actor_type,
+        "actor_name": actor_name,
+        "action": action,
+        "note": note,
+        "timestamp": datetime.now().isoformat(),
+    }]
+    record.updated_at = datetime.now()
+    return _save_collaboration_request(record)

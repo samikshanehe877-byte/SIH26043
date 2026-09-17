@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { UserRole, AccountStatus } from '@prisma/client'
+import { getAuthUser } from '@/lib/auth'
+
+const ALLOWED_ROLES: UserRole[] = ["ADMIN"]
 
 export async function GET(request: NextRequest) {
+  const user = await getAuthUser();
+  if (!user || !ALLOWED_ROLES.includes(user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -57,6 +65,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser();
+  if (!user || !ALLOWED_ROLES.includes(user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const body = await request.json()
     const { name, email, passwordHash, phone, role, profilePhoto, location, regionId } = body
@@ -73,7 +86,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email already exists' }, { status: 409 })
     }
 
-    const user = await prisma.user.create({
+    const newUser = await prisma.user.create({
       data: {
         name,
         email,
@@ -86,7 +99,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return NextResponse.json(user, { status: 201 })
+    return NextResponse.json(newUser, { status: 201 })
   } catch (error) {
     console.error('Error creating user:', error)
     return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })

@@ -2,12 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
+import { createSessionToken } from "@/lib/session";
 
 const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
+    const body = await request.json();
+    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    const password = typeof body.password === "string" ? body.password : "";
 
     if (!email || !password) {
       return NextResponse.json(
@@ -47,38 +50,37 @@ export async function POST(request: NextRequest) {
     let needsProfileCompletion = false;
     let universityId: string | undefined;
     let industryId: string | undefined;
+    let organizationName: string | undefined;
 
     if (user.role === "FACULTY") {
       const faculty = await prisma.universityFaculty.findUnique({
         where: { userId: user.id },
+        include: { university: { select: { name: true } } },
       });
       if (!faculty) {
         needsProfileCompletion = true;
       } else {
         universityId = faculty.universityId;
+        organizationName = faculty.university.name;
       }
     } else if (["INDUSTRY_EMPLOYEE", "INDUSTRY_MENTOR", "INDUSTRY_EXPERT"].includes(user.role)) {
       const employee = await prisma.industryEmployee.findUnique({
         where: { userId: user.id },
+        include: { industry: { select: { companyName: true } } },
       });
       if (!employee) {
         needsProfileCompletion = true;
       } else {
         industryId = employee.industryId;
+        organizationName = employee.industry.companyName;
       }
     }
 
-    const sessionData = {
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-      name: user.name,
-    };
-
     const cookieStore = await cookies();
-    cookieStore.set("auth_session", JSON.stringify(sessionData), {
+    const isHttps = request.headers.get("x-forwarded-proto") === "https" || new URL(request.url).protocol === "https:";
+    cookieStore.set("auth_session", createSessionToken(user.id), {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isHttps,
       sameSite: "lax",
       maxAge: 60 * 60 * 24 * 7, // 7 days
       path: "/",
@@ -92,6 +94,7 @@ export async function POST(request: NextRequest) {
         ...userWithoutPassword,
         universityId,
         industryId,
+        organizationName,
         needsProfileCompletion,
       },
       redirectTo: getRedirectPath(user.role, needsProfileCompletion),

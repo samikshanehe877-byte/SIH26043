@@ -239,6 +239,22 @@ async function main() {
     },
   })
 
+  // Create university faculty (coordinator)
+  const facultyUser = await prisma.user.upsert({
+    where: { email: 'coordinator@abcit.edu.in' },
+    update: {},
+    create: {
+      name: 'Dr. Priya Coordinator',
+      email: 'coordinator@abcit.edu.in',
+      passwordHash,
+      phone: '+91-9876543217',
+      role: UserRole.FACULTY,
+      accountStatus: AccountStatus.ACTIVE,
+      location: 'Pune',
+      regionId: region1.id,
+    },
+  })
+
   console.log('✅ Users created')
 
   // Create university student
@@ -312,6 +328,21 @@ async function main() {
       designation: 'Deputy Director',
       department: 'Rural Water Supply',
       jurisdiction: 'Pune District',
+    },
+  })
+
+  // Create university faculty (coordinator)
+  await prisma.universityFaculty.upsert({
+    where: { userId: facultyUser.id },
+    update: {},
+    create: {
+      userId: facultyUser.id,
+      universityId: university1.id,
+      department: 'Computer Science',
+      designation: 'Coordinator',
+      specialization: 'Environmental Engineering',
+      experienceYears: 10,
+      bio: 'University coordinator for industry-academia collaboration',
     },
   })
 

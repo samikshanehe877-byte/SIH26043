@@ -1,44 +1,91 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Factory, CheckCircle2 } from "lucide-react";
-
-const INDUSTRY_TYPES = [
-  "Software & Technology",
-  "Manufacturing",
-  "Construction",
-  "Environmental Services",
-  "Healthcare",
-  "Transportation",
-  "Energy & Utilities",
-  "Telecommunications",
-];
+import { getOrganizationName, useAuth } from "@/context/AuthContext";
+import { UniversityChallenge } from "@/types/universityChallenge";
 
 const COLLAB_TYPES = [
   "Funding",
   "Technical Expertise",
-  "Equipment",
-  "Testing & Validation",
-  "Implementation Support",
-  "Research Partnership",
+  "Hardware",
+  "Software Tool",
+  "Cloud Resources",
+  "Dataset",
+  "Domain Expert",
+  "Mentorship",
 ];
 
+interface IndustryPartner {
+  id: string;
+  companyName: string;
+  industryType: string;
+}
+
 export default function IndustryCollabModal({
-  challengeTitle,
+  challenge,
   onClose,
 }: {
-  challengeTitle: string;
+  challenge: UniversityChallenge;
   onClose: () => void;
 }) {
-  const [industryType, setIndustryType] = useState("");
+  const { user } = useAuth();
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+  const [partners, setPartners] = useState<IndustryPartner[]>([]);
+  const [industryName, setIndustryName] = useState("");
   const [collabFor, setCollabFor] = useState<string[]>([]);
   const [description, setDescription] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/directory/industries", { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : []))
+      .then((records) => setPartners(Array.isArray(records) ? records : []))
+      .catch(() => setPartners([]));
+  }, []);
 
   const toggleCollab = (item: string) =>
     setCollabFor((prev) =>
       prev.includes(item) ? prev.filter((c) => c !== item) : [...prev, item]
     );
+
+  // Creates the request; the industry partner gets a "New collaboration request" alert
+  // and this university is alerted again when they accept, decline or ask for details.
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const response = await fetch(`${apiUrl}/collaboration-requests`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          requested_by: "university",
+          university_name: getOrganizationName(user),
+          industry_name: industryName,
+          requester_contact: user?.name,
+          // Stored problems have string ids; numeric ids are demo challenges with no backend record.
+          problem_id: typeof challenge.id === "string" ? challenge.id : undefined,
+          challenge_title: challenge.title,
+          problem_description: challenge.description,
+          category: challenge.category,
+          support_types: collabFor,
+          description: description.trim() || undefined,
+        }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        setError(String(body.detail ?? "Could not send the request"));
+        return;
+      }
+      setSubmitted(true);
+    } catch {
+      setError("Could not reach the server. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   if (submitted) {
     return (
@@ -55,7 +102,7 @@ export default function IndustryCollabModal({
           </div>
           <h3 className="text-xl font-bold text-slate-900">Request Submitted!</h3>
           <p className="mt-2 text-sm text-slate-500">
-            Industry collaboration request has been created successfully.
+            {industryName} has been notified. You will get an alert when they respond.
           </p>
           <div className="mt-3 rounded-xl bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700">
             Status: Awaiting Industry Partner
@@ -98,25 +145,32 @@ export default function IndustryCollabModal({
             <p className="text-xs font-semibold text-purple-500 uppercase tracking-wide">
               Challenge
             </p>
-            <p className="mt-0.5 text-sm font-semibold text-purple-800">{challengeTitle}</p>
+            <p className="mt-0.5 text-sm font-semibold text-purple-800">{challenge.title}</p>
           </div>
+
+          {error && (
+            <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>
+          )}
 
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-slate-700">
-              Industry Type <span className="text-red-500">*</span>
+              Industry Partner <span className="text-red-500">*</span>
             </label>
             <select
-              value={industryType}
-              onChange={(e) => setIndustryType(e.target.value)}
+              value={industryName}
+              onChange={(e) => setIndustryName(e.target.value)}
               className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition"
             >
-              <option value="">Select industry type...</option>
-              {INDUSTRY_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
+              <option value="">Select industry partner...</option>
+              {partners.map((partner) => (
+                <option key={partner.id} value={partner.companyName}>
+                  {partner.companyName} ({partner.industryType})
                 </option>
               ))}
             </select>
+            {partners.length === 0 && (
+              <p className="mt-1 text-xs text-slate-400">No registered industry partners found.</p>
+            )}
           </div>
 
           <div>
@@ -163,11 +217,11 @@ export default function IndustryCollabModal({
             Cancel
           </button>
           <button
-            onClick={() => setSubmitted(true)}
-            disabled={!industryType || collabFor.length === 0}
+            onClick={handleSubmit}
+            disabled={!industryName || collabFor.length === 0 || isSubmitting}
             className="flex-1 rounded-xl bg-purple-600 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-purple-700 transition disabled:opacity-40"
           >
-            Submit Request
+            {isSubmitting ? "Sending..." : "Submit Request"}
           </button>
         </div>
       </div>

@@ -5,30 +5,53 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Building2, User, Users, Cpu, Target, FileText, CheckCircle2, MessageSquare, XCircle, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { CollaborationRequestStatus } from "@/types/industry";
+import { CollaborationResponse } from "@/types/industry";
+
+const HISTORY_LABELS: Record<string, string> = {
+  requested: "Requested support",
+  clarify: "Asked for clarification",
+  reply: "Replied",
+  accept: "Accepted",
+  reject: "Declined",
+  withdraw: "Withdrew request",
+};
 
 export default function IndustryRequestDetailsPage() {
   const { id } = useParams();
   const router = useRouter();
-  const { requests, updateRequestStatus } = useIndustry();
+  const { requests, respondToRequest } = useIndustry();
   const request = requests.find(r => r.id === id);
 
   const [showClarification, setShowClarification] = useState(false);
   const [showAccept, setShowAccept] = useState(false);
   const [showReject, setShowReject] = useState(false);
   const [clarificationMsg, setClarificationMsg] = useState("");
+  const [rejectReason, setRejectReason] = useState("");
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!request) {
     return <div className="p-8 text-center text-slate-500">Request not found.</div>;
   }
 
-  const handleStatusChange = (status: CollaborationRequestStatus) => {
-    updateRequestStatus(request.id, status);
-    // Hide modals
+  const isOpen = request.status === "Received" || request.status === "Under Review" || request.status === "Clarification Needed";
+  const hasAiMatch = typeof request.aiAnalysis.matchScore === "number";
+
+  // Sends the decision to the university; they get an alert for every outcome.
+  const handleResponse = async (action: CollaborationResponse, note = "") => {
+    setIsSubmitting(true);
+    setActionError(null);
+    const error = await respondToRequest(request.id, action, note);
+    setIsSubmitting(false);
+    if (error) {
+      setActionError(error);
+      return;
+    }
     setShowClarification(false);
     setShowAccept(false);
     setShowReject(false);
-    // Optional redirect or toast
+    setClarificationMsg("");
+    setRejectReason("");
   };
 
   return (
@@ -49,7 +72,7 @@ export default function IndustryRequestDetailsPage() {
         </div>
         
         {/* Action Buttons */}
-        {request.status !== "Approved" && request.status !== "Rejected" && (
+        {isOpen && (
           <div className="flex flex-wrap gap-2">
             <button onClick={() => setShowReject(true)} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-red-600 hover:bg-red-50 transition">
               Reject
@@ -63,6 +86,10 @@ export default function IndustryRequestDetailsPage() {
           </div>
         )}
       </div>
+
+      {actionError && (
+        <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{actionError}</div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         {/* Main Content */}
@@ -119,7 +146,29 @@ export default function IndustryRequestDetailsPage() {
             </div>
           </div>
 
+          {/* Conversation with the university */}
+          {request.history && request.history.length > 1 && (
+            <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
+              <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                <MessageSquare size={18} className="text-blue-600" /> Request Activity
+              </h2>
+              <div className="space-y-3">
+                {request.history.map((entry, index) => (
+                  <div key={index} className="rounded-xl bg-slate-50 p-3">
+                    <div className="flex justify-between gap-2 text-xs text-slate-500">
+                      <span className="font-semibold text-slate-700">{entry.actorName}</span>
+                      <span>{entry.timestamp ? new Date(entry.timestamp).toLocaleString() : ""}</span>
+                    </div>
+                    <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-slate-400">{HISTORY_LABELS[entry.action] ?? entry.action}</p>
+                    {entry.note && <p className="mt-1 text-sm text-slate-700">{entry.note}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* AI Analysis */}
+          {hasAiMatch && (
           <div className="rounded-2xl border border-emerald-100 bg-gradient-to-br from-white to-emerald-50/30 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-emerald-900 flex items-center gap-2">
@@ -153,7 +202,8 @@ export default function IndustryRequestDetailsPage() {
               </div>
             </div>
           </div>
-          
+          )}
+
         </div>
 
         {/* Right Sidebar Content */}
@@ -235,7 +285,7 @@ export default function IndustryRequestDetailsPage() {
             />
             <div className="flex justify-end gap-3">
               <button onClick={() => setShowClarification(false)} className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
-              <button onClick={() => handleStatusChange("Clarification Needed")} className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700">Send Request</button>
+              <button onClick={() => handleResponse("clarify", clarificationMsg.trim())} disabled={isSubmitting || !clarificationMsg.trim()} className="rounded-xl bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-40">Send Request</button>
             </div>
           </div>
         </div>
@@ -257,7 +307,7 @@ export default function IndustryRequestDetailsPage() {
             </div>
             <div className="flex justify-end gap-3">
               <button onClick={() => setShowAccept(false)} className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
-              <button onClick={() => handleStatusChange("Approved")} className="rounded-xl bg-emerald-600 px-6 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Confirm Collaboration</button>
+              <button onClick={() => handleResponse("accept")} disabled={isSubmitting} className="rounded-xl bg-emerald-600 px-6 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-40">Confirm Collaboration</button>
             </div>
           </div>
         </div>
@@ -278,10 +328,12 @@ export default function IndustryRequestDetailsPage() {
             <textarea 
               className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 min-h-[100px] mb-6"
               placeholder="Reason for rejection..."
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
             />
             <div className="flex justify-end gap-3">
               <button onClick={() => setShowReject(false)} className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">Cancel</button>
-              <button onClick={() => handleStatusChange("Rejected")} className="rounded-xl bg-red-600 px-6 py-2 text-sm font-semibold text-white hover:bg-red-700">Reject Request</button>
+              <button onClick={() => handleResponse("reject", rejectReason.trim())} disabled={isSubmitting || !rejectReason.trim()} className="rounded-xl bg-red-600 px-6 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-40">Reject Request</button>
             </div>
           </div>
         </div>

@@ -88,3 +88,315 @@ Traceback (most recent call last):
   File "C:\Users\JANHAVI TUPE\AppData\Local\Programs\Python\Python311\Lib\asyncio\proactor_events.py", line 165, in _call_connection_lost
     self._sock.shutdown(socket.SHUT_RDWR)
 ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/interactions "HTTP/1.1 400 Bad Request"
+WARNING:problem_structurer:Gemini problem structuring failed or client unavailable: Error code: 400 - [{'error': {'code': 400, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'INVALID_ARGUMENT', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'API_KEY_INVALID', 'domain': 'googleapis.com', 'metadata': {'service': 'generativelanguage.googleapis.com'}}, {'@type': 'type.googleapis.com/google.rpc.LocalizedMessage', 'locale': 'en-US', 'message': 'API key not valid. Please pass a valid API key.'}]}}]. Using heuristic fallback.
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py", line 422, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\routing.py", line 670, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 2734, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 1281, in handle
+    await super().handle(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\routing.py", line 280, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 158, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 144, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 706, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 354, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\anyio\to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2706, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1100, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\api.py", line 370, in analyze_stored_problem_endpoint
+    from ai_pipeline import analyze_problem
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\ai_pipeline.py", line 25, in <module>
+    from duplicate_detector import find_duplicates
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\duplicate_detector.py", line 1, in <module>
+    from sentence_transformers import SentenceTransformer
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\sentence_transformers\__init__.py", line 10, in <module>
+    from sentence_transformers.backend import (
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\sentence_transformers\backend\__init__.py", line 5, in <module>
+    from .quantize import export_dynamic_quantized_onnx_model, export_static_quantized_openvino_model
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\sentence_transformers\backend\quantize.py", line 7, in <module>
+    from sentence_transformers.util import disable_datasets_caching, is_datasets_available
+ImportError: cannot import name 'disable_datasets_caching' from 'sentence_transformers.util' (unknown location)
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/interactions "HTTP/1.1 400 Bad Request"
+WARNING:problem_structurer:Gemini problem structuring failed or client unavailable: Error code: 400 - [{'error': {'code': 400, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'INVALID_ARGUMENT', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'API_KEY_INVALID', 'domain': 'googleapis.com', 'metadata': {'service': 'generativelanguage.googleapis.com'}}, {'@type': 'type.googleapis.com/google.rpc.LocalizedMessage', 'locale': 'en-US', 'message': 'API key not valid. Please pass a valid API key.'}]}}]. Using heuristic fallback.
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py", line 422, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\routing.py", line 670, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 2734, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 1281, in handle
+    await super().handle(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\routing.py", line 280, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 158, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 144, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 706, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 354, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\anyio\to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2706, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1100, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\api.py", line 370, in analyze_stored_problem_endpoint
+    from ai_pipeline import analyze_problem
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\ai_pipeline.py", line 25, in <module>
+    from duplicate_detector import find_duplicates
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\duplicate_detector.py", line 1, in <module>
+    from sentence_transformers import SentenceTransformer
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\sentence_transformers\__init__.py", line 10, in <module>
+    from sentence_transformers.backend import (
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\sentence_transformers\backend\__init__.py", line 5, in <module>
+    from .quantize import export_dynamic_quantized_onnx_model, export_static_quantized_openvino_model
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\sentence_transformers\backend\quantize.py", line 7, in <module>
+    from sentence_transformers.util import disable_datasets_caching, is_datasets_available
+ImportError: cannot import name 'disable_datasets_caching' from 'sentence_transformers.util' (unknown location)
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/interactions "HTTP/1.1 400 Bad Request"
+WARNING:problem_structurer:Gemini problem structuring failed or client unavailable: Error code: 400 - [{'error': {'code': 400, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'INVALID_ARGUMENT', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'API_KEY_INVALID', 'domain': 'googleapis.com', 'metadata': {'service': 'generativelanguage.googleapis.com'}}, {'@type': 'type.googleapis.com/google.rpc.LocalizedMessage', 'locale': 'en-US', 'message': 'API key not valid. Please pass a valid API key.'}]}}]. Using heuristic fallback.
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py", line 422, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\routing.py", line 670, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 2734, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 1281, in handle
+    await super().handle(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\routing.py", line 280, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 158, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 144, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 706, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 354, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\anyio\to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2706, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1100, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\api.py", line 370, in analyze_stored_problem_endpoint
+    from ai_pipeline import analyze_problem
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\ai_pipeline.py", line 25, in <module>
+    from duplicate_detector import find_duplicates
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\duplicate_detector.py", line 1, in <module>
+    from sentence_transformers import SentenceTransformer
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\sentence_transformers\__init__.py", line 10, in <module>
+    from sentence_transformers.backend import (
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\sentence_transformers\backend\__init__.py", line 5, in <module>
+    from .quantize import export_dynamic_quantized_onnx_model, export_static_quantized_openvino_model
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\sentence_transformers\backend\quantize.py", line 7, in <module>
+    from sentence_transformers.util import disable_datasets_caching, is_datasets_available
+ImportError: cannot import name 'disable_datasets_caching' from 'sentence_transformers.util' (unknown location)
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/interactions "HTTP/1.1 400 Bad Request"
+WARNING:problem_structurer:Gemini problem structuring failed or client unavailable: Error code: 400 - [{'error': {'code': 400, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'INVALID_ARGUMENT', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'API_KEY_INVALID', 'domain': 'googleapis.com', 'metadata': {'service': 'generativelanguage.googleapis.com'}}, {'@type': 'type.googleapis.com/google.rpc.LocalizedMessage', 'locale': 'en-US', 'message': 'API key not valid. Please pass a valid API key.'}]}}]. Using heuristic fallback.
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\uvicorn\protocols\http\httptools_impl.py", line 422, in run_asgi
+    result = await app(  # type: ignore[func-returns-value]
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\uvicorn\middleware\proxy_headers.py", line 63, in __call__
+    return await self.app(scope, receive, send)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\applications.py", line 1163, in __call__
+    await super().__call__(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\applications.py", line 96, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\errors.py", line 186, in __call__
+    raise exc
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\cors.py", line 96, in __call__
+    await self.simple_response(scope, receive, send, request_headers=headers)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\cors.py", line 154, in simple_response
+    await self.app(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\routing.py", line 670, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 2734, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 1281, in handle
+    await super().handle(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\routing.py", line 280, in handle
+    await self.app(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 158, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 144, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 706, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\fastapi\routing.py", line 354, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\starlette\concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\anyio\to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2706, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1100, in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\api.py", line 370, in analyze_stored_problem_endpoint
+    from ai_pipeline import analyze_problem
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\ai_pipeline.py", line 25, in <module>
+    from duplicate_detector import find_duplicates
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\duplicate_detector.py", line 1, in <module>
+    from sentence_transformers import SentenceTransformer
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\sentence_transformers\__init__.py", line 10, in <module>
+    from sentence_transformers.backend import (
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\sentence_transformers\backend\__init__.py", line 5, in <module>
+    from .quantize import export_dynamic_quantized_onnx_model, export_static_quantized_openvino_model
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\sentence_transformers\backend\quantize.py", line 7, in <module>
+    from sentence_transformers.util import disable_datasets_caching, is_datasets_available
+ImportError: cannot import name 'disable_datasets_caching' from 'sentence_transformers.util' (unknown location)
