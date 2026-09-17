@@ -21,6 +21,8 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useStudent } from "@/context/StudentContext";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 
 const navItems = [
   { name: "Dashboard",       href: "/student",               icon: LayoutDashboard },
@@ -42,6 +44,14 @@ const navItems = [
 export default function StudentSidebar() {
   const pathname = usePathname();
   const { profile, unreadNotificationsCount } = useStudent();
+  const { logout } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/");
+    router.refresh();
+  };
 
   return (
     <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-72 flex-col border-r border-slate-100 bg-white shadow-sm z-40">
@@ -136,9 +146,7 @@ export default function StudentSidebar() {
         </div>
 
         <button
-          onClick={() => {
-            alert("Logging out from Student Portal...");
-          }}
+          onClick={handleLogout}
           className="flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-slate-500 transition hover:bg-red-50 hover:text-red-600"
         >
           <LogOut size={14} />

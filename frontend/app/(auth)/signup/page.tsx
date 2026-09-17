@@ -1,6 +1,6 @@
 "use client";
 
-import React, { Suspense, useState, useEffect } from "react";
+import React, { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
@@ -74,7 +74,10 @@ function SignUpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { register, isAuthenticated } = useAuth();
-  const initialRole = (searchParams.get("role") as Role) || "CITIZEN";
+  const roleParam = searchParams.get("role");
+  const initialRole: Role = roleParam === "UNIVERSITY" || roleParam === "INDUSTRY"
+    ? roleParam
+    : "CITIZEN";
 
   const [role, setRole] = useState<Role>(initialRole);
   const [name, setName] = useState("");
@@ -88,10 +91,6 @@ function SignUpForm() {
   const [success, setSuccess] = useState("");
   const [universityData, setUniversityData] = useState<UniversityData>(initialUniversityData);
   const [industryData, setIndustryData] = useState<IndustryData>(initialIndustryData);
-
-  useEffect(() => {
-    setRole(initialRole);
-  }, [initialRole]);
 
   const validateForm = () => {
     if (!name.trim()) return "Full name is required";
@@ -147,9 +146,7 @@ function SignUpForm() {
 
     if (result.success) {
       setSuccess(result.message || "Registration successful!");
-      setTimeout(() => {
-        router.push("/signin");
-      }, 2000);
+      router.replace("/signin?registered=1");
     } else {
       setError(result.message || "Registration failed. Please try again.");
     }

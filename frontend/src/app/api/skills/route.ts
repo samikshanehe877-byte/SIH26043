@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getAuthUser, UserRole } from '@/lib/auth'
+
+const ALLOWED_ROLES_GET: UserRole[] = ["STUDENT", "MENTOR", "FACULTY", "INDUSTRY_EMPLOYEE", "INDUSTRY_EXPERT", "GOVERNMENT_OFFICER", "ADMIN"]
+const ALLOWED_ROLES_POST: UserRole[] = ["ADMIN"]
 
 export async function GET(request: NextRequest) {
+  const user = await getAuthUser();
+  if (!user || !ALLOWED_ROLES_GET.includes(user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get('page') || '1')
@@ -42,6 +51,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser();
+  if (!user || !ALLOWED_ROLES_POST.includes(user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const body = await request.json()
     const { name, domain, category } = body

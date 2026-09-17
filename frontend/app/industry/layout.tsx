@@ -5,13 +5,18 @@ import { IndustryProvider } from "@/context/IndustryContext";
 import { IndustryProblemsProvider } from "@/context/IndustryProblemsContext";
 import IndustrySidebar from "@/components/industry/IndustrySidebar";
 import IndustryBottomNavigation from "@/components/industry/IndustryBottomNavigation";
+import { requirePortalRole } from "@/lib/requirePortalRole";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "SolveTogether — Industry Portal",
   description: "Industry portal for collaborating on societal challenges.",
 };
 
-export default function IndustryLayout({ children }: { children: React.ReactNode }) {
+export default async function IndustryLayout({ children }: { children: React.ReactNode }) {
+  await requirePortalRole(["INDUSTRY_EMPLOYEE", "INDUSTRY_MENTOR", "INDUSTRY_EXPERT"], "/industry");
+
   return (
     <AuthProvider>
       <IndustryProvider>

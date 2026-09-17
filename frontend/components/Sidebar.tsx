@@ -7,6 +7,7 @@ import {
   Home, Search, PlusCircle, FileText, Bell, User, Settings, LogOut,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 
 const navigation = [
   { name: "Home",             href: "/",             icon: Home       },
@@ -20,17 +21,24 @@ const navigation = [
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, logout } = useAuth();
+  const router = useRouter();
   const [unreadCount, setUnreadCount] = useState(0);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
   useEffect(() => {
     if (!user) return;
-    fetch(`${apiUrl}/notifications?citizen_name=${encodeURIComponent(user.name)}`, { cache: "no-store" })
+    fetch(`${apiUrl}/notifications?citizen_name=${encodeURIComponent(user.name)}&audience=citizen`, { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : []))
       .then((records) => setUnreadCount(Array.isArray(records) ? records.filter((record) => !record.is_read).length : 0))
       .catch(() => undefined);
   }, [apiUrl, pathname, user]);
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/");
+    router.refresh();
+  };
 
   // While auth is resolving show a skeleton so the layout doesn't shift
   if (isLoading) {
@@ -117,10 +125,7 @@ export default function Sidebar() {
           </div>
         </div>
         <button
-          onClick={() => {
-            document.cookie = "auth_session=; path=/; max-age=0";
-            window.location.href = "/";
-          }}
+          onClick={handleLogout}
           className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-red-50 hover:text-red-500"
         >
           <LogOut size={16} />

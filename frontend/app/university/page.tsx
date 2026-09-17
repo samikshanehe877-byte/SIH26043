@@ -13,6 +13,7 @@ import RejectChallengeModal from "@/components/university/RejectChallengeModal";
 import MentorAssignmentModal from "@/components/university/MentorAssignmentModal";
 import { useUniversityProblems } from "@/context/UniversityProblemsContext";
 import { useProblems } from "@/context/ProblemsContext";
+import { getOrganizationName, useAuth } from "@/context/AuthContext";
 import { Problem } from "@/types/problem";
 import { UniversityChallenge, toUniversityChallenge } from "@/types/universityChallenge";
 
@@ -26,6 +27,8 @@ const ACTIVITY = [
 ];
 
 export default function UniversityDashboard() {
+  const { user } = useAuth();
+  const universityName = getOrganizationName(user);
   const { publicProblems, volunteerForProblem, withdrawVolunteerRequest } = useProblems();
   const { assignedProblems, isLoading, refreshProblems } = useUniversityProblems();
   const [selectedChallenge, setSelectedChallenge] = useState<UniversityChallenge | null>(null);
@@ -51,7 +54,8 @@ export default function UniversityDashboard() {
 
   const [volunteeredIds, setVolunteeredIds] = useState<Set<string>>(new Set());
 
-  const handleVolunteer = async (problemId: string, universityName: string, proposal: string) => {
+  const handleVolunteer = async (problemId: string, proposal: string) => {
+    if (!universityName) return false;
     const success = await volunteerForProblem(problemId, "university", universityName, proposal);
     if (success) {
       setVolunteeredIds((prev) => new Set(prev).add(problemId));
@@ -61,7 +65,7 @@ export default function UniversityDashboard() {
   };
 
   const handleWithdrawVolunteer = async (problemId: string) => {
-    const success = await withdrawVolunteerRequest(problemId, "university", "University Coordinator");
+    const success = await withdrawVolunteerRequest(problemId, "university", universityName);
     if (success) {
       setVolunteeredIds((prev) => {
         const next = new Set(prev);
@@ -77,7 +81,7 @@ export default function UniversityDashboard() {
     (p: Problem) =>
       p.status === "Verified" &&
       !p.volunteers?.some(
-        (v) => v.solverType === "university" && v.solverName === "University Coordinator" && v.status === "accepted"
+        (v) => v.solverType === "university" && v.solverName === universityName && v.status === "accepted"
       )
   );
 
@@ -114,7 +118,7 @@ export default function UniversityDashboard() {
           <div>
             <p className="text-sm text-slate-500">Welcome back,</p>
             <h1 className="text-2xl font-bold text-slate-900">
-              University Coordinator 👋
+              {universityName || "University Coordinator"} 👋
             </h1>
             <p className="mt-1 text-sm text-slate-500">
               Manage assigned societal challenges, mentor allocation, and solution progress.
@@ -158,7 +162,7 @@ export default function UniversityDashboard() {
               {availableProblems.map((problem) => {
                 const hasVolunteered = volunteeredIds.has(String(problem.id));
                 const existingVolunteer = problem.volunteers?.find(
-                  (v) => v.solverName === "University Coordinator"
+                  (v) => v.solverType === "university" && v.solverName === universityName
                 );
                 const showVolunteer = !hasVolunteered && !existingVolunteer;
                 const showWithdraw = hasVolunteered || (existingVolunteer && existingVolunteer.status === "volunteered");
@@ -191,7 +195,7 @@ export default function UniversityDashboard() {
                     <div className="flex gap-2">
                       {showVolunteer && (
                         <button
-                          onClick={() => handleVolunteer(String(problem.id), "University Coordinator", problem.requiredCapabilities?.join(", ") || "")}
+                          onClick={() => handleVolunteer(String(problem.id), problem.requiredCapabilities?.join(", ") || "")}
                           className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700"
                         >
                           <Handshake size={12} />

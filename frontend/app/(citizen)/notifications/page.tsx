@@ -23,7 +23,7 @@ export default function NotificationsPage() {
       return;
     }
 
-    fetch(`${apiUrl}/notifications?citizen_name=${encodeURIComponent(user.name)}`, { cache: "no-store" })
+    fetch(`${apiUrl}/notifications?citizen_name=${encodeURIComponent(user.name)}&audience=citizen`, { cache: "no-store" })
       .then((response) => {
         if (!response.ok) throw new Error("Unable to load notifications");
         return response.json();
@@ -54,7 +54,7 @@ export default function NotificationsPage() {
     const response = await fetch(`${apiUrl}/notifications/read-all`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ citizen_name: user.name }),
+      body: JSON.stringify({ citizen_name: user.name, audience: "citizen" }),
     });
     if (!response.ok) return;
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));

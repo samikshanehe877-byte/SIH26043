@@ -1,6 +1,17 @@
 export type SupportStatus = "Planned" | "In Progress" | "Delivered" | "Completed";
 
-export type CollaborationRequestStatus = "Received" | "Under Review" | "Clarification Needed" | "Approved" | "Rejected";
+export type CollaborationRequestStatus = "Received" | "Under Review" | "Clarification Needed" | "Approved" | "Rejected" | "Withdrawn";
+
+/** Actions the receiving industry partner can take on a university's request. */
+export type CollaborationResponse = "accept" | "reject" | "clarify";
+
+export interface CollaborationHistoryEntry {
+  actorType: "university" | "industry";
+  actorName: string;
+  action: "requested" | "accept" | "reject" | "clarify" | "reply" | "withdraw";
+  note: string;
+  timestamp: string;
+}
 
 export type CollaborationStatus = "In Progress" | "Support Delivered" | "Completed";
 
@@ -78,6 +89,7 @@ export interface CollaborationRequest {
   milestones: ProjectMilestone[];
   requestDate: string;
   status: CollaborationRequestStatus;
+  history?: CollaborationHistoryEntry[];
 }
 
 export interface Collaboration {
@@ -123,7 +135,7 @@ export interface IndustryCompany {
 }
 
 export interface IndustryNotification {
-  id: number;
+  id: number | string;
   type: "info" | "success" | "warning" | "update";
   title: string;
   message: string;

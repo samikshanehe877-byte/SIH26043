@@ -3,6 +3,9 @@ import { AuthProvider } from "@/context/AuthContext";
 import { MentorProvider } from "@/context/MentorContext";
 import MentorSidebar from "@/components/mentor/MentorSidebar";
 import MentorBottomNavigation from "@/components/mentor/MentorBottomNavigation";
+import { requirePortalRole } from "@/lib/requirePortalRole";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "SolveTogether — Mentor Portal",
@@ -10,7 +13,9 @@ export const metadata: Metadata = {
     "Mentor portal for managing assigned challenges, student teams, industry collaboration, and university progress updates.",
 };
 
-export default function MentorLayout({ children }: { children: React.ReactNode }) {
+export default async function MentorLayout({ children }: { children: React.ReactNode }) {
+  await requirePortalRole(["MENTOR"], "/mentor");
+
   return (
     <AuthProvider>
       <MentorProvider>

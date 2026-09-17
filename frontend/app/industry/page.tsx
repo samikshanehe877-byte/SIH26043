@@ -16,6 +16,7 @@ export default function IndustryDashboardPage() {
   const [volunteeredIds, setVolunteeredIds] = useState<Set<string>>(new Set());
 
   const handleVolunteer = async (problemId: string, proposal: string) => {
+    if (!company.name) return false;
     const success = await volunteerForProblem(problemId, "industry", company.name, proposal);
     if (success) {
       setVolunteeredIds((prev) => new Set(prev).add(problemId));
@@ -193,7 +194,7 @@ export default function IndustryDashboardPage() {
             </div>
             
             <div className="space-y-4">
-              {requests.filter(r => r.status !== "Approved" && r.status !== "Rejected").slice(0, 3).map(req => (
+              {requests.filter(r => r.status === "Received" || r.status === "Under Review" || r.status === "Clarification Needed").slice(0, 3).map(req => (
                 <div key={req.id} className="rounded-xl border border-slate-100 p-4 hover:bg-slate-50 transition cursor-pointer">
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="font-bold text-slate-900">{req.challengeTitle}</h3>

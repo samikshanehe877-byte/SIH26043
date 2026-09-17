@@ -296,7 +296,7 @@ export default function ChallengeDetails({
 
       {showIndustryModal && (
         <IndustryCollabModal
-          challengeTitle={challenge.title}
+          challenge={challenge}
           onClose={() => setShowIndustryModal(false)}
         />
       )}

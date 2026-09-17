@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getAuthUser, UserRole } from '@/lib/auth'
+
+const ALLOWED_ROLES: UserRole[] = ["GOVERNMENT_OFFICER", "ADMIN"]
 
 export async function GET(request: NextRequest) {
+  const user = await getAuthUser();
+  if (!user || !ALLOWED_ROLES.includes(user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const problemId = searchParams.get('problemId')
@@ -28,6 +36,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser();
+  if (!user || !ALLOWED_ROLES.includes(user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const body = await request.json()
     const { problemId, officerId, note, previousStatus, decision, status } = body
@@ -37,6 +50,14 @@ export async function POST(request: NextRequest) {
         { error: 'problemId, officerId, previousStatus, decision, and status are required' },
         { status: 400 }
       )
+    }
+
+    // Ensure officer can only create verification as themselves
+    const officer = await prisma.governmentOfficer.findUnique({
+      where: { userId: user.id },
+    });
+    if (!officer || officer.id !== officerId) {
+      return NextResponse.json({ error: 'Cannot create verification for another officer' }, { status: 403 });
     }
 
     const history = await prisma.verificationHistory.create({

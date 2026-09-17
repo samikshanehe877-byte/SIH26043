@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getAuthUser, UserRole } from '@/lib/auth'
+
+const ALLOWED_ROLES_GET: UserRole[] = ["FACULTY", "INDUSTRY_EMPLOYEE", "INDUSTRY_EXPERT", "GOVERNMENT_OFFICER", "ADMIN"]
+const ALLOWED_ROLES_POST: UserRole[] = ["FACULTY", "INDUSTRY_EMPLOYEE", "INDUSTRY_EXPERT", "GOVERNMENT_OFFICER", "ADMIN"]
 
 export async function GET(request: NextRequest) {
+  const user = await getAuthUser();
+  if (!user || !ALLOWED_ROLES_GET.includes(user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const { searchParams } = new URL(request.url)
     const problemId = searchParams.get('problemId')
@@ -36,12 +45,22 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser();
+  if (!user || !ALLOWED_ROLES_POST.includes(user.role)) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   try {
     const body = await request.json()
     const { problemId, universityId, industryId, governmentId, status, proposedBy, description } = body
 
     if (!problemId || !proposedBy) {
       return NextResponse.json({ error: 'problemId and proposedBy are required' }, { status: 400 })
+    }
+
+    // Ensure user can only propose as themselves
+    if (proposedBy !== user.id) {
+      return NextResponse.json({ error: 'Cannot propose collaboration for another user' }, { status: 403 });
     }
 
     const collaboration = await prisma.collaboration.create({

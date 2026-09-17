@@ -15,6 +15,8 @@ import {
   LogOut,
 } from "lucide-react";
 import { currentOfficial } from "@/data/governmentData";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 
 const navItems = [
   { name: "Dashboard", href: "/government", icon: LayoutDashboard },
@@ -30,7 +32,15 @@ const navItems = [
 
 export default function GovernmentSidebar() {
   const pathname = usePathname();
+  const { logout } = useAuth();
+  const router = useRouter();
   const unread = 3;
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/");
+    router.refresh();
+  };
 
   return (
     <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-72 flex-col border-r border-slate-100 bg-white shadow-sm z-40">
@@ -90,7 +100,10 @@ export default function GovernmentSidebar() {
             <p className="text-xs text-emerald-500 font-medium">{currentOfficial.role}</p>
           </div>
         </div>
-        <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-red-50 hover:text-red-500">
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-red-50 hover:text-red-500"
+        >
           <LogOut size={15} />
           Logout
         </button>

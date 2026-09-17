@@ -22,7 +22,7 @@ export default function BottomNavigation() {
 
   useEffect(() => {
     if (!user) return;
-    fetch(`${apiUrl}/notifications?citizen_name=${encodeURIComponent(user.name)}`, { cache: "no-store" })
+    fetch(`${apiUrl}/notifications?citizen_name=${encodeURIComponent(user.name)}&audience=citizen`, { cache: "no-store" })
       .then((response) => (response.ok ? response.json() : []))
       .then((records) => setUnreadCount(Array.isArray(records) ? records.filter((record) => !record.is_read).length : 0))
       .catch(() => undefined);

@@ -24,8 +24,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const normalizedEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
@@ -51,7 +53,7 @@ export async function POST(request: NextRequest) {
     const user = await prisma.user.create({
       data: {
         name,
-        email,
+        email: normalizedEmail,
         passwordHash,
         phone,
         role: userRole as any,
@@ -66,7 +68,7 @@ export async function POST(request: NextRequest) {
           registrationNumber: universityData.registrationNumber,
           description: universityData.description,
           website: universityData.website,
-          email,
+          email: normalizedEmail,
           phone: universityData.phone,
           address: universityData.address,
           district: universityData.district,
@@ -95,7 +97,7 @@ export async function POST(request: NextRequest) {
           industryType: industryData.industryType,
           description: industryData.description,
           website: industryData.website,
-          email,
+          email: normalizedEmail,
           phone: industryData.phone,
           address: industryData.address,
           district: industryData.district,
