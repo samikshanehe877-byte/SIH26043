@@ -11,27 +11,23 @@ import {
   UserCircle,
   Settings,
   LogOut,
+  Handshake,
 } from "lucide-react";
-import { universityCoordinator } from "@/data/universityAppData";
 import { getOrganizationName, useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import ProjectsNavSection from "@/components/workspace/ProjectsNavSection";
+import { useCollaborationRequestBadge } from "@/lib/projects";
 
 const navItems = [
-  { name: "Dashboard",            href: "/university",                     icon: LayoutDashboard },
-  { name: "Assigned Challenges",  href: "/university/assigned-challenges", icon: ClipboardList   },
-  { name: "Departments",          href: "/university/departments",         icon: Building2       },
-  { name: "Mentors",              href: "/university/mentors",             icon: Users           },
-  { name: "Notifications",        href: "/university/notifications",       icon: Bell            },
-  { name: "University Profile",   href: "/university/profile",            icon: UserCircle      },
-  { name: "Settings",             href: "/university/settings",           icon: Settings        },
-  { name: "Dashboard",           href: "/university",                     icon: LayoutDashboard },
-  { name: "Assigned Challenges", href: "/university/assigned-challenges", icon: ClipboardList   },
-  { name: "Departments",         href: "/university/departments",         icon: Building2       },
-  { name: "Mentors",             href: "/university/mentors",             icon: Users           },
-  { name: "Notifications",       href: "/university/notifications",       icon: Bell            },
-  { name: "University Profile",  href: "/university/profile",            icon: UserCircle      },
-  { name: "Settings",            href: "/university/settings",           icon: Settings        },
+  { name: "Dashboard",              href: "/university",                        icon: LayoutDashboard },
+  { name: "Assigned Challenges",    href: "/university/assigned-challenges",    icon: ClipboardList   },
+  { name: "Collaboration Requests", href: "/university/collaboration-requests", icon: Handshake       },
+  { name: "Departments",            href: "/university/departments",           icon: Building2       },
+  { name: "Mentors",                href: "/university/mentors",                icon: Users           },
+  { name: "Notifications",          href: "/university/notifications",          icon: Bell            },
+  { name: "University Profile",     href: "/university/profile",                icon: UserCircle      },
+  { name: "Settings",               href: "/university/settings",               icon: Settings        },
 ];
 
 export default function UniversitySidebar() {
@@ -39,6 +35,7 @@ export default function UniversitySidebar() {
   const { user, isLoading, logout } = useAuth();
   const router = useRouter();
   const [unread, setUnread] = useState(0);
+  const requestsAwaiting = useCollaborationRequestBadge("university", pathname);
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
   useEffect(() => {
@@ -97,7 +94,7 @@ export default function UniversitySidebar() {
           <span className="text-xs font-black text-white">{initials}</span>
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="truncate text-sm font-bold text-slate-900 leading-tight">{user.name}</h1>
+          <h1 className="truncate text-sm font-bold text-slate-900 leading-tight">{getOrganizationName(user)}</h1>
           <p className="text-xs text-indigo-500 font-medium">University Portal</p>
         </div>
       </div>
@@ -123,6 +120,16 @@ export default function UniversitySidebar() {
                 className={isActive ? "text-white" : "text-slate-400 group-hover:text-indigo-500"}
               />
               <span className="flex-1">{name}</span>
+              {name === "Collaboration Requests" && requestsAwaiting > 0 && (
+                <span
+                  title="Requests waiting for your response"
+                  className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-bold ${
+                    isActive ? "bg-white text-indigo-600" : "bg-amber-500 text-white"
+                  }`}
+                >
+                  {requestsAwaiting}
+                </span>
+              )}
               {name === "Notifications" && unread > 0 && (
                 <span
                   className={`flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold ${
@@ -135,20 +142,16 @@ export default function UniversitySidebar() {
             </Link>
           );
         })}
+        <ProjectsNavSection partyType="university" basePath="/university" accent="indigo" />
       </nav>
 
       {/* User */}
       <div className="border-t border-slate-100 p-4">
         <div className="mb-2 flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
           <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 text-xs font-bold text-white shadow-sm">
-            {universityCoordinator.avatar}
             {user.name.charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold text-slate-800">
-              {universityCoordinator.name}
-            </p>
-            <p className="text-xs text-indigo-500 font-medium">{universityCoordinator.role}</p>
             <p className="truncate text-sm font-semibold text-slate-800">{user.name}</p>
             <p className="text-xs text-indigo-500 font-medium">University Coordinator</p>
           </div>

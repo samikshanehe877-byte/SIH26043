@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, ClipboardList, Building2, Users, Bell, UserCircle } from "lucide-react";
+import { LayoutDashboard, ClipboardList, FolderKanban, Users, Bell, UserCircle } from "lucide-react";
 
 const navItems = [
   { name: "Dashboard",   href: "/university",                     icon: LayoutDashboard },
   { name: "Challenges",  href: "/university/assigned-challenges", icon: ClipboardList   },
-  { name: "Departments", href: "/university/departments",         icon: Building2       },
+  { name: "Projects",    href: "/university/projects",            icon: FolderKanban    },
   { name: "Mentors",     href: "/university/mentors",             icon: Users           },
   { name: "Alerts",      href: "/university/notifications",       icon: Bell            },
   { name: "Profile",     href: "/university/profile",            icon: UserCircle      },

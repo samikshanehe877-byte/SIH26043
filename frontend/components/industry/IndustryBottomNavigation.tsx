@@ -10,11 +10,12 @@ import {
   Bell,
 } from "lucide-react";
 import { useIndustry } from "@/context/IndustryContext";
+import { useCollaborationRequestBadge } from "@/lib/projects";
 
 const navItems = [
   { name: "Home",       href: "/industry",               icon: LayoutDashboard },
   { name: "Requests",   href: "/industry/requests",      icon: Inbox           },
-  { name: "Collab",     href: "/industry/collaborations",icon: Handshake       },
+  { name: "Projects",   href: "/industry/projects",      icon: Handshake       },
   { name: "Impact",     href: "/industry/impact",        icon: PieChart        },
   { name: "Alerts",     href: "/industry/notifications", icon: Bell            },
 ];
@@ -22,6 +23,7 @@ const navItems = [
 export default function IndustryBottomNavigation() {
   const pathname = usePathname();
   const { unreadNotificationsCount } = useIndustry();
+  const requestsAwaiting = useCollaborationRequestBadge("industry", pathname);
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-slate-200/80 bg-white/95 backdrop-blur-md px-1 py-1.5 shadow-lg lg:hidden">
@@ -42,6 +44,11 @@ export default function IndustryBottomNavigation() {
           >
             <div className="relative">
               <Icon size={19} strokeWidth={isActive ? 2.5 : 2} />
+              {name === "Requests" && requestsAwaiting > 0 && (
+                <span className="absolute -top-1 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-amber-500 px-1 text-[9px] font-bold text-white">
+                  {requestsAwaiting}
+                </span>
+              )}
               {name === "Alerts" && unreadNotificationsCount > 0 && (
                 <span className="absolute -top-1 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
                   {unreadNotificationsCount}

@@ -41,6 +41,7 @@ export default function NotificationsPage() {
           isRead: Boolean(record.is_read),
           problemTitle: record.problem_title,
           problemId: record.problem_id,
+          category: record.category,
         })));
       })
       .catch(() => setLoadError(true))
@@ -145,6 +146,11 @@ export default function NotificationsPage() {
 
   async function openNotification(notification: Notification) {
     await markOneRead(notification.id);
+    // Progress updates and new partners belong to the project workspace.
+    if (notification.category === "project" && notification.problemId) {
+      router.push(`/projects/${encodeURIComponent(notification.problemId)}`);
+      return;
+    }
     router.push(notification.problemId
       ? `/my-problems?problemId=${encodeURIComponent(notification.problemId)}`
       : "/my-problems");

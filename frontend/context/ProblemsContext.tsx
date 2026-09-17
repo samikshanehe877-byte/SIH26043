@@ -21,6 +21,9 @@ interface ProblemsContextType {
 
 const ProblemsContext = createContext<ProblemsContextType | undefined>(undefined);
 
+/** Statuses shown when browsing (mirrors PUBLIC_PROBLEM_STATUSES in the API). Earlier or rejected problems stay in "My Problems". */
+const PUBLIC_STATUSES = ["verified", "assigned", "in_progress", "completed"];
+
 export function ProblemsProvider({ children }: { children: ReactNode }) {
   const { user, isAuthenticated } = useAuth();
   const [publicProblems, setPublicProblems] = useState<Problem[]>([]);
@@ -38,7 +41,8 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
 
     try {
       const [publishedResponse, myResponse] = await Promise.all([
-        fetch(`${apiUrl}/problems?status=verified`, { cache: "no-store" }),
+        // Browsing list: the API leaves out unverified problems (they only appear under "my problems").
+        fetch(`${apiUrl}/problems?limit=500`, { cache: "no-store" }),
         fetch(`${apiUrl}/problems?citizen_name=${encodeURIComponent(user.name)}&limit=500`, { cache: "no-store" }),
       ]);
 
@@ -48,7 +52,11 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
       const myRecords = await myResponse.json();
 
       if (Array.isArray(publishedRecords)) {
-        setPublicProblems(publishedRecords.map(toFrontendProblem));
+        setPublicProblems(
+          publishedRecords
+            .filter((record) => PUBLIC_STATUSES.includes(String(record.status)))
+            .map(toFrontendProblem),
+        );
       }
       if (Array.isArray(myRecords)) {
         setMyProblems(myRecords.map(toFrontendProblem));
@@ -240,11 +248,13 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
     solverType: "university" | "industry",
     solverName: string
   ): Promise<boolean> => {
+    if (!user) return false;
     try {
+      // Only the problem giver may accept; the API checks this name against the problem's owner.
       const response = await fetch(`${apiUrl}/problems/${id}/select-volunteer`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ solver_type: solverType, solver_name: solverName }),
+        body: JSON.stringify({ solver_type: solverType, solver_name: solverName, citizen_name: user.name }),
       });
       if (!response.ok) return false;
       const saved = toFrontendProblem(await response.json());

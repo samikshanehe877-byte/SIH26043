@@ -16,7 +16,6 @@ from api import (
     act_on_collaboration_request_endpoint,
     create_collaboration_request_endpoint,
     create_problem_endpoint,
-    delete_problem_endpoint,
     get_notifications,
     select_volunteer_endpoint,
     volunteer_for_problem_endpoint,
@@ -48,7 +47,7 @@ def test_volunteer_outcomes_reach_university_and_industry_inboxes():
     volunteer_for_problem_endpoint(problem.id, VolunteerRequest(solver_type="university", solver_name=UNIVERSITY))
     volunteer_for_problem_endpoint(problem.id, VolunteerRequest(solver_type="industry", solver_name=INDUSTRY))
 
-    select_volunteer_endpoint(problem.id, SelectVolunteerRequest(solver_type="industry", solver_name=INDUSTRY))
+    select_volunteer_endpoint(problem.id, SelectVolunteerRequest(solver_type="industry", solver_name=INDUSTRY, citizen_name="Rahul Sharma"))
 
     assert titles(INDUSTRY, "industry") == ["Volunteer request accepted", "Volunteer request submitted"]
     assert titles(UNIVERSITY, "university") == ["Volunteer request not selected", "Volunteer request submitted"]
@@ -76,13 +75,25 @@ def test_blank_solver_name_is_rejected():
     assert error.value.status_code == 400
 
 
-def test_deleting_problem_alerts_pending_volunteers():
-    problem = create_problem_endpoint(ProblemBase(problem_text="Broken well", title="Broken well", citizen_name="Rahul Sharma"))
+def test_cannot_volunteer_on_unverified_problem():
+    for status in ("submitted", "under_review", "returned_for_correction", "rejected"):
+        problem = create_problem_endpoint(ProblemBase(problem_text="Broken well", title="Broken well", citizen_name="Rahul Sharma"))
+        update_problem(problem.id, ProblemUpdate(status=status))
+        with pytest.raises(HTTPException) as error:
+            volunteer_for_problem_endpoint(problem.id, VolunteerRequest(solver_type="university", solver_name=UNIVERSITY))
+        assert error.value.status_code == 409
+        # Nobody was alerted about a proposal that was never accepted.
+        assert titles(UNIVERSITY, "university") == []
+
+
+def test_only_problem_giver_can_accept_volunteer():
+    problem = verified_problem()
     volunteer_for_problem_endpoint(problem.id, VolunteerRequest(solver_type="university", solver_name=UNIVERSITY))
-
-    delete_problem_endpoint(problem.id, citizen_name="Rahul Sharma")
-
-    assert titles(UNIVERSITY, "university")[0] == "Problem withdrawn by owner"
+    with pytest.raises(HTTPException) as error:
+        select_volunteer_endpoint(problem.id, SelectVolunteerRequest(
+            solver_type="university", solver_name=UNIVERSITY, citizen_name="Someone Else"))
+    assert error.value.status_code == 403
+    assert problem_storage.get_problem(problem.id).status == "verified"
 
 
 def request_support(problem_id=None):
@@ -92,17 +103,25 @@ def request_support(problem_id=None):
         industry_name=INDUSTRY,
         problem_id=problem_id,
         challenge_title="Pothole alerts",
+        progress_summary="Survey of 12 roads done",
         support_types=["Funding", "Hardware"],
         description="Need sensors",
     ))
 
 
-def test_collaboration_request_clarify_reply_accept_flow():
+def accepted_university_project():
     problem = verified_problem()
+    volunteer_for_problem_endpoint(problem.id, VolunteerRequest(solver_type="university", solver_name=UNIVERSITY))
+    select_volunteer_endpoint(problem.id, SelectVolunteerRequest(solver_type="university", solver_name=UNIVERSITY, citizen_name="Rahul Sharma"))
+    return problem
+
+
+def test_collaboration_request_clarify_reply_accept_flow():
+    problem = accepted_university_project()
     record = request_support(problem.id)
 
     assert titles(INDUSTRY, "industry") == ["New collaboration request"]
-    assert titles(UNIVERSITY, "university") == ["Collaboration request sent"]
+    assert titles(UNIVERSITY, "university")[0] == "Collaboration request sent"
 
     act_on_collaboration_request_endpoint(record.id, CollaborationAction(
         actor_type="industry", actor_name=INDUSTRY, action="clarify", note="How many sensors?"))
@@ -119,6 +138,19 @@ def test_collaboration_request_clarify_reply_accept_flow():
     assert problem_storage.get_problem(problem.id).assigned_industry == INDUSTRY
     # None of this leaks to the citizen who posted the problem.
     assert not any("ollaboration" in t for t in titles("Rahul Sharma", "citizen"))
+
+
+def test_only_accepted_volunteer_can_invite_collaborators():
+    problem = verified_problem()
+    with pytest.raises(HTTPException) as error:
+        request_support(problem.id)
+    assert error.value.status_code == 409  # nobody accepted yet
+
+    volunteer_for_problem_endpoint(problem.id, VolunteerRequest(solver_type="industry", solver_name=INDUSTRY))
+    select_volunteer_endpoint(problem.id, SelectVolunteerRequest(solver_type="industry", solver_name=INDUSTRY, citizen_name="Rahul Sharma"))
+    with pytest.raises(HTTPException) as error:
+        request_support(problem.id)  # the university is not the lead here
+    assert error.value.status_code == 403
 
 
 def test_collaboration_reject_requires_reason_and_alerts_requester():

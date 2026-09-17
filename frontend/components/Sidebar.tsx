@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import ProjectsNavSection from "@/components/workspace/ProjectsNavSection";
 
 const navigation = [
   { name: "Home",             href: "/",             icon: Home       },
@@ -111,6 +112,13 @@ export default function Sidebar() {
             </Link>
           );
         })}
+        <ProjectsNavSection
+          partyType="citizen"
+          basePath=""
+          accent="blue"
+          label="Workspaces"
+          emptyText="Opens once you accept a volunteer"
+        />
       </nav>
 
       {/* User profile */}

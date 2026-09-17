@@ -8,11 +8,14 @@ import { Problem } from "@/types/problem";
 import StatsCard from "@/components/StatsCard";
 import { Inbox, Handshake, Award, Activity, ArrowRight, Clock, Send } from "lucide-react";
 import Link from "next/link";
+import ProjectCards from "@/components/workspace/ProjectCards";
+import { useProjects } from "@/lib/projects";
 
 export default function IndustryDashboardPage() {
   const { company, requests, collaborations, impact } = useIndustry();
   const { publicProblems, volunteerForProblem, withdrawVolunteerRequest } = useProblems();
-  const { assignedProblems, isLoading, refreshProblems } = useIndustryProblems();
+  const { isLoading, refreshProblems } = useIndustryProblems();
+  const { projects } = useProjects("industry");
   const [volunteeredIds, setVolunteeredIds] = useState<Set<string>>(new Set());
 
   const handleVolunteer = async (problemId: string, proposal: string) => {
@@ -50,11 +53,8 @@ export default function IndustryDashboardPage() {
   const activeCollaborationsCount = collaborations.filter(c => c.collaborationStatus === "In Progress" || c.collaborationStatus === "Support Delivered").length;
   const completedCollaborationsCount = collaborations.filter(c => c.collaborationStatus === "Completed").length + impact.completedSolutions;
 
-  // Filter assigned problems by status
-  const activeCollaborations = assignedProblems.filter((p) => 
-    ["Assigned to University", "In Progress", "Collaboration with Industry"].includes(p.status)
-  );
-  const completedCollaborations = assignedProblems.filter((p) => p.status === "Completed");
+  const activeProjects = projects.filter((p) => p.status !== "completed");
+  const completedProjects = projects.filter((p) => p.status === "completed");
 
   if (isLoading) {
     return (
@@ -85,14 +85,14 @@ export default function IndustryDashboardPage() {
           color="amber"
         />
         <StatsCard
-          label="Active Collaborations"
-          value={activeCollaborations.length}
+          label="Active Projects"
+          value={activeProjects.length}
           icon={Handshake}
           color="blue"
         />
         <StatsCard
           label="Completed"
-          value={completedCollaborations.length}
+          value={completedProjects.length}
           icon={Award}
           color="green"
         />
@@ -240,53 +240,20 @@ export default function IndustryDashboardPage() {
             </div>
           </div>
 
-          {/* Active Collaborations from assigned problems */}
+          {/* Project Workspaces — accepted problems this company leads or supports */}
           <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-slate-900">Active Collaborations</h2>
-              <Link href="/industry/collaborations" className="text-sm font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">
+              <h2 className="text-lg font-bold text-slate-900">Project Workspaces</h2>
+              <Link href="/industry/projects" className="text-sm font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1">
                 View all <ArrowRight size={16} />
               </Link>
             </div>
-            
-            <div className="space-y-4">
-              {activeCollaborations.slice(0, 2).map(collab => (
-                <div key={collab.id} className="rounded-xl border border-slate-100 p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="font-bold text-slate-900">{collab.title}</h3>
-                    <span className="inline-flex rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700 border border-emerald-100">
-                      {collab.status}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 text-xs text-slate-500 mb-4">
-                    <span>Citizen: {collab.citizenName}</span>
-                    <span className="h-1 w-1 rounded-full bg-slate-300" />
-                    <span>Progress: {collab.progress}%</span>
-                  </div>
-                  
-                  <div className="mb-4">
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                      <div 
-                        className="h-full rounded-full bg-emerald-500"
-                        style={{ width: `${collab.progress}%` }}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-3">
-                    <p className="text-xs text-slate-500">
-                      Support: <span className="font-semibold text-slate-700">{collab.volunteers?.length || 0} items</span>
-                    </p>
-                    <Link href={`/industry/collaborations/${collab.id}`} className="text-sm font-semibold text-blue-600 hover:text-blue-700">
-                      Manage Support
-                    </Link>
-                  </div>
-                </div>
-              ))}
-              {activeCollaborations.length === 0 && (
-                <p className="text-sm text-slate-500 text-center py-4">No active collaborations at the moment.</p>
-              )}
-            </div>
+            <ProjectCards
+              projects={activeProjects.slice(0, 4)}
+              basePath="/industry"
+              accent="blue"
+              emptyText="No active projects. Accepted volunteer proposals and university collaborations open a workspace here."
+            />
           </div>
           
         </div>

@@ -1,0 +1,968 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import {
+  ArrowLeft, Building2, CheckCircle2, Crown, Download, Factory, Handshake, Loader2, MapPin, Megaphone,
+  MessageSquare, Paperclip, Send, User, X,
+} from "lucide-react";
+import AttachmentGallery, { DownloadStatus, useDownloader } from "./AttachmentGallery";
+import CollaborationRequestList from "./CollaborationRequestList";
+import {
+  FilePickerButton, RejectedFilesNotice, StagedFilesGrid, UploadFailedNotice, UploadPhase, UploadProgress,
+  UploadSucceededNotice, useStagedFiles,
+} from "./UploadStaging";
+import {
+  Accent, ACCENTS, apiJson, CollaborationRequestRecord, formatRelativeTime, MAX_ATTACHMENT_SIZE_MB,
+  MAX_UPDATE_ATTACHMENTS, PartyType, partyQuery, PROJECT_STATUS_LABELS, ProjectMessageRecord, ProjectSummary,
+  ProjectUpdateRecord, UploadError, uploadForm, useParty, ViewerType, workspaceDownloadPaths,
+} from "@/lib/projects";
+
+type Tab = "updates" | "chat" | "collaboration";
+type ColorSet = (typeof ACCENTS)[Accent];
+
+const ROLE_LABELS: Record<ProjectSummary["my_role"], string> = {
+  lead: "You are the project lead",
+  collaborator: "You are a collaborator",
+  owner: "You reported this problem",
+  invitee: "Invited",
+};
+
+const SUPPORT_TYPES = [
+  "Funding", "Technical Expertise", "Hardware", "Software Tool", "Cloud Resources",
+  "Dataset", "Domain Expert", "Mentorship", "Research Partnership", "Field Testing",
+];
+
+/**
+ * Workspace for one accepted problem, shared by the university, industry and citizen portals.
+ * Open to the project lead (accepted volunteer), accepted collaborators, and the citizen who
+ * reported the problem. The citizen can follow updates and chat but does not post updates or invite partners.
+ */
+export default function ProjectWorkspace({
+  problemId,
+  partyType,
+  basePath,
+  accent,
+  backHref = `${basePath}/projects`,
+  backLabel = "My Projects",
+}: {
+  problemId: string;
+  partyType: ViewerType;
+  basePath: string;
+  accent: Accent;
+  backHref?: string;
+  backLabel?: string;
+}) {
+  const { partyName, userName } = useParty(partyType);
+  const colors = ACCENTS[accent];
+  const [project, setProject] = useState<ProjectSummary | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("updates");
+
+  const loadProject = useCallback(async () => {
+    if (!partyName) return;
+    try {
+      setProject(await apiJson<ProjectSummary>(`/projects/${problemId}?${partyQuery(partyType, partyName)}`));
+      setLoadError(null);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : "Could not load this project");
+    }
+  }, [problemId, partyType, partyName]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadProject(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadProject]);
+
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-xl rounded-2xl border border-red-100 bg-red-50 p-6 text-center">
+        <p className="font-semibold text-red-700">{loadError}</p>
+        <Link href={backHref} className={`mt-3 inline-block text-sm font-semibold ${colors.text}`}>
+          Back to {backLabel}
+        </Link>
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="space-y-4">
+        <div className="h-8 w-64 animate-pulse rounded bg-slate-200" />
+        <div className="h-40 animate-pulse rounded-2xl bg-slate-100" />
+      </div>
+    );
+  }
+
+  const isLead = project.my_role === "lead";
+  const isOwner = project.my_role === "owner";
+  const tabs: { id: Tab; label: string; icon: typeof Megaphone }[] = [
+    { id: "updates", label: "Updates", icon: Megaphone },
+    { id: "chat", label: "Chat", icon: MessageSquare },
+    // Inviting partners is the solving organisations' job; the citizen sees partners in the header.
+    ...(isOwner ? [] : [{ id: "collaboration" as const, label: "Collaboration", icon: Handshake }]),
+  ];
+
+  return (
+    <div className="space-y-5">
+      <Link href={backHref} className="inline-flex items-center gap-1.5 text-sm font-semibold text-slate-500 hover:text-slate-800">
+        <ArrowLeft size={15} /> {backLabel}
+      </Link>
+
+      {/* Header */}
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        <div className="mb-2 flex flex-wrap items-center gap-2">
+          <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${colors.soft}`}>{PROJECT_STATUS_LABELS[project.status]}</span>
+          {project.category && (
+            <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">{project.category}</span>
+          )}
+          <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-600">
+            {isLead && <Crown size={11} />} {ROLE_LABELS[project.my_role]}
+          </span>
+        </div>
+        <h1 className="text-xl font-bold text-slate-900 sm:text-2xl">{project.title}</h1>
+        <p className="mt-1 text-sm leading-relaxed text-slate-600">{project.description}</p>
+        <div className="mt-3 flex flex-wrap gap-4 text-xs text-slate-500">
+          <span className="flex items-center gap-1"><User size={13} /> Reported by {project.citizen_name}</span>
+          {project.location && <span className="flex items-center gap-1"><MapPin size={13} /> {project.location}</span>}
+        </div>
+
+        <div className="mt-4">
+          <div className="mb-1 flex justify-between text-xs font-semibold">
+            <span className="text-slate-500">Overall progress</span>
+            <span className={colors.text}>{project.progress}%</span>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+            <div className={`h-full rounded-full ${colors.bar} transition-all`} style={{ width: `${project.progress}%` }} />
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-wrap gap-2">
+          {project.parties.map((party) => (
+            <span key={`${party.type}-${party.name}`} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-100 bg-slate-50 px-3 py-1.5 text-xs text-slate-700">
+              {party.type === "university" ? <Building2 size={13} /> : <Factory size={13} />}
+              <span className="font-semibold">{party.name}</span>
+              <span className="text-slate-400">· {party.role === "lead" ? "Lead" : "Collaborator"}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-1 rounded-2xl border border-slate-100 bg-white p-1 shadow-sm">
+        {tabs.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition ${
+              tab === id ? colors.active : "text-slate-500 hover:bg-slate-50"
+            }`}
+          >
+            <Icon size={15} /> {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "updates" && (
+        <UpdatesPanel project={project} partyType={partyType} partyName={partyName} userName={userName} accent={accent} onPosted={loadProject} />
+      )}
+      {tab === "chat" && (
+        <ChatPanel problemId={problemId} partyType={partyType} partyName={partyName} userName={userName} accent={accent} />
+      )}
+      {tab === "collaboration" && partyType !== "citizen" && (
+        <CollaborationPanel project={project} partyType={partyType} partyName={partyName} userName={userName} accent={accent} basePath={basePath} />
+      )}
+    </div>
+  );
+}
+
+interface PanelProps {
+  partyType: ViewerType;
+  partyName: string;
+  userName: string;
+  accent: Accent;
+}
+
+function UpdatesPanel({ project, partyType, partyName, userName, accent, onPosted }: PanelProps & {
+  project: ProjectSummary;
+  onPosted: () => void;
+}) {
+  const colors = ACCENTS[accent];
+  const isLead = project.my_role === "lead";
+  const [updates, setUpdates] = useState<ProjectUpdateRecord[]>([]);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [changeProgress, setChangeProgress] = useState(false);
+  const [progress, setProgress] = useState(project.progress);
+  const staged = useStagedFiles(MAX_UPDATE_ATTACHMENTS);
+  const [phase, setPhase] = useState<UploadPhase>("idle");
+  const [uploadFraction, setUploadFraction] = useState(0);
+  const [failure, setFailure] = useState<{ error: UploadError | Error; hadFiles: boolean } | null>(null);
+  // Stays until dismissed or the next post: the server's own record of what was saved.
+  const [succeeded, setSucceeded] = useState<{ updateId: string; title: string; fileNames: string[] } | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [justPostedIds, setJustPostedIds] = useState<Set<string>>(new Set());
+  const [scrollToId, setScrollToId] = useState<string | null>(null);
+  const workspaceDownloader = useDownloader();
+
+  // Updates (or attachment counts) seen so far, so ones posted by other parties while this page is
+  // open can be flagged "New" instead of silently appearing somewhere in the list.
+  const seenRef = useRef<Map<string, number> | null>(null);
+  const [freshIds, setFreshIds] = useState<Set<string>>(new Set());
+
+  const loadUpdates = useCallback(async () => {
+    try {
+      const records = await apiJson<ProjectUpdateRecord[]>(`/projects/${project.id}/updates?${partyQuery(partyType, partyName)}`);
+      const seen = seenRef.current;
+      if (seen) {
+        const arrived = records
+          .filter((u) => !(u.author_type === partyType && u.author_org === partyName))
+          .filter((u) => !seen.has(u.id) || (seen.get(u.id) ?? 0) < u.attachments.length)
+          .map((u) => u.id);
+        if (arrived.length > 0) setFreshIds((prev) => new Set([...prev, ...arrived]));
+      }
+      seenRef.current = new Map(records.map((u) => [u.id, u.attachments.length]));
+      setUpdates(records);
+    } catch (err) {
+      console.error("Failed to load updates:", err);
+    }
+  }, [project.id, partyType, partyName]);
+
+  // Poll often while open, and immediately when the tab/window regains focus, so an update or
+  // file posted by another party shows up here within seconds rather than on the next slow poll.
+  useEffect(() => {
+    const load = () => void loadUpdates();
+    const initial = window.setTimeout(load, 0);
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") load();
+    }, 10_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    window.addEventListener("focus", load);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearTimeout(initial);
+      window.clearInterval(interval);
+      window.removeEventListener("focus", load);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [loadUpdates]);
+
+  useEffect(() => {
+    if (freshIds.size === 0 && justPostedIds.size === 0) return;
+    const timer = window.setTimeout(() => {
+      setFreshIds(new Set());
+      setJustPostedIds(new Set());
+    }, 60_000);
+    return () => window.clearTimeout(timer);
+  }, [freshIds, justPostedIds]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  // Bring the update that was just posted into view once it is in the list.
+  useEffect(() => {
+    if (!scrollToId || !updates.some((u) => u.id === scrollToId)) return;
+    document.getElementById(`update-${scrollToId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    const timer = window.setTimeout(() => setScrollToId(null), 0);
+    return () => window.clearTimeout(timer);
+  }, [scrollToId, updates]);
+
+  const post = async () => {
+    const files = staged.files;
+    setPhase("uploading");
+    setUploadFraction(0);
+    setFailure(null);
+    setSucceeded(null);
+    try {
+      // Always goes through the multipart endpoint; it works the same with zero files attached.
+      const form = new FormData();
+      form.set("party_type", partyType);
+      form.set("party_name", partyName);
+      form.set("author_name", userName);
+      form.set("title", title.trim());
+      form.set("body", body.trim());
+      if (isLead && changeProgress) form.set("progress", String(progress));
+      files.forEach((file) => form.append("files", file));
+
+      const created = await uploadForm<ProjectUpdateRecord>(
+        `/projects/${project.id}/updates/with-attachments`, form, setUploadFraction,
+      );
+      // Confirm from what the server actually saved, not from the local selection.
+      const saved = created.attachments.map((a) => a.name);
+      if (saved.length !== files.length) {
+        throw new UploadError(0, `Only ${saved.length} of ${files.length} files were saved. Check the update below and add the missing ones again.`);
+      }
+      setSucceeded({ updateId: created.id, title: created.title, fileNames: saved });
+      setToast(saved.length > 0
+        ? `Update posted. ${saved.length} file${saved.length === 1 ? "" : "s"} uploaded and shared with everyone in this workspace.`
+        : "Update posted and shared with everyone in this workspace.");
+      setJustPostedIds((prev) => new Set([...prev, created.id]));
+      setScrollToId(created.id);
+      setTitle("");
+      setBody("");
+      setChangeProgress(false);
+      staged.clear();
+      setPhase("idle");
+      await loadUpdates();
+      onPosted();
+    } catch (err) {
+      setFailure({ error: err instanceof Error ? err : new Error("Could not post the update."), hadFiles: files.length > 0 });
+      setPhase("failed");
+    }
+  };
+
+  const uploading = phase === "uploading";
+  const failedFileName = failure?.error instanceof UploadError ? failure.error.fileName : null;
+  const totalFiles = updates.reduce((sum, u) => sum + u.attachments.length, 0);
+  const workspaceZipPath = workspaceDownloadPaths.workspace(project.id, partyType, partyName);
+
+  return (
+    <div className="space-y-4">
+      {project.my_role === "owner" ? (
+        <div className="rounded-2xl border border-slate-100 bg-white p-4 text-sm text-slate-600 shadow-sm">
+          The organisations solving your problem post their progress here. Use the Chat tab to ask them questions.
+        </div>
+      ) : (
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        <h2 className="mb-3 text-sm font-bold text-slate-800">Post an update</h2>
+        <div className="space-y-3">
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            disabled={uploading}
+            placeholder="e.g. Prototype installed at the first junction"
+            maxLength={140}
+            className={`w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none disabled:opacity-60 ${colors.ring}`}
+          />
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            disabled={uploading}
+            rows={3}
+            placeholder="Details, findings, blockers or next steps (optional)"
+            className={`w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none disabled:opacity-60 ${colors.ring}`}
+          />
+          {isLead ? (
+            <div className="rounded-xl bg-slate-50 p-3">
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <input type="checkbox" checked={changeProgress} disabled={uploading} onChange={(e) => setChangeProgress(e.target.checked)} />
+                Update overall progress
+              </label>
+              {changeProgress && (
+                <div className="mt-2 flex items-center gap-3">
+                  <input type="range" min={0} max={100} step={5} value={progress} onChange={(e) => setProgress(Number(e.target.value))} className="flex-1" />
+                  <span className={`w-12 text-right text-sm font-bold ${colors.text}`}>{progress}%</span>
+                </div>
+              )}
+              {changeProgress && progress === 100 && (
+                <p className="mt-1 text-xs text-emerald-700">Setting 100% marks the problem as completed and tells the citizen it is solved.</p>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-slate-400">The project lead sets overall progress. Your update is shared with every party and the citizen.</p>
+          )}
+
+          <div className="space-y-2">
+            <FilePickerButton
+              label={staged.files.length > 0
+                ? `Add more files (${staged.files.length}/${MAX_UPDATE_ATTACHMENTS} selected)`
+                : "Attach photos, videos, PDFs or Office docs"}
+              disabled={uploading || staged.files.length >= MAX_UPDATE_ATTACHMENTS}
+              onPick={(picked) => {
+                staged.add(picked);
+                if (phase === "failed") setPhase("idle");
+              }}
+              className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500 transition hover:border-slate-400 hover:text-slate-700"
+            />
+            <p className="text-[11px] text-slate-400">
+              Up to {MAX_UPDATE_ATTACHMENTS} files, {MAX_ATTACHMENT_SIZE_MB} MB each. Click a file to preview it before uploading.
+            </p>
+            <RejectedFilesNotice rejected={staged.rejected} onDismiss={staged.dismissRejected} />
+            <StagedFilesGrid
+              files={staged.files}
+              phase={phase}
+              failedFileName={failedFileName}
+              onRemove={(index) => {
+                staged.remove(index);
+                if (phase === "failed") setPhase("idle");
+              }}
+            />
+          </div>
+
+          {uploading && staged.files.length > 0 && <UploadProgress fileCount={staged.files.length} fraction={uploadFraction} />}
+          {failure && (
+            <UploadFailedNotice
+              error={failure.error}
+              hadFiles={failure.hadFiles}
+              onRetry={() => void post()}
+              onDismiss={() => setFailure(null)}
+            />
+          )}
+          {succeeded && (
+            <UploadSucceededNotice
+              message={succeeded.fileNames.length > 0
+                ? `Update "${succeeded.title}" posted. ${succeeded.fileNames.length} file${succeeded.fileNames.length === 1 ? " was" : "s were"} uploaded and ${succeeded.fileNames.length === 1 ? "is" : "are"} now visible to everyone in this workspace:`
+                : `Update "${succeeded.title}" posted and shared with everyone in this workspace.`}
+              fileNames={succeeded.fileNames}
+              onView={() => setScrollToId(succeeded.updateId)}
+              onDismiss={() => setSucceeded(null)}
+            />
+          )}
+          <div className="flex justify-end">
+            <button
+              onClick={() => void post()}
+              disabled={uploading || !title.trim()}
+              className={`flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold transition disabled:opacity-40 ${colors.solid}`}
+            >
+              {uploading && <Loader2 size={14} className="animate-spin" />}
+              {uploading
+                ? (staged.files.length > 0 ? "Uploading..." : "Posting...")
+                : staged.files.length > 0
+                  ? `Post update with ${staged.files.length} file${staged.files.length === 1 ? "" : "s"}`
+                  : "Post update"}
+            </button>
+          </div>
+        </div>
+      </div>
+      )}
+
+      {totalFiles > 0 && (
+        <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="flex items-center gap-1.5 text-sm text-slate-600">
+              <Paperclip size={14} className="text-slate-400" />
+              <span className="font-semibold text-slate-800">{totalFiles} file{totalFiles === 1 ? "" : "s"}</span>
+              shared in this workspace
+            </p>
+            <button
+              onClick={() => void workspaceDownloader.download(workspaceZipPath, `${project.title.slice(0, 60)} - all files.zip`)}
+              disabled={workspaceDownloader.busyPath !== null}
+              className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            >
+              {workspaceDownloader.busyPath ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              {workspaceDownloader.busyPath ? "Preparing zip..." : "Download all files (zip)"}
+            </button>
+          </div>
+          <DownloadStatus error={workspaceDownloader.error} saved={workspaceDownloader.saved} onDismiss={workspaceDownloader.clearError} />
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {updates.length === 0 && (
+          <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-8 text-center text-sm text-slate-500">
+            No updates yet. Share the first milestone with your partners.
+          </p>
+        )}
+        {updates.map((update) => {
+          const isFresh = freshIds.has(update.id);
+          const isJustPosted = justPostedIds.has(update.id);
+          return (
+          <div
+            key={update.id}
+            id={`update-${update.id}`}
+            className={`scroll-mt-24 rounded-2xl border bg-white p-4 shadow-sm transition ${
+              isJustPosted ? "border-emerald-300 ring-2 ring-emerald-100" : isFresh ? "border-amber-300 ring-2 ring-amber-100" : "border-slate-100"
+            }`}
+          >
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p className="flex flex-wrap items-center gap-2 font-semibold text-slate-900">
+                  {update.title}
+                  {isJustPosted && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                      <CheckCircle2 size={10} /> Just posted
+                      {update.attachments.length > 0 && ` · ${update.attachments.length} file${update.attachments.length === 1 ? "" : "s"} uploaded`}
+                    </span>
+                  )}
+                  {isFresh && !isJustPosted && (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-700">New</span>
+                  )}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {update.author_name} · {update.author_org} · {formatRelativeTime(update.created_at)}
+                </p>
+              </div>
+              {update.progress !== null && (
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${colors.soft}`}>Progress → {update.progress}%</span>
+              )}
+            </div>
+            {update.body && <p className="mt-2 whitespace-pre-line text-sm text-slate-600">{update.body}</p>}
+            {update.attachments.length > 0 && (
+              <div className="mt-3">
+                <AttachmentGallery
+                  attachments={update.attachments}
+                  downloads={{
+                    filePath: (index) => workspaceDownloadPaths.file(project.id, update.id, index, partyType, partyName),
+                    zipPath: workspaceDownloadPaths.update(project.id, update.id, partyType, partyName),
+                    zipName: `${update.title.slice(0, 60)} - files.zip`,
+                  }}
+                />
+              </div>
+            )}
+            <AddMoreAttachments
+              problemId={project.id}
+              update={update}
+              partyType={partyType}
+              partyName={partyName}
+              colors={colors}
+              onAdded={(names) => {
+                setJustPostedIds((prev) => new Set([...prev, update.id]));
+                setToast(`${names.length} file${names.length === 1 ? "" : "s"} added to "${update.title}" and shared with everyone in this workspace.`);
+                void loadUpdates();
+              }}
+            />
+          </div>
+          );
+        })}
+      </div>
+
+      {toast && (
+        <div
+          role="status"
+          className="fixed bottom-20 right-4 z-[60] flex max-w-sm items-start gap-2 rounded-xl bg-emerald-600 px-4 py-3 text-sm font-medium text-white shadow-lg lg:bottom-6"
+        >
+          <CheckCircle2 size={18} className="mt-0.5 flex-shrink-0" />
+          <span className="flex-1">{toast}</span>
+          <button onClick={() => setToast(null)} aria-label="Dismiss" className="flex-shrink-0 text-white/80 hover:text-white"><X size={15} /></button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Lets an update's own author attach further files to it after the fact (evidence often arrives
+ * over time, not all at the moment of posting). Files are previewed before uploading, and the
+ * result is confirmed from what the server stored.
+ */
+function AddMoreAttachments({
+  problemId, update, partyType, partyName, colors, onAdded,
+}: {
+  problemId: string;
+  update: ProjectUpdateRecord;
+  partyType: ViewerType;
+  partyName: string;
+  colors: ColorSet;
+  onAdded: (fileNames: string[]) => void;
+}) {
+  const isAuthor = update.author_type === partyType && update.author_org === partyName;
+  const remaining = MAX_UPDATE_ATTACHMENTS - update.attachments.length;
+  const staged = useStagedFiles(Math.max(remaining, 0));
+  const [phase, setPhase] = useState<UploadPhase>("idle");
+  const [fraction, setFraction] = useState(0);
+  const [failure, setFailure] = useState<UploadError | Error | null>(null);
+  const [confirmed, setConfirmed] = useState<string[] | null>(null);
+
+  if (!isAuthor) return null;
+
+  const upload = async () => {
+    const files = staged.files;
+    setPhase("uploading");
+    setFraction(0);
+    setFailure(null);
+    setConfirmed(null);
+    try {
+      const form = new FormData();
+      form.set("party_type", partyType);
+      form.set("party_name", partyName);
+      files.forEach((file) => form.append("files", file));
+      const result = await uploadForm<ProjectUpdateRecord>(
+        `/projects/${problemId}/updates/${update.id}/attachments`, form, setFraction,
+      );
+      // Confirmed = the files that are new on the server's copy of this update.
+      const added = result.attachments.slice(update.attachments.length).map((a) => a.name);
+      if (added.length !== files.length) {
+        throw new UploadError(0, `Only ${added.length} of ${files.length} files were saved. Check the update and add the missing ones again.`);
+      }
+      setConfirmed(added);
+      staged.clear();
+      setPhase("idle");
+      onAdded(added);
+    } catch (err) {
+      setFailure(err instanceof Error ? err : new Error("Could not attach the files."));
+      setPhase("failed");
+    }
+  };
+
+  const uploading = phase === "uploading";
+  const failedFileName = failure instanceof UploadError ? failure.fileName : null;
+
+  return (
+    <div className="mt-3 space-y-2">
+      {remaining > 0 ? (
+        <FilePickerButton
+          label={staged.files.length > 0 ? "Pick more files" : "Add more files"}
+          disabled={uploading || staged.files.length >= remaining}
+          onPick={(picked) => {
+            staged.add(picked);
+            setConfirmed(null);
+            if (phase === "failed") setPhase("idle");
+          }}
+          className={`inline-flex items-center gap-1.5 text-xs font-semibold transition hover:underline ${colors.text}`}
+        />
+      ) : (
+        <p className="text-[11px] text-slate-400">This update has the maximum of {MAX_UPDATE_ATTACHMENTS} files.</p>
+      )}
+
+      <RejectedFilesNotice rejected={staged.rejected} onDismiss={staged.dismissRejected} />
+      {staged.files.length > 0 && (
+        <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs font-semibold text-slate-600">
+            Preview before adding to this update ({staged.files.length} of {remaining} remaining):
+          </p>
+          <StagedFilesGrid
+            files={staged.files}
+            phase={phase}
+            failedFileName={failedFileName}
+            onRemove={(index) => {
+              staged.remove(index);
+              if (phase === "failed") setPhase("idle");
+            }}
+          />
+          {uploading && <UploadProgress fileCount={staged.files.length} fraction={fraction} />}
+          {failure && (
+            <UploadFailedNotice error={failure} hadFiles onRetry={() => void upload()} onDismiss={() => setFailure(null)} />
+          )}
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={() => {
+                staged.clear();
+                setFailure(null);
+                setPhase("idle");
+              }}
+              disabled={uploading}
+              className="rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-white disabled:opacity-40"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => void upload()}
+              disabled={uploading}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold disabled:opacity-40 ${colors.solid}`}
+            >
+              {uploading && <Loader2 size={12} className="animate-spin" />}
+              {uploading ? "Uploading..." : `Upload ${staged.files.length} file${staged.files.length === 1 ? "" : "s"}`}
+            </button>
+          </div>
+        </div>
+      )}
+      {confirmed && confirmed.length > 0 && (
+        <UploadSucceededNotice
+          message={`${confirmed.length} file${confirmed.length === 1 ? " was" : "s were"} added to this update and ${confirmed.length === 1 ? "is" : "are"} now visible to everyone in this workspace:`}
+          fileNames={confirmed}
+          onDismiss={() => setConfirmed(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function ChatPanel({ problemId, partyType, partyName, userName, accent }: PanelProps & { problemId: string }) {
+  const colors = ACCENTS[accent];
+  const [messages, setMessages] = useState<ProjectMessageRecord[]>([]);
+  const [text, setText] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const lastMessageId = messages[messages.length - 1]?.id;
+
+  const loadMessages = useCallback(async () => {
+    try {
+      setMessages(await apiJson<ProjectMessageRecord[]>(`/projects/${problemId}/messages?${partyQuery(partyType, partyName)}`));
+    } catch (err) {
+      console.error("Failed to load messages:", err);
+    }
+  }, [problemId, partyType, partyName]);
+
+  // Poll while the chat tab is open.
+  useEffect(() => {
+    const load = () => void loadMessages();
+    const initial = window.setTimeout(load, 0);
+    const interval = window.setInterval(load, 5_000);
+    return () => {
+      window.clearTimeout(initial);
+      window.clearInterval(interval);
+    };
+  }, [loadMessages]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [lastMessageId]);
+
+  const send = async () => {
+    if (!text.trim()) return;
+    setIsSending(true);
+    setError(null);
+    try {
+      const message = await apiJson<ProjectMessageRecord>(`/projects/${problemId}/messages`, {
+        method: "POST",
+        body: JSON.stringify({ party_type: partyType, party_name: partyName, author_name: userName, text }),
+      });
+      setMessages((prev) => [...prev, message]);
+      setText("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send the message");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  return (
+    <div className="flex h-[32rem] flex-col rounded-2xl border border-slate-100 bg-white shadow-sm">
+      <div className="flex-1 space-y-3 overflow-y-auto p-4">
+        {messages.length === 0 && (
+          <p className="py-10 text-center text-sm text-slate-400">No messages yet. Say hello to your project partners.</p>
+        )}
+        {messages.map((message) => {
+          const isMine = message.author_type === partyType && message.author_org === partyName;
+          return (
+            <div key={message.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${isMine ? colors.mine : "bg-slate-100 text-slate-800"}`}>
+                <p className={`text-[11px] font-semibold ${isMine ? "text-white/80" : "text-slate-500"}`}>
+                  {message.author_name} · {message.author_type === "citizen" ? "Problem owner" : message.author_org}
+                </p>
+                <p className="whitespace-pre-line text-sm">{message.text}</p>
+                <p className={`mt-0.5 text-right text-[10px] ${isMine ? "text-white/70" : "text-slate-400"}`}>
+                  {formatRelativeTime(message.created_at)}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={bottomRef} />
+      </div>
+      {error && <p className="mx-4 rounded-lg bg-red-50 px-3 py-1.5 text-xs text-red-700">{error}</p>}
+      <div className="flex items-end gap-2 border-t border-slate-100 p-3">
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void send();
+            }
+          }}
+          rows={1}
+          maxLength={2000}
+          placeholder="Message all project partners... (Shift+Enter for a new line)"
+          className={`max-h-32 flex-1 resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none ${colors.ring}`}
+        />
+        <button
+          onClick={send}
+          disabled={isSending || !text.trim()}
+          className={`flex h-10 w-10 items-center justify-center rounded-xl transition disabled:opacity-40 ${colors.solid}`}
+          aria-label="Send message"
+        >
+          <Send size={16} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+interface DirectoryEntry {
+  id: string;
+  name: string;
+  detail: string;
+}
+
+function CollaborationPanel({ project, partyType, partyName, userName, accent, basePath }: Omit<PanelProps, "partyType"> & {
+  partyType: PartyType;
+  project: ProjectSummary;
+  basePath: string;
+}) {
+  const colors = ACCENTS[accent];
+  const isLead = project.my_role === "lead";
+  const partnerType: PartyType = partyType === "university" ? "industry" : "university";
+  const [requests, setRequests] = useState<CollaborationRequestRecord[]>([]);
+  const [directory, setDirectory] = useState<DirectoryEntry[]>([]);
+  const [partnerName, setPartnerName] = useState("");
+  const [supportTypes, setSupportTypes] = useState<string[]>([]);
+  const [description, setDescription] = useState("");
+  const [progressSummary, setProgressSummary] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [isSending, setIsSending] = useState(false);
+
+  const loadRequests = useCallback(async () => {
+    try {
+      const records = await apiJson<CollaborationRequestRecord[]>(
+        `/collaboration-requests?problem_id=${encodeURIComponent(project.id)}`,
+      );
+      // Each party only sees requests it is part of.
+      setRequests(records.filter((r) => (partyType === "university" ? r.university_name : r.industry_name) === partyName));
+    } catch (err) {
+      console.error("Failed to load collaboration requests:", err);
+    }
+  }, [project.id, partyType, partyName]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadRequests(), 0);
+    return () => window.clearTimeout(timer);
+  }, [loadRequests]);
+
+  useEffect(() => {
+    if (!isLead) return;
+    const path = partnerType === "industry" ? "/api/directory/industries" : "/api/directory/universities";
+    fetch(path, { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : []))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then((records: any[]) =>
+        setDirectory(
+          (Array.isArray(records) ? records : []).map((r) => ({
+            id: r.id,
+            name: partnerType === "industry" ? r.companyName : r.name,
+            detail: partnerType === "industry" ? r.industryType : [r.district, r.state].filter(Boolean).join(", "),
+          })),
+        ),
+      )
+      .catch(() => setDirectory([]));
+  }, [isLead, partnerType]);
+
+  // Current partners can be asked again (e.g. for more support). Only an organisation that
+  // still has a request awaiting its reply is unavailable, since the API allows one open request at a time.
+  const currentPartners = new Set(project.parties.filter((p) => p.type === partnerType).map((p) => p.name));
+  const awaitingReply = new Set(
+    requests
+      .filter((r) => r.status === "pending" || r.status === "clarification_needed")
+      .map((r) => (partnerType === "industry" ? r.industry_name : r.university_name)),
+  );
+
+  const invite = async () => {
+    setIsSending(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await apiJson("/collaboration-requests", {
+        method: "POST",
+        body: JSON.stringify({
+          requested_by: partyType,
+          university_name: partyType === "university" ? partyName : partnerName,
+          industry_name: partyType === "industry" ? partyName : partnerName,
+          requester_contact: userName,
+          problem_id: project.id,
+          challenge_title: project.title,
+          problem_description: project.description,
+          category: project.category,
+          support_types: supportTypes,
+          description: description.trim() || undefined,
+          progress_summary: progressSummary.trim(),
+        }),
+      });
+      setNotice(`Invitation sent. ${partnerName} can review the problem and your progress, and joins the workspace if they accept.`);
+      setPartnerName("");
+      setSupportTypes([]);
+      setDescription("");
+      setProgressSummary("");
+      await loadRequests();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not send the invitation");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const partnerLabel = partnerType === "industry" ? "industry partner" : "university";
+
+  return (
+    <div className="space-y-4">
+      {isLead ? (
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-bold text-slate-800">Invite a {partnerLabel}</h2>
+          <p className="mt-0.5 text-xs text-slate-500">
+            As the accepted volunteer you lead this project. Partners who accept join this workspace, its chat and updates.
+          </p>
+          <div className="mt-4 space-y-3">
+            <select
+              value={partnerName}
+              onChange={(e) => setPartnerName(e.target.value)}
+              className={`w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none ${colors.ring}`}
+            >
+              <option value="">Select a {partnerLabel}...</option>
+              {directory.map((entry) => (
+                <option key={entry.id} value={entry.name} disabled={awaitingReply.has(entry.name)}>
+                  {entry.name}{entry.detail ? ` (${entry.detail})` : ""}
+                  {awaitingReply.has(entry.name) ? " · request awaiting reply" : currentPartners.has(entry.name) ? " · current partner" : ""}
+                </option>
+              ))}
+            </select>
+            {currentPartners.has(partnerName) && (
+              <p className="text-xs text-slate-500">
+                {partnerName} already works on this project. This sends them a new request for additional support.
+              </p>
+            )}
+            {directory.length === 0 && <p className="text-xs text-slate-400">No registered {partnerLabel}s found.</p>}
+            <div className="flex flex-wrap gap-2">
+              {SUPPORT_TYPES.map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => setSupportTypes((prev) => (prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]))}
+                  className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
+                    supportTypes.includes(type) ? colors.active : "border border-slate-200 text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-600">
+                Progress so far <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                value={progressSummary}
+                onChange={(e) => setProgressSummary(e.target.value)}
+                rows={3}
+                placeholder={`What has been done so far (currently ${project.progress}%)? The ${partnerLabel} sees this before deciding.`}
+                className={`w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none ${colors.ring}`}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-semibold text-slate-600">What you need from them</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                placeholder={`What do you need from the ${partnerLabel}?`}
+                className={`w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none ${colors.ring}`}
+              />
+            </div>
+            {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+            {notice && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{notice}</p>}
+            <div className="flex justify-end">
+              <button
+                onClick={invite}
+                disabled={isSending || !partnerName || supportTypes.length === 0 || !progressSummary.trim()}
+                className={`rounded-xl px-5 py-2 text-sm font-bold transition disabled:opacity-40 ${colors.solid}`}
+              >
+                {isSending ? "Sending..." : "Send invitation"}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 text-sm text-slate-600 shadow-sm">
+          You joined this project as a collaborator. The project lead invites further partners.
+        </div>
+      )}
+
+      <div>
+        <h2 className="mb-2 text-sm font-bold text-slate-800">Collaboration requests</h2>
+        <CollaborationRequestList
+          requests={requests}
+          viewerType={partyType}
+          viewerName={partyName}
+          onChanged={loadRequests}
+          workspaceBasePath={basePath}
+          emptyText={isLead ? `No invitations sent yet.` : "No requests."}
+        />
+      </div>
+    </div>
+  );
+}

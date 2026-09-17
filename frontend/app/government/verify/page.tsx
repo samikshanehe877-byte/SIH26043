@@ -62,7 +62,8 @@ export default function VerifyPage() {
     let cancelled = false;
     const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-    fetch(`${apiUrl}/problems?limit=500`)
+    // Unverified problems are hidden from browsing lists; the review queue asks for them explicitly.
+    fetch(`${apiUrl}/problems?limit=500&include_unverified=true`)
       .then((response) => (response.ok ? response.json() : []))
       .then((records) => {
         if (cancelled || !Array.isArray(records)) return;

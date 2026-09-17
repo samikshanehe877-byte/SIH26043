@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Inbox,
-  Handshake,
   Award,
   Building2,
   Cpu,
@@ -19,11 +18,12 @@ import {
 import { useIndustry } from "@/context/IndustryContext";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import ProjectsNavSection from "@/components/workspace/ProjectsNavSection";
+import { useCollaborationRequestBadge } from "@/lib/projects";
 
 const navItems = [
   { name: "Dashboard",              href: "/industry",               icon: LayoutDashboard },
   { name: "Collaboration Requests", href: "/industry/requests",      icon: Inbox           },
-  { name: "Active Collaborations",  href: "/industry/collaborations",icon: Handshake       },
   { name: "Supported Challenges",   href: "/industry/challenges",    icon: Award           },
   { name: "Universities & Teams",   href: "/industry/universities",  icon: Building2       },
   { name: "Expertise & Resources",  href: "/industry/expertise",     icon: Cpu             },
@@ -36,6 +36,7 @@ const navItems = [
 export default function IndustrySidebar() {
   const pathname = usePathname();
   const { company, unreadNotificationsCount } = useIndustry();
+  const requestsAwaiting = useCollaborationRequestBadge("industry", pathname);
   const { logout } = useAuth();
   const router = useRouter();
 
@@ -93,6 +94,16 @@ export default function IndustrySidebar() {
                 }
               />
               <span className="flex-1 truncate">{name}</span>
+              {name === "Collaboration Requests" && requestsAwaiting > 0 && (
+                <span
+                  title="Requests waiting for your response"
+                  className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-bold ${
+                    isActive ? "bg-white text-blue-700" : "bg-amber-500 text-white"
+                  }`}
+                >
+                  {requestsAwaiting}
+                </span>
+              )}
               {name === "Notifications" && unreadNotificationsCount > 0 && (
                 <span
                   className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-bold ${
@@ -105,17 +116,24 @@ export default function IndustrySidebar() {
             </Link>
           );
         })}
+        <ProjectsNavSection partyType="industry" basePath="/industry" accent="blue" />
       </nav>
 
       {/* Company Profile / Footer */}
       <div className="border-t border-slate-100 p-4">
         <div className="mb-2 flex items-center gap-3 rounded-xl bg-slate-50 p-2.5 border border-slate-100/80">
           <div className="relative">
-            <img 
-              src={company.logo} 
-              alt={company.name} 
-              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-xs font-bold text-white shadow-sm" 
-            />
+            {company.logo ? (
+              <img
+                src={company.logo}
+                alt={company.name}
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-xs font-bold text-white shadow-sm"
+              />
+            ) : (
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-600 to-indigo-700 text-xs font-bold text-white shadow-sm">
+                {company.name.charAt(0).toUpperCase() || "I"}
+              </div>
+            )}
             {/* Online Status Indicator */}
             <span
               className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500"

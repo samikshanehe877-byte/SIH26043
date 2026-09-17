@@ -35,6 +35,7 @@ export default function IndustryCollabModal({
   const [industryName, setIndustryName] = useState("");
   const [collabFor, setCollabFor] = useState<string[]>([]);
   const [description, setDescription] = useState("");
+  const [progressSummary, setProgressSummary] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
@@ -72,6 +73,7 @@ export default function IndustryCollabModal({
           category: challenge.category,
           support_types: collabFor,
           description: description.trim() || undefined,
+          progress_summary: progressSummary.trim(),
         }),
       });
       if (!response.ok) {
@@ -197,6 +199,19 @@ export default function IndustryCollabModal({
 
           <div>
             <label className="mb-1.5 block text-sm font-semibold text-slate-700">
+              Progress So Far <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={progressSummary}
+              onChange={(e) => setProgressSummary(e.target.value)}
+              placeholder={`What has been done so far (currently ${challenge.progress}%)? The partner sees this before accepting.`}
+              rows={3}
+              className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-700 placeholder-slate-400 outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 transition"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-semibold text-slate-700">
               Description
             </label>
             <textarea
@@ -218,7 +233,7 @@ export default function IndustryCollabModal({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!industryName || collabFor.length === 0 || isSubmitting}
+            disabled={!industryName || collabFor.length === 0 || !progressSummary.trim() || isSubmitting}
             className="flex-1 rounded-xl bg-purple-600 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-purple-700 transition disabled:opacity-40"
           >
             {isSubmitting ? "Sending..." : "Submit Request"}

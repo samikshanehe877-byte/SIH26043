@@ -2,9 +2,6 @@ export type SupportStatus = "Planned" | "In Progress" | "Delivered" | "Completed
 
 export type CollaborationRequestStatus = "Received" | "Under Review" | "Clarification Needed" | "Approved" | "Rejected" | "Withdrawn";
 
-/** Actions the receiving industry partner can take on a university's request. */
-export type CollaborationResponse = "accept" | "reject" | "clarify";
-
 export interface CollaborationHistoryEntry {
   actorType: "university" | "industry";
   actorName: string;
@@ -73,6 +70,8 @@ export interface AIAnalysis {
 
 export interface CollaborationRequest {
   id: string;
+  /** Problem whose project workspace the industry joins when it accepts. */
+  problemId?: string;
   challengeTitle: string;
   problemDescription: string;
   category: string;

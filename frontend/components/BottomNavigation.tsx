@@ -3,15 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Home, Search, PlusCircle, FileText, Bell } from "lucide-react";
+import { Home, Search, PlusCircle, FileText, Bell, FolderKanban } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 const navigation = [
-  { name: "Home",     href: "/",             icon: Home       },
-  { name: "Explore",  href: "/explore",       icon: Search     },
-  { name: "Post",     href: "/post-problem",  icon: PlusCircle },
-  { name: "Mine",     href: "/my-problems",   icon: FileText   },
-  { name: "Alerts",   href: "/notifications", icon: Bell       },
+  { name: "Home",      href: "/",             icon: Home         },
+  { name: "Explore",   href: "/explore",       icon: Search       },
+  { name: "Post",      href: "/post-problem",  icon: PlusCircle   },
+  { name: "Mine",      href: "/my-problems",   icon: FileText     },
+  { name: "Workspace", href: "/projects",      icon: FolderKanban },
+  { name: "Alerts",    href: "/notifications", icon: Bell         },
 ];
 
 export default function BottomNavigation() {
@@ -40,7 +41,7 @@ export default function BottomNavigation() {
           <Link
             key={item.name}
             href={item.href}
-            className={`relative flex flex-col items-center gap-0.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-all ${
+            className={`relative flex flex-col items-center gap-0.5 rounded-xl px-2 py-1.5 text-xs font-medium transition-all ${
               isActive ? "text-blue-600" : "text-slate-400 hover:text-slate-600"
             }`}
           >

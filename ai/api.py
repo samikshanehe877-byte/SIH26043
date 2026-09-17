@@ -38,22 +38,40 @@ LIMITATIONS (read before wiring up the frontend):
 
 import logging
 import os
+import re
+import tempfile
 import uuid
+import zipfile
 from datetime import datetime
-from typing import Optional, List, Dict, Any, Literal
+from typing import Optional, List, Dict, Any, Literal, Tuple
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.background import BackgroundTask
 from pydantic import BaseModel
 
 from notification_service import notify_fanout
+from project_storage import (
+    ProjectMessage,
+    ProjectUpdate,
+    add_message,
+    add_update,
+    append_update_attachments,
+    get_project_parties,
+    get_viewer_role,
+    list_messages,
+    list_projects_for_party,
+    list_updates,
+)
 from frontend_adapter import to_university_challenge, to_university_mentor
 from department_matcher import list_departments_for_university, match_departments
 from problem_structurer import structure_raw_problem, StructuredProblemDraft
 from problem_storage import (
     COLLABORATION_PARTIES,
     NOTIFICATION_AUDIENCES,
+    PUBLIC_PROBLEM_STATUSES,
     CollaborationRequestRecord,
     ProblemBase,
     ProblemUpdate,
@@ -72,7 +90,7 @@ from problem_storage import (
     update_problem,
 )
 
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "data", "uploads")
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.join(os.path.dirname(__file__), "data", "uploads"))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 MAX_EVIDENCE_SIZE = 10 * 1024 * 1024
 ALLOWED_EVIDENCE_TYPES = {
@@ -86,6 +104,33 @@ ALLOWED_EVIDENCE_TYPES = {
     "application/pdf",
     "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+}
+# Project workspace update attachments: everything evidence accepts, plus slide decks and
+# spreadsheets (progress reports/plans are often shared as .ppt/.pptx/.xls/.xlsx).
+ALLOWED_WORKSPACE_ATTACHMENT_TYPES = ALLOWED_EVIDENCE_TYPES | {
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+}
+MAX_UPDATE_ATTACHMENTS = 10  # total per update, across the initial post and any later additions
+WORKSPACE_ATTACHMENT_LABEL = "images, videos, PDFs, or Word, PowerPoint or Excel files"
+EXTENSION_CONTENT_TYPES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+    ".mov": "video/quicktime",
+    ".pdf": "application/pdf",
+    ".doc": "application/msword",
+    ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".ppt": "application/vnd.ms-powerpoint",
+    ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ".xls": "application/vnd.ms-excel",
+    ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 }
 
 logging.basicConfig(level=logging.INFO)
@@ -172,6 +217,7 @@ class VolunteerRequest(BaseModel):
 class SelectVolunteerRequest(BaseModel):
     solver_type: str
     solver_name: str
+    citizen_name: str  # must be the problem giver; only they accept a volunteer
 
 
 class CreateCollaborationRequest(BaseModel):
@@ -185,6 +231,7 @@ class CreateCollaborationRequest(BaseModel):
     category: Optional[str] = None
     support_types: List[str] = []
     description: Optional[str] = None
+    progress_summary: Optional[str] = None  # required when the request is for a project (problem_id)
 
 
 class CollaborationAction(BaseModel):
@@ -247,6 +294,11 @@ def volunteer_for_problem_endpoint(problem_id: str, req: VolunteerRequest):
     """University or industry volunteers to solve a verified problem."""
     from problem_storage import add_volunteer, create_notification
     _validate_solver(req.solver_type, req.solver_name)
+    current = get_problem(problem_id)
+    if not current:
+        raise HTTPException(status_code=404, detail="Problem not found")
+    if current.status != "verified":
+        raise HTTPException(status_code=409, detail="Volunteering opens only after the government verifies the problem")
     try:
         problem = add_volunteer(problem_id, req.solver_type, req.solver_name, req.proposal or "")
     except ValueError as e:
@@ -324,9 +376,18 @@ def withdraw_volunteer_endpoint(problem_id: str, req: VolunteerRequest):
 
 @app.post("/problems/{problem_id}/select-volunteer", response_model=ProblemBase)
 def select_volunteer_endpoint(problem_id: str, req: SelectVolunteerRequest):
-    """Giver selects one volunteer; chosen is accepted, others are rejected."""
+    """Giver selects one volunteer; chosen is accepted, others are rejected.
+    This is the step that creates the project workspace, so the problem must be verified
+    and the request must come from the citizen who reported it."""
     from problem_storage import select_volunteer, create_notification
     _validate_solver(req.solver_type, req.solver_name)
+    current = get_problem(problem_id)
+    if not current:
+        raise HTTPException(status_code=404, detail="Problem not found")
+    if current.citizen_name != req.citizen_name:
+        raise HTTPException(status_code=403, detail="Only the problem giver can accept a volunteer")
+    if current.status != "verified":
+        raise HTTPException(status_code=409, detail="A volunteer can only be accepted on a verified problem")
     try:
         problem = select_volunteer(problem_id, req.solver_type, req.solver_name)
     except ValueError as e:
@@ -378,9 +439,32 @@ def select_volunteer_endpoint(problem_id: str, req: SelectVolunteerRequest):
 
 
 @app.get("/problems", response_model=List[ProblemBase])
-def list_problem_endpoint(status: Optional[str] = None, limit: int = 100, skip: int = 0, citizen_name: Optional[str] = None, assigned_university: Optional[str] = None, assigned_industry: Optional[str] = None):
-    """List persisted problems, optionally filtered by workflow status, citizen name, assigned university, or assigned industry."""
-    return list_problems(status=status, limit=min(limit, 500), skip=max(skip, 0), citizen_name=citizen_name, assigned_university=assigned_university, assigned_industry=assigned_industry)
+def list_problem_endpoint(
+    status: Optional[str] = None,
+    limit: int = 100,
+    skip: int = 0,
+    citizen_name: Optional[str] = None,
+    assigned_university: Optional[str] = None,
+    assigned_industry: Optional[str] = None,
+    include_unverified: bool = False,
+):
+    """List persisted problems, optionally filtered by workflow status, citizen name, assigned university, or assigned industry.
+
+    Unverified problems (submitted, under review, returned for correction, rejected) are left out of
+    browsing lists. They are only returned in a citizen's own list (`citizen_name`) or to the
+    government review queue (`include_unverified=true`)."""
+    public_only = not citizen_name and not include_unverified
+    if public_only and status and status not in PUBLIC_PROBLEM_STATUSES:
+        return []
+    return list_problems(
+        status=status,
+        limit=min(limit, 500),
+        skip=max(skip, 0),
+        citizen_name=citizen_name,
+        assigned_university=assigned_university,
+        assigned_industry=assigned_industry,
+        statuses=PUBLIC_PROBLEM_STATUSES if public_only else None,
+    )
 
 
 @app.get("/problems/{problem_id}", response_model=ProblemBase)
@@ -448,8 +532,19 @@ def create_collaboration_request_endpoint(req: CreateCollaborationRequest):
         raise HTTPException(status_code=400, detail="university_name and industry_name are required")
     if not req.challenge_title.strip():
         raise HTTPException(status_code=400, detail="challenge_title is required")
-    if req.problem_id and not get_problem(req.problem_id):
-        raise HTTPException(status_code=404, detail="Problem not found")
+    if req.problem_id:
+        problem = get_problem(req.problem_id)
+        if not problem:
+            raise HTTPException(status_code=404, detail="Problem not found")
+        # Collaboration on a problem is opened by its accepted volunteer (the project lead).
+        lead = next((p for p in get_project_parties(problem) if p["role"] == "lead"), None)
+        if not lead:
+            raise HTTPException(status_code=409, detail="Collaboration opens once the problem owner accepts a volunteer")
+        requester_name = req.university_name if req.requested_by == "university" else req.industry_name
+        if lead["type"] != req.requested_by or lead["name"] != requester_name:
+            raise HTTPException(status_code=403, detail="Only the accepted volunteer can invite collaborators to this project")
+        if not (req.progress_summary or "").strip():
+            raise HTTPException(status_code=400, detail="Describe the progress so far so the partner can review the project")
 
     open_duplicates = [
         existing for existing in list_collaboration_requests(
@@ -496,6 +591,26 @@ def get_collaboration_request_endpoint(request_id: str):
     return record
 
 
+@app.get("/collaboration-requests/{request_id}/preview")
+def preview_collaboration_request_endpoint(request_id: str, party_type: str, party_name: str):
+    """What a partner reviews before accepting: the request, the problem, its progress and recent updates.
+    Only the two organisations on the request can see it."""
+    record = get_collaboration_request(request_id)
+    if not record:
+        raise HTTPException(status_code=404, detail="Collaboration request not found")
+    if party_type not in COLLABORATION_PARTIES or record.party_name(party_type) != party_name:
+        raise HTTPException(status_code=403, detail="You are not part of this collaboration request")
+
+    project = None
+    updates: List[Dict[str, Any]] = []
+    problem = get_problem(record.problem_id) if record.problem_id else None
+    if problem:
+        parties = get_project_parties(problem)
+        project = _project_summary(problem, parties, "invitee")
+        updates = [u.model_dump(mode="json") for u in list_updates(problem.id, limit=5)]
+    return {"request": record.model_dump(mode="json"), "project": project, "recent_updates": updates}
+
+
 @app.post("/collaboration-requests/{request_id}/actions", response_model=CollaborationRequestRecord)
 def act_on_collaboration_request_endpoint(request_id: str, req: CollaborationAction):
     """Accept / reject / ask for clarification (receiver), or reply / withdraw (requester).
@@ -525,12 +640,456 @@ def act_on_collaboration_request_endpoint(request_id: str, req: CollaborationAct
     alert_type, alert_title, alert_message = alerts[req.action]
     _notify_party(record, other, alert_type, alert_title, alert_message)
 
-    if req.action == "accept" and record.problem_id:
-        # Link the industry partner to the problem so it shows under their active collaborations.
-        problem = get_problem(record.problem_id)
-        if problem and not problem.assigned_industry:
+    problem = get_problem(record.problem_id) if req.action == "accept" and record.problem_id else None
+    # An existing partner can accept another request (more support); they don't "join" again.
+    already_partner = bool(problem) and any(
+        other.id != record.id and other.party_name(record.responder) == actor
+        for other in list_collaboration_requests(
+            university_name=record.university_name, industry_name=record.industry_name,
+            problem_id=record.problem_id, status="accepted",
+        )
+    )
+    if problem and already_partner:
+        problem_title = problem.title or problem.problem_text
+        support = ", ".join(record.support_types) or "additional support"
+        for party in get_project_parties(problem):
+            if party["type"] == record.requested_by and party["name"] == record.party_name(record.requested_by):
+                continue
+            is_actor = party["type"] == req.actor_type and party["name"] == actor
+            create_notification(
+                NotificationRecord(
+                    citizen_name=party["name"],
+                    audience=party["type"],
+                    category="project",
+                    type="success",
+                    title="Additional support confirmed",
+                    message=(
+                        f"You agreed to provide {support} on '{problem_title}'."
+                        if is_actor
+                        else f"{actor} agreed to provide {support} on '{problem_title}'."
+                    ),
+                    problem_id=problem.id,
+                    problem_title=problem_title,
+                )
+            )
+    elif problem:
+        # Link the collaborator to the problem so it also shows in their portal's problem lists.
+        if record.responder == "industry" and not problem.assigned_industry:
             update_problem(record.problem_id, ProblemUpdate(assigned_industry=record.industry_name))
+        elif record.responder == "university" and not problem.assigned_university:
+            update_problem(record.problem_id, ProblemUpdate(assigned_university=record.university_name))
+
+        # The accepter is now a workspace party (parties derive from accepted requests);
+        # tell everyone involved. The requester already got the "accepted" alert above.
+        problem_title = problem.title or problem.problem_text
+        for party in get_project_parties(problem):
+            if party["type"] == record.requested_by and party["name"] == record.party_name(record.requested_by):
+                continue
+            joined_self = party["type"] == req.actor_type and party["name"] == actor
+            create_notification(
+                NotificationRecord(
+                    citizen_name=party["name"],
+                    audience=party["type"],
+                    category="project",
+                    type="success",
+                    title="You joined the project workspace" if joined_self else "New partner joined the project",
+                    message=(
+                        f"You are now a collaborator on '{problem_title}'. Open the workspace to see updates and chat."
+                        if joined_self
+                        else f"{actor} joined '{problem_title}' as a collaborator."
+                    ),
+                    problem_id=problem.id,
+                    problem_title=problem_title,
+                )
+            )
+        create_notification(
+            NotificationRecord(
+                citizen_name=problem.citizen_name,
+                category="project",
+                type="info",
+                title="New partner on your problem",
+                message=f"{actor} joined {record.party_name(record.requested_by)} to work on '{problem_title}'.",
+                problem_id=problem.id,
+                problem_title=problem_title,
+            )
+        )
     return record
+
+
+# ---------------------------------------------------------------------------
+# Project workspaces: accepted problems, their parties, chat and updates
+# ---------------------------------------------------------------------------
+
+class ProjectMessageRequest(BaseModel):
+    party_type: str
+    party_name: str
+    author_name: str
+    text: str
+
+
+class ProjectUpdateRequest(BaseModel):
+    party_type: str
+    party_name: str
+    author_name: str
+    title: str
+    body: Optional[str] = None
+    progress: Optional[int] = None
+
+
+def _project_summary(problem: ProblemBase, parties: List[Dict[str, str]], my_role: str) -> Dict[str, Any]:
+    updates = list_updates(problem.id, limit=1)
+    return {
+        "id": problem.id,
+        "title": problem.title or problem.problem_text,
+        "description": problem.description or problem.problem_text,
+        "category": problem.category,
+        "location": problem.location,
+        "citizen_name": problem.citizen_name,
+        "status": problem.status,
+        "progress": problem.progress,
+        "required_capabilities": problem.required_capabilities,
+        "parties": parties,
+        "my_role": my_role,
+        "latest_update": updates[0].model_dump(mode="json") if updates else None,
+        "updated_at": problem.updated_at.isoformat(),
+    }
+
+
+def _require_party(problem_id: str, party_type: str, party_name: str):
+    """Workspace content is only for the problem giver (citizen, role 'owner'), the lead and accepted collaborators."""
+    problem = get_problem(problem_id)
+    if not problem:
+        raise HTTPException(status_code=404, detail="Project not found")
+    parties = get_project_parties(problem)
+    role = get_viewer_role(problem, parties, party_type, party_name)
+    if not role:
+        raise HTTPException(status_code=403, detail="You are not part of this project")
+    return problem, parties, role
+
+
+def _notify_other_parties(problem: ProblemBase, parties: List[Dict[str, str]], sender_type: str, sender_name: str,
+                          type: str, title: str, message: str) -> None:
+    for party in parties:
+        if party["type"] == sender_type and party["name"] == sender_name:
+            continue
+        create_notification(
+            NotificationRecord(
+                citizen_name=party["name"],
+                audience=party["type"],
+                category="project",
+                type=type,
+                title=title,
+                message=message,
+                problem_id=problem.id,
+                problem_title=problem.title or problem.problem_text,
+            )
+        )
+
+
+@app.get("/projects")
+def list_projects_endpoint(party_type: str, party_name: str):
+    """Accepted problems where this university/industry is the lead or a collaborator,
+    or (party_type=citizen) problems this citizen reported that have a workspace."""
+    if party_type != "citizen":
+        _validate_solver(party_type, party_name)
+    return [
+        _project_summary(item["problem"], item["parties"], item["my_role"])
+        for item in list_projects_for_party(party_type, party_name)
+    ]
+
+
+@app.get("/projects/{problem_id}")
+def get_project_endpoint(problem_id: str, party_type: str, party_name: str):
+    problem, parties, role = _require_party(problem_id, party_type, party_name)
+    return _project_summary(problem, parties, role)
+
+
+@app.get("/projects/{problem_id}/messages", response_model=List[ProjectMessage])
+def list_project_messages_endpoint(problem_id: str, party_type: str, party_name: str, limit: int = 200):
+    _require_party(problem_id, party_type, party_name)
+    return list_messages(problem_id, limit=min(max(limit, 1), 500))
+
+
+@app.post("/projects/{problem_id}/messages", response_model=ProjectMessage, status_code=201)
+def post_project_message_endpoint(problem_id: str, req: ProjectMessageRequest):
+    _require_party(problem_id, req.party_type, req.party_name)
+    text = req.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Message cannot be empty")
+    if len(text) > 2000:
+        raise HTTPException(status_code=400, detail="Message must be 2000 characters or fewer")
+    return add_message(ProjectMessage(
+        problem_id=problem_id, author_type=req.party_type, author_org=req.party_name,
+        author_name=req.author_name.strip() or req.party_name, text=text,
+    ))
+
+
+@app.get("/projects/{problem_id}/updates", response_model=List[ProjectUpdate])
+def list_project_updates_endpoint(problem_id: str, party_type: str, party_name: str, limit: int = 200):
+    _require_party(problem_id, party_type, party_name)
+    return list_updates(problem_id, limit=min(max(limit, 1), 500))
+
+
+# --- Downloading workspace files -------------------------------------------------------------
+# The frontend runs on a different origin than this API, where browsers ignore <a download> and
+# open images/PDFs/videos in a tab instead. These endpoints send files as attachments under their
+# original names. Anyone who can open the workspace (lead, collaborators, the citizen) may download.
+
+_UNSAFE_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+
+
+def _safe_filename(name: str, fallback: str = "file") -> str:
+    cleaned = _UNSAFE_FILENAME_CHARS.sub("_", name).strip().strip(".")
+    return cleaned[:150] or fallback
+
+
+def _unique_name(name: str, used: set) -> str:
+    candidate, number = name, 2
+    stem, extension = os.path.splitext(name)
+    while candidate.lower() in used:
+        candidate = f"{stem} ({number}){extension}"
+        number += 1
+    used.add(candidate.lower())
+    return candidate
+
+
+def _zip_download(entries: List[Tuple[str, Optional[str], str]], zip_name: str) -> FileResponse:
+    """entries: (path inside the zip, file on disk or None if missing, original name)."""
+    present = [(arcname, path) for arcname, path, _ in entries if path]
+    if not present:
+        raise HTTPException(status_code=404, detail="None of these files are available on the server any more")
+    missing = [name for _, path, name in entries if not path]
+    handle = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
+    handle.close()
+    try:
+        # Stored, not compressed: photos, videos, PDFs and Office files are already compressed.
+        with zipfile.ZipFile(handle.name, "w", compression=zipfile.ZIP_STORED) as archive:
+            for arcname, path in present:
+                archive.write(path, arcname)
+            if missing:
+                archive.writestr(
+                    "MISSING FILES.txt",
+                    "These attachments could not be found on the server and are not included:\n"
+                    + "\n".join(f"- {name}" for name in missing),
+                )
+    except Exception:
+        os.remove(handle.name)
+        raise
+    return FileResponse(
+        handle.name, media_type="application/zip", filename=zip_name,
+        background=BackgroundTask(os.remove, handle.name),
+    )
+
+
+@app.get("/projects/{problem_id}/updates/{update_id}/attachments/{index}/download")
+def download_update_attachment_endpoint(problem_id: str, update_id: str, index: int, party_type: str, party_name: str):
+    """One attachment, saved under its original file name."""
+    _require_party(problem_id, party_type, party_name)
+    update = _find_update(problem_id, update_id)
+    if not 0 <= index < len(update.attachments):
+        raise HTTPException(status_code=404, detail="Attachment not found")
+    attachment = update.attachments[index]
+    path = _upload_path(attachment)
+    if not path:
+        raise HTTPException(status_code=404, detail=f"'{attachment['name']}' is no longer available on the server")
+    return FileResponse(
+        path, media_type=attachment.get("content_type") or "application/octet-stream",
+        filename=_safe_filename(attachment["name"]),
+    )
+
+
+@app.get("/projects/{problem_id}/updates/{update_id}/attachments.zip")
+def download_update_attachments_zip_endpoint(problem_id: str, update_id: str, party_type: str, party_name: str):
+    """Every file on one update, as a zip."""
+    _require_party(problem_id, party_type, party_name)
+    update = _find_update(problem_id, update_id)
+    if not update.attachments:
+        raise HTTPException(status_code=404, detail="This update has no attachments")
+    used: set = set()
+    entries = [
+        (_unique_name(_safe_filename(a["name"]), used), _upload_path(a), a["name"])
+        for a in update.attachments
+    ]
+    return _zip_download(entries, f"{_safe_filename(update.title, 'update')[:60]} - files.zip")
+
+
+@app.get("/projects/{problem_id}/attachments.zip")
+def download_project_attachments_zip_endpoint(problem_id: str, party_type: str, party_name: str):
+    """Every file in the workspace, one folder per update."""
+    problem, _, _ = _require_party(problem_id, party_type, party_name)
+    updates = [u for u in reversed(list_updates(problem_id, limit=500)) if u.attachments]  # oldest first
+    if not updates:
+        raise HTTPException(status_code=404, detail="No files have been shared in this workspace yet")
+    folders: set = set()
+    entries: List[Tuple[str, Optional[str], str]] = []
+    for update in updates:
+        folder = _unique_name(f"{update.created_at:%Y-%m-%d} - {_safe_filename(update.title, 'update')[:60]}", folders)
+        used: set = set()
+        for attachment in update.attachments:
+            entries.append((f"{folder}/{_unique_name(_safe_filename(attachment['name']), used)}", _upload_path(attachment), attachment["name"]))
+    title = _safe_filename(problem.title or problem.problem_text, "workspace")[:60]
+    return _zip_download(entries, f"{title} - all files.zip")
+
+
+def _check_can_post_update(problem_id: str, party_type: str, party_name: str, title: str, progress: Optional[int]):
+    """Everything that can reject an update, checked before any uploaded file is written to disk."""
+    problem, parties, role = _require_party(problem_id, party_type, party_name)
+    if role == "owner":
+        raise HTTPException(status_code=403, detail="Progress updates are posted by the solving organisations; use the chat to respond")
+    title = title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Update title is required")
+    if progress is not None:
+        if role != "lead":
+            raise HTTPException(status_code=403, detail="Only the project lead can change overall progress")
+        if not 0 <= progress <= 100:
+            raise HTTPException(status_code=400, detail="Progress must be between 0 and 100")
+    return problem, parties, role, title
+
+
+def _find_update(problem_id: str, update_id: str) -> ProjectUpdate:
+    update = next((u for u in list_updates(problem_id, limit=500) if u.id == update_id), None)
+    if not update:
+        raise HTTPException(status_code=404, detail="Update not found")
+    return update
+
+
+def _create_project_update(
+    problem_id: str, party_type: str, party_name: str, author_name: str,
+    title: str, body: str, progress: Optional[int], attachments: List[Dict[str, Any]],
+) -> ProjectUpdate:
+    """Shared by the JSON 'post update' endpoint and the multipart one that accepts file attachments.
+    Any party can post an update; only the lead can move overall progress. Other parties and the
+    citizen who reported the problem are alerted."""
+    problem, parties, role, title = _check_can_post_update(problem_id, party_type, party_name, title, progress)
+
+    update = add_update(ProjectUpdate(
+        problem_id=problem_id, author_type=party_type, author_org=party_name,
+        author_name=author_name.strip() or party_name, title=title,
+        body=body.strip(), progress=progress, attachments=attachments,
+    ))
+    if progress is not None:
+        update_problem(problem_id, ProblemUpdate(
+            progress=progress,
+            status="completed" if progress >= 100 else "in_progress",
+        ))
+
+    problem_title = problem.title or problem.problem_text
+    progress_note = f" Progress is now {progress}%." if progress is not None else ""
+    # Say so when files came with the update, so partners know there is something to look at.
+    files_note = (
+        f" Includes {len(attachments)} attachment{'s' if len(attachments) != 1 else ''}: "
+        f"{', '.join(a['name'] for a in attachments)}."
+        if attachments else ""
+    )
+    _notify_other_parties(
+        problem, parties, party_type, party_name, "update", "New project update",
+        f"{party_name} posted '{title}' on '{problem_title}'.{progress_note}{files_note}",
+    )
+    create_notification(
+        NotificationRecord(
+            citizen_name=problem.citizen_name,
+            category="project",
+            type="success" if progress == 100 else "update",
+            title="Problem solved" if progress == 100 else "Progress update on your problem",
+            message=f"{party_name}: {title}.{progress_note}{files_note}",
+            problem_id=problem.id,
+            problem_title=problem_title,
+        )
+    )
+    return update
+
+
+@app.post("/projects/{problem_id}/updates", response_model=ProjectUpdate, status_code=201)
+def post_project_update_endpoint(problem_id: str, req: ProjectUpdateRequest):
+    """Post a text-only update (no attachments). See POST .../updates/with-attachments for files."""
+    return _create_project_update(
+        problem_id, req.party_type, req.party_name, req.author_name,
+        req.title, req.body or "", req.progress, attachments=[],
+    )
+
+
+@app.post("/projects/{problem_id}/updates/with-attachments", response_model=ProjectUpdate, status_code=201)
+async def post_project_update_with_attachments_endpoint(
+    problem_id: str,
+    party_type: str = Form(...),
+    party_name: str = Form(...),
+    author_name: str = Form(...),
+    title: str = Form(...),
+    body: str = Form(""),
+    progress: Optional[int] = Form(None),
+    files: List[UploadFile] = File(default=[]),
+):
+    """Same as POST .../updates, but the update can carry photos, videos, PDFs, and Office
+    documents (Word/Excel/PowerPoint) -- see ALLOWED_WORKSPACE_ATTACHMENT_TYPES."""
+    if len(files) > MAX_UPDATE_ATTACHMENTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"You selected {len(files)} files; an update can have at most {MAX_UPDATE_ATTACHMENTS}.",
+        )
+    _check_can_post_update(problem_id, party_type, party_name, title, progress)
+    attachments = await _store_attachments(files, ALLOWED_WORKSPACE_ATTACHMENT_TYPES, WORKSPACE_ATTACHMENT_LABEL)
+    try:
+        return _create_project_update(problem_id, party_type, party_name, author_name, title, body, progress, attachments)
+    except Exception:
+        _discard_attachments(attachments)
+        raise
+
+
+@app.post("/projects/{problem_id}/updates/{update_id}/attachments", response_model=ProjectUpdate)
+async def add_project_update_attachments_endpoint(
+    problem_id: str,
+    update_id: str,
+    party_type: str = Form(...),
+    party_name: str = Form(...),
+    files: List[UploadFile] = File(...),
+):
+    """Attach more files to an update that was already posted -- multiple attachment rounds are
+    allowed, not just what was picked at the moment of posting. Only that update's own author may
+    add to it (an outsider re-labelling someone else's evidence would defeat the point of it).
+    Every file is validated and saved the same way as at creation, and the confirmed, saved
+    attachment list is always returned so the caller has an authoritative answer, not a guess,
+    about what actually made it into the workspace."""
+    problem, parties, role = _require_party(problem_id, party_type, party_name)
+    if role == "owner":
+        raise HTTPException(status_code=403, detail="Only the organisation that posted the update can attach files to it")
+    if not files:
+        raise HTTPException(status_code=400, detail="At least one file is required")
+
+    update = _find_update(problem_id, update_id)
+    if update.author_type != party_type or update.author_org != party_name:
+        raise HTTPException(status_code=403, detail="Only the author of this update can attach files to it")
+    if len(update.attachments) + len(files) > MAX_UPDATE_ATTACHMENTS:
+        remaining = MAX_UPDATE_ATTACHMENTS - len(update.attachments)
+        raise HTTPException(
+            status_code=400,
+            detail=f"An update can have at most {MAX_UPDATE_ATTACHMENTS} attachments in total "
+                   f"({len(update.attachments)} already attached, so you can add {remaining} more).",
+        )
+
+    new_attachments = await _store_attachments(files, ALLOWED_WORKSPACE_ATTACHMENT_TYPES, WORKSPACE_ATTACHMENT_LABEL)
+    updated = append_update_attachments(problem_id, update_id, new_attachments)
+    if not updated:
+        _discard_attachments(new_attachments)
+        raise HTTPException(status_code=404, detail="Update not found")
+
+    problem_title = problem.title or problem.problem_text
+    names = ", ".join(a["name"] for a in new_attachments)
+    message = f"{party_name} added {names} to their update '{update.title}' on '{problem_title}'."
+    _notify_other_parties(problem, parties, party_type, party_name, "update", "New attachment on project update", message)
+    # The citizen can view the workspace too, so they hear about new files the same as new updates.
+    create_notification(
+        NotificationRecord(
+            citizen_name=problem.citizen_name,
+            category="project",
+            type="update",
+            title="New files on your problem's progress",
+            message=message,
+            problem_id=problem.id,
+            problem_title=problem_title,
+        )
+    )
+    return updated
 
 
 @app.post("/problems/{problem_id}/analyze", response_model=AnalyzeStoredProblemResponse)
@@ -613,6 +1172,97 @@ def analyze_stored_problem_endpoint(problem_id: str):
     }
 
 
+def _is_allowed_type(content_type: str, allowed_types: set) -> bool:
+    return content_type in allowed_types or content_type.startswith(("image/", "video/"))
+
+
+async def _store_attachment(
+    upload: UploadFile,
+    allowed_types: set,
+    max_size: int = MAX_EVIDENCE_SIZE,
+    allowed_label: str = "images, videos, PDFs or Word documents",
+) -> Dict[str, Any]:
+    """Validate one upload against `allowed_types`/`max_size`, save it under UPLOAD_DIR, and
+    return its {name, content_type, size, url} record. Shared by the evidence and project-update
+    upload endpoints so both accept/reject files the same way."""
+    if not upload.filename:
+        raise HTTPException(status_code=400, detail="Every upload must have a filename")
+    extension = os.path.splitext(upload.filename)[1].lower()
+    # Browsers often send Office files (and sometimes others) without a type, or as a generic
+    # "application/octet-stream". Fall back to the file extension instead of rejecting a valid file.
+    content_type = (upload.content_type or "").lower()
+    if not _is_allowed_type(content_type, allowed_types):
+        guessed = EXTENSION_CONTENT_TYPES.get(extension)
+        if guessed and _is_allowed_type(guessed, allowed_types):
+            content_type = guessed
+    # Named per-file (not just "a file"), so when several are submitted together the response
+    # says exactly which one was rejected instead of leaving the sender to guess.
+    if not _is_allowed_type(content_type, allowed_types):
+        kind = extension.lstrip(".").upper() or upload.content_type or "this kind of"
+        raise HTTPException(
+            status_code=415,
+            detail=f"'{upload.filename}' can't be uploaded: {kind} files aren't allowed. Upload {allowed_label}.",
+        )
+    content = await upload.read()
+    if not content:
+        raise HTTPException(status_code=400, detail=f"'{upload.filename}' is empty (0 bytes). Pick the file again.")
+    if len(content) > max_size:
+        raise HTTPException(
+            status_code=413,
+            detail=f"'{upload.filename}' is {len(content) / (1024 * 1024):.1f} MB; "
+                   f"files must be {max_size // (1024 * 1024)} MB or smaller.",
+        )
+    stored_name = f"{uuid.uuid4().hex}{extension}"
+    stored_path = os.path.join(UPLOAD_DIR, stored_name)
+    try:
+        with open(stored_path, "wb") as output:
+            output.write(content)
+    except OSError as e:
+        # Surfaced distinctly from a validation failure, so the client can tell "rejected" apart
+        # from "the server failed to save it" -- both are reasons a file isn't properly attached.
+        raise HTTPException(status_code=500, detail=f"'{upload.filename}' could not be saved: {e}")
+    if not os.path.exists(stored_path) or os.path.getsize(stored_path) != len(content):
+        # Belt-and-braces: confirm the write actually landed before telling the caller it succeeded.
+        raise HTTPException(status_code=500, detail=f"'{upload.filename}' was not saved correctly")
+    return {"name": upload.filename, "content_type": content_type, "size": len(content), "url": f"/uploads/{stored_name}"}
+
+
+def _upload_path(attachment: Dict[str, Any]) -> Optional[str]:
+    """Absolute path of a stored attachment, or None if it isn't a file inside UPLOAD_DIR."""
+    stored_name = os.path.basename(str(attachment.get("url", "")))
+    if not stored_name:
+        return None
+    path = os.path.realpath(os.path.join(UPLOAD_DIR, stored_name))
+    if not path.startswith(os.path.realpath(UPLOAD_DIR) + os.sep) or not os.path.isfile(path):
+        return None
+    return path
+
+
+def _discard_attachments(attachments: List[Dict[str, Any]]) -> None:
+    for attachment in attachments:
+        path = _upload_path(attachment)
+        if path:
+            try:
+                os.remove(path)
+            except OSError:
+                logger.warning("Could not remove orphaned upload %s", path)
+
+
+async def _store_attachments(
+    uploads: List[UploadFile], allowed_types: set, allowed_label: str,
+) -> List[Dict[str, Any]]:
+    """Store a batch all-or-nothing: if any file is rejected, the ones already saved are deleted,
+    so a failed upload never leaves some of its files half-attached."""
+    stored: List[Dict[str, Any]] = []
+    try:
+        for upload in uploads:
+            stored.append(await _store_attachment(upload, allowed_types, allowed_label=allowed_label))
+    except Exception:
+        _discard_attachments(stored)
+        raise
+    return stored
+
+
 @app.post("/problems/{problem_id}/evidence", response_model=ProblemBase)
 async def upload_evidence_endpoint(problem_id: str, files: List[UploadFile] = File(...)):
     """Store citizen evidence files and attach reviewable metadata to a problem."""
@@ -624,28 +1274,7 @@ async def upload_evidence_endpoint(problem_id: str, files: List[UploadFile] = Fi
 
     attachments = list(problem.evidence_attachments)
     for upload in files:
-        if not upload.filename:
-            raise HTTPException(status_code=400, detail="Every upload must have a filename")
-        content_type = upload.content_type or "application/octet-stream"
-        is_media = content_type.startswith("image/") or content_type.startswith("video/")
-        if content_type not in ALLOWED_EVIDENCE_TYPES and not is_media:
-            raise HTTPException(status_code=415, detail=f"Unsupported evidence type: {upload.content_type or 'unknown'}")
-        content = await upload.read()
-        if len(content) > MAX_EVIDENCE_SIZE:
-            raise HTTPException(status_code=413, detail="Each file must be 10 MB or smaller")
-        extension = os.path.splitext(upload.filename)[1].lower()
-        stored_name = f"{uuid.uuid4().hex}{extension}"
-        stored_path = os.path.join(UPLOAD_DIR, stored_name)
-        with open(stored_path, "wb") as output:
-            output.write(content)
-        attachments.append(
-            {
-                "name": upload.filename,
-                "content_type": content_type,
-                "size": len(content),
-                "url": f"/uploads/{stored_name}",
-            }
-        )
+        attachments.append(await _store_attachment(upload, ALLOWED_EVIDENCE_TYPES))
 
     updated = update_problem(
         problem_id,

@@ -16,6 +16,8 @@ import { useProblems } from "@/context/ProblemsContext";
 import { getOrganizationName, useAuth } from "@/context/AuthContext";
 import { Problem } from "@/types/problem";
 import { UniversityChallenge, toUniversityChallenge } from "@/types/universityChallenge";
+import ProjectCards from "@/components/workspace/ProjectCards";
+import { useProjects } from "@/lib/projects";
 
 const ACTIVITY = [
   { dot: "bg-green-500",  text: "Traffic Signal Optimization challenge completed successfully",    time: "4 days ago"  },
@@ -31,6 +33,8 @@ export default function UniversityDashboard() {
   const universityName = getOrganizationName(user);
   const { publicProblems, volunteerForProblem, withdrawVolunteerRequest } = useProblems();
   const { assignedProblems, isLoading, refreshProblems } = useUniversityProblems();
+  const { projects } = useProjects("university");
+  const activeProjects = projects.filter((p) => p.status !== "completed");
   const [selectedChallenge, setSelectedChallenge] = useState<UniversityChallenge | null>(null);
   const [rejectingChallenge, setRejectingChallenge] = useState<UniversityChallenge | null>(null);
   const [assigningMentorChallenge, setAssigningMentorChallenge] = useState<UniversityChallenge | null>(null);
@@ -141,6 +145,22 @@ export default function UniversityDashboard() {
           <UniversityStatsCard label="Awaiting Decision" value={stats.awaiting}  icon={Clock}         color="amber"  sublabel="Need attention"   />
           <UniversityStatsCard label="Active Challenges" value={stats.active}    icon={Activity}      color="purple" sublabel="In progress"       />
           <UniversityStatsCard label="Completed"         value={stats.completed} icon={CheckCircle2}  color="green"  sublabel="Successfully done" />
+        </div>
+
+        {/* Project Workspaces — accepted problems this university leads or collaborates on */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-slate-800">Project Workspaces</h2>
+            <Link href="/university/projects" className="text-sm font-semibold text-indigo-600 hover:underline">
+              View All →
+            </Link>
+          </div>
+          <ProjectCards
+            projects={activeProjects.slice(0, 4)}
+            basePath="/university"
+            accent="indigo"
+            emptyText="No active projects. When a citizen accepts your volunteer proposal, its workspace opens here."
+          />
         </div>
 
         {/* Available Problems — Volunteer Opportunities */}

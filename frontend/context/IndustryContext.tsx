@@ -5,7 +5,6 @@ import {
   IndustryDashboardData,
   CollaborationRequest,
   CollaborationRequestStatus,
-  CollaborationResponse,
   SupportStatus,
   SupportType,
 } from "@/types/industry";
@@ -16,8 +15,8 @@ interface IndustryContextType extends IndustryDashboardData {
   unreadNotificationsCount: number;
   markNotificationAsRead: (id: number | string) => void;
   markAllNotificationsAsRead: () => void;
-  /** Accept / reject / ask for clarification on a university's request. Resolves to an error message, or null on success. */
-  respondToRequest: (id: string, action: CollaborationResponse, note?: string) => Promise<string | null>;
+  /** Reload notifications and requests now, e.g. after accepting or rejecting a request. */
+  refreshRequests: () => void;
   updateSupportStatus: (collaborationId: string, supportId: string, status: SupportStatus) => void;
 }
 
@@ -30,6 +29,7 @@ export function IndustryProvider({ children }: { children: ReactNode }) {
   const { user, isAuthenticated } = useAuth();
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
   const companyName = getOrganizationName(user);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     // The root layout mounts this provider for every portal; only industry accounts have an industry inbox.
@@ -69,7 +69,9 @@ export function IndustryProvider({ children }: { children: ReactNode }) {
         if (!response.ok) return;
         const records = await response.json();
         if (!Array.isArray(records)) return;
-        setData((previous) => ({ ...previous, requests: records.map(toCollaborationRequest) }));
+        // Invitations this company sent as a project lead are managed from that project's workspace.
+        const incoming = records.filter((record) => record.requested_by === "university");
+        setData((previous) => ({ ...previous, requests: incoming.map(toCollaborationRequest) }));
       } catch (error) {
         console.error("Failed to load collaboration requests:", error);
       }
@@ -82,7 +84,7 @@ export function IndustryProvider({ children }: { children: ReactNode }) {
     refresh();
     const interval = window.setInterval(refresh, 30_000);
     return () => window.clearInterval(interval);
-  }, [apiUrl, isAuthenticated, user, companyName]);
+  }, [apiUrl, isAuthenticated, user, companyName, refreshKey]);
 
   const unreadNotificationsCount = data.notifications.filter((n) => !n.isRead).length;
 
@@ -108,25 +110,7 @@ export function IndustryProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const respondToRequest = async (id: string, action: CollaborationResponse, note = ""): Promise<string | null> => {
-    try {
-      const response = await fetch(`${apiUrl}/collaboration-requests/${id}/actions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actor_type: "industry", actor_name: companyName, action, note }),
-      });
-      const body = await response.json();
-      if (!response.ok) return String(body.detail ?? "Could not update the request");
-      const updated = toCollaborationRequest(body);
-      setData((prev) => ({
-        ...prev,
-        requests: prev.requests.map((r) => (r.id === id ? updated : r)),
-      }));
-      return null;
-    } catch {
-      return "Could not reach the server. Please try again.";
-    }
-  };
+  const refreshRequests = () => setRefreshKey((key) => key + 1);
 
   const updateSupportStatus = (collaborationId: string, supportId: string, status: SupportStatus) => {
     setData((prev) => ({
@@ -154,7 +138,7 @@ export function IndustryProvider({ children }: { children: ReactNode }) {
         unreadNotificationsCount,
         markNotificationAsRead,
         markAllNotificationsAsRead,
-        respondToRequest,
+        refreshRequests,
         updateSupportStatus,
       }}
     >
@@ -177,6 +161,7 @@ function toCollaborationRequest(record: any): CollaborationRequest {
   const history = Array.isArray(record.history) ? record.history : [];
   return {
     id: String(record.id),
+    problemId: record.problem_id ? String(record.problem_id) : undefined,
     challengeTitle: String(record.challenge_title ?? "Untitled challenge"),
     problemDescription: String(record.problem_description ?? record.description ?? ""),
     category: String(record.category ?? "General"),

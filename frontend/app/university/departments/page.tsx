@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { CheckCircle2, X, Building2, BookOpen, UserCheck } from "lucide-react";
 import { universityDepartments, universityMentors } from "@/data/universityAppData";
-import { universityChallenges } from "@/data/universityChallenges";
 import { UniversityDepartment } from "@/types/universityChallenge";
+import { useUniversityProblems } from "@/context/UniversityProblemsContext";
 
 const colorMap: Record<string, { bg: string; text: string; border: string; avatar: string }> = {
   blue:   { bg: "bg-blue-50",   text: "text-blue-700",   border: "border-blue-100",   avatar: "bg-blue-600"   },
@@ -17,6 +17,8 @@ const colorMap: Record<string, { bg: string; text: string; border: string; avata
 
 export default function DepartmentsPage() {
   const [selectedDept, setSelectedDept] = useState<UniversityDepartment | null>(null);
+  // Only real problems assigned to this university (verified + accepted), never demo or unverified ones.
+  const { assignedProblems: universityChallenges } = useUniversityProblems();
 
   return (
     <>
