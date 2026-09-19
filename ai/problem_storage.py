@@ -322,6 +322,83 @@ def initialize_storage() -> None:
         connection.execute(
             "CREATE INDEX IF NOT EXISTS idx_problem_similarities_a ON problem_similarities(problem_a_id)"
         )
+        # Milestone-verified points ledger (see points_storage.py). Real typed columns, not the
+        # payload-blob style used above, because this data needs an enforceable UNIQUE constraint
+        # (idempotent point-awarding) and GROUP BY/SUM aggregation for the leaderboard.
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS project_members (
+                id TEXT PRIMARY KEY,
+                problem_id TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                user_name TEXT NOT NULL,
+                organization_type TEXT NOT NULL,
+                organization_name TEXT NOT NULL,
+                role TEXT,
+                joined_at TEXT NOT NULL,
+                UNIQUE(problem_id, user_id)
+            )
+            """
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS milestones (
+                id TEXT PRIMARY KEY,
+                problem_id TEXT NOT NULL,
+                milestone_type TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'submitted',
+                submitted_by_user_id TEXT NOT NULL,
+                submitted_by_name TEXT NOT NULL,
+                submitted_by_org_type TEXT NOT NULL,
+                submitted_by_org_name TEXT NOT NULL,
+                submitted_note TEXT,
+                submitted_at TEXT NOT NULL,
+                decided_by_officer_id TEXT,
+                decided_by_officer_name TEXT,
+                decision_note TEXT,
+                decided_at TEXT,
+                submitted_attachments TEXT NOT NULL DEFAULT '[]',
+                submitted_links TEXT NOT NULL DEFAULT '[]',
+                UNIQUE(problem_id, milestone_type)
+            )
+            """
+        )
+        # CREATE TABLE IF NOT EXISTS never alters a table that already exists, so a database created
+        # before milestones could carry evidence needs these two columns added in place. Existing rows
+        # get the '[]' default, i.e. "no evidence attached", which is exactly what they had.
+        existing_milestone_columns = {row["name"] for row in connection.execute("PRAGMA table_info(milestones)")}
+        for column in ("submitted_attachments", "submitted_links"):
+            if column not in existing_milestone_columns:
+                connection.execute(f"ALTER TABLE milestones ADD COLUMN {column} TEXT NOT NULL DEFAULT '[]'")
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_milestones_status ON milestones(status)"
+        )
+        connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS point_events (
+                id TEXT PRIMARY KEY,
+                problem_id TEXT NOT NULL,
+                milestone_id TEXT NOT NULL,
+                milestone_type TEXT NOT NULL,
+                points INTEGER NOT NULL,
+                actor_type TEXT NOT NULL,
+                actor_id TEXT NOT NULL,
+                actor_name TEXT NOT NULL,
+                organization_type TEXT,
+                organization_name TEXT,
+                officer_id TEXT NOT NULL,
+                officer_name TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                UNIQUE(problem_id, milestone_type, actor_type, actor_id)
+            )
+            """
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_point_events_actor ON point_events(actor_type, actor_id)"
+        )
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_point_events_problem ON point_events(problem_id)"
+        )
 
 
 def _serialize(problem: ProblemBase) -> str:

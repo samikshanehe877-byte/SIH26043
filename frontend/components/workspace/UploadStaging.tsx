@@ -232,12 +232,14 @@ export function UploadProgress({ fileCount, fraction }: { fileCount: number; fra
 }
 
 export function UploadFailedNotice({
-  error, hadFiles, onRetry, onDismiss,
+  error, hadFiles, onRetry, onDismiss, failedTitle = "Couldn't post the update.",
 }: {
   error: UploadError | Error;
   hadFiles: boolean;
   onRetry: () => void;
   onDismiss: () => void;
+  /** Heading shown when there were no files, for callers that aren't posting an update. */
+  failedTitle?: string;
 }) {
   const fileName = error instanceof UploadError ? error.fileName : null;
   return (
@@ -245,7 +247,7 @@ export function UploadFailedNotice({
       <div className="flex items-start gap-2">
         <AlertTriangle size={15} className="mt-0.5 flex-shrink-0 text-red-600" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold">{hadFiles ? "Upload failed. Nothing was attached." : "Couldn't post the update."}</p>
+          <p className="text-sm font-bold">{hadFiles ? "Upload failed. Nothing was attached." : failedTitle}</p>
           <p className="mt-0.5">{error.message}</p>
           <p className="mt-1 text-red-700">
             {fileName

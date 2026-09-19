@@ -83,6 +83,17 @@ export async function getAuthUser(): Promise<AuthUser | null> {
       universityId = faculty.universityId;
       organizationName = faculty.university.name;
     }
+  } else if (user.role === "STUDENT") {
+    const student = await prisma.universityStudent.findUnique({
+      where: { userId: user.id },
+      include: { university: { select: { name: true } } },
+    });
+    if (!student) {
+      needsProfileCompletion = true;
+    } else {
+      universityId = student.universityId;
+      organizationName = student.university.name;
+    }
   } else if (["INDUSTRY_EMPLOYEE", "INDUSTRY_MENTOR", "INDUSTRY_EXPERT"].includes(user.role)) {
     const employee = await prisma.industryEmployee.findUnique({
       where: { userId: user.id },

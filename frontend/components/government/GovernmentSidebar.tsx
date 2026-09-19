@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   ShieldCheck,
+  Award,
   FolderKanban,
   BarChart3,
   Map,
@@ -17,10 +18,12 @@ import {
 import { currentOfficial } from "@/data/governmentData";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { usePendingMilestones } from "@/lib/points";
 
 const navItems = [
   { name: "Dashboard", href: "/government", icon: LayoutDashboard },
   { name: "Verification Queue", href: "/government/verify", icon: ShieldCheck },
+  { name: "Milestone Verification", href: "/government/milestones", icon: Award },
   { name: "Project Monitoring", href: "/government/projects", icon: FolderKanban },
   { name: "Impact Analytics", href: "/government/analytics", icon: BarChart3 },
   { name: "Regional Map", href: "/government/map", icon: Map },
@@ -35,6 +38,7 @@ export default function GovernmentSidebar() {
   const { logout } = useAuth();
   const router = useRouter();
   const unread = 3;
+  const { data: pendingMilestones } = usePendingMilestones();
 
   const handleLogout = async () => {
     await logout();
@@ -81,6 +85,15 @@ export default function GovernmentSidebar() {
                   }`}
                 >
                   {unread}
+                </span>
+              )}
+              {name === "Milestone Verification" && pendingMilestones.length > 0 && (
+                <span
+                  className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-bold ${
+                    isActive ? "bg-white text-emerald-600" : "bg-amber-500 text-white"
+                  }`}
+                >
+                  {pendingMilestones.length}
                 </span>
               )}
             </Link>
