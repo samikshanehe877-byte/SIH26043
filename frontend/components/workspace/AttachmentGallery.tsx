@@ -173,13 +173,16 @@ export default function AttachmentGallery({
 }: {
   attachments: Attachment[];
   compact?: boolean;
-  downloads?: { filePath: (index: number) => string; zipPath: string; zipName: string };
+  /** `zipPath`/`zipName` are optional: without them each file still gets its own download button,
+   * there's just no "download all" (milestone evidence has no zip endpoint). */
+  downloads?: { filePath: (index: number) => string; zipPath?: string; zipName?: string };
 }) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const downloader = useDownloader();
   if (attachments.length === 0) return null;
 
   const items = attachments.map((attachment, index) => toItem(attachment, downloads?.filePath(index)));
+  const zip = downloads?.zipPath ? { path: downloads.zipPath, name: downloads.zipName ?? "files.zip" } : null;
 
   return (
     <>
@@ -188,15 +191,15 @@ export default function AttachmentGallery({
           <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
             {attachments.length} attachment{attachments.length === 1 ? "" : "s"}
           </p>
-          {downloads && attachments.length > 1 && (
+          {zip && attachments.length > 1 && (
             <button
               type="button"
-              onClick={() => void downloader.download(downloads.zipPath, downloads.zipName)}
+              onClick={() => void downloader.download(zip.path, zip.name)}
               disabled={downloader.busyPath !== null}
               className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50"
             >
-              {downloader.busyPath === downloads.zipPath ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-              {downloader.busyPath === downloads.zipPath ? "Preparing zip..." : `Download all (${attachments.length})`}
+              {downloader.busyPath === zip.path ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+              {downloader.busyPath === zip.path ? "Preparing zip..." : `Download all (${attachments.length})`}
             </button>
           )}
         </div>

@@ -66,6 +66,7 @@ from project_storage import (
     list_projects_for_party,
     list_updates,
 )
+import points_storage
 from frontend_adapter import to_university_challenge, to_university_mentor
 from department_matcher import list_departments_for_university, match_departments
 from problem_structurer import structure_raw_problem, StructuredProblemDraft
@@ -896,6 +897,37 @@ class ProjectUpdateRequest(BaseModel):
     progress: Optional[int] = None
 
 
+# --- Milestones & points ledger ---------------------------------------------------------------
+# FastAPI has no auth of its own (same as every other endpoint here) -- user_id/user_name and
+# officer_id/officer_name below are only trustworthy because the Next.js frontend resolves them
+# from a real signed-in session before calling these endpoints, on the three actions that write
+# permanent ledger credit: joining a project, submitting a milestone, and an officer's decision.
+
+class JoinProjectRequest(BaseModel):
+    party_type: str  # "university" | "industry" -- the caller's own organization
+    party_name: str
+    user_id: str
+    user_name: str
+    role: Optional[str] = None
+
+
+class MilestoneSubmissionRequest(BaseModel):
+    party_type: str
+    party_name: str
+    user_id: str
+    user_name: str
+    milestone_type: str
+    note: Optional[str] = None
+    links: List[str] = []
+
+
+class MilestoneVerificationDecision(BaseModel):
+    decision: Literal["approve", "reject"]
+    note: Optional[str] = None
+    officer_id: str
+    officer_name: str
+
+
 def _project_summary(problem: ProblemBase, parties: List[Dict[str, str]], my_role: str) -> Dict[str, Any]:
     updates = list_updates(problem.id, limit=1)
     return {
@@ -989,6 +1021,197 @@ def post_project_message_endpoint(problem_id: str, req: ProjectMessageRequest):
 def list_project_updates_endpoint(problem_id: str, party_type: str, party_name: str, limit: int = 200):
     _require_party(problem_id, party_type, party_name)
     return list_updates(problem_id, limit=min(max(limit, 1), 500))
+
+
+# --- Milestones, points ledger, badges, certificates, leaderboard ------------------------------
+
+@app.post("/projects/{problem_id}/members", response_model=points_storage.ProjectMember, status_code=201)
+def join_project_endpoint(problem_id: str, req: JoinProjectRequest):
+    """A named person joins their organization's team on this project, so future verified
+    milestones credit them individually as well as their organization as a whole."""
+    try:
+        return points_storage.join_project(
+            problem_id, req.user_id, req.user_name, req.party_type, req.party_name, role=req.role,
+        )
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+
+@app.get("/projects/{problem_id}/members", response_model=List[points_storage.ProjectMember])
+def list_project_members_endpoint(problem_id: str, party_type: str, party_name: str):
+    _require_party(problem_id, party_type, party_name)
+    return points_storage.list_project_members(problem_id)
+
+
+MAX_MILESTONE_ATTACHMENTS = MAX_UPDATE_ATTACHMENTS
+
+
+def _submit_milestone(
+    problem_id: str, party_type: str, party_name: str, user_id: str, user_name: str, milestone_type: str,
+    note: Optional[str], links: List[str], attachments: List[Dict[str, Any]],
+) -> points_storage.Milestone:
+    """Shared by the JSON and the multipart submit endpoints: authorise, store, then tell the
+    other parties. Raises HTTPException, so a caller that has already saved files can clean them up."""
+    if party_type not in COLLABORATION_PARTIES:
+        raise HTTPException(status_code=403, detail="Only the university or industry team may submit milestones")
+    problem, parties, _role = _require_party(problem_id, party_type, party_name)
+    try:
+        links = points_storage.normalize_links(links)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    try:
+        milestone = points_storage.submit_milestone(
+            problem_id, milestone_type, user_id, user_name, party_type, party_name,
+            note=note, attachments=attachments, links=links,
+        )
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+
+    title = problem.title or problem.problem_text
+    evidence = []
+    if attachments:
+        evidence.append(f"{len(attachments)} file{'' if len(attachments) == 1 else 's'}")
+    if milestone.submitted_links:
+        evidence.append(f"{len(milestone.submitted_links)} link{'' if len(milestone.submitted_links) == 1 else 's'}")
+    evidence_note = f" It includes {' and '.join(evidence)} as evidence." if evidence else ""
+    _notify_other_parties(
+        problem, parties, sender_type=party_type, sender_name=party_name,
+        type="info", title="Milestone submitted for verification",
+        message=(
+            f"{party_name} submitted '{milestone.milestone_type.replace('_', ' ')}' for '{title}', "
+            f"awaiting government verification.{evidence_note}"
+        ),
+    )
+    return milestone
+
+
+@app.post("/projects/{problem_id}/milestones", response_model=points_storage.Milestone, status_code=201)
+def submit_milestone_endpoint(problem_id: str, req: MilestoneSubmissionRequest):
+    """Submit a milestone with a note and links only. See .../milestones/with-attachments for files."""
+    return _submit_milestone(
+        problem_id, req.party_type, req.party_name, req.user_id, req.user_name, req.milestone_type,
+        req.note, req.links, attachments=[],
+    )
+
+
+@app.post("/projects/{problem_id}/milestones/with-attachments", response_model=points_storage.Milestone, status_code=201)
+async def submit_milestone_with_attachments_endpoint(
+    problem_id: str,
+    party_type: str = Form(...),
+    party_name: str = Form(...),
+    user_id: str = Form(...),
+    user_name: str = Form(...),
+    milestone_type: str = Form(...),
+    note: Optional[str] = Form(None),
+    links: List[str] = Form(default=[]),
+    files: List[UploadFile] = File(default=[]),
+):
+    """Same as POST .../milestones, but the submission can carry evidence files -- photos, videos,
+    PDFs and Office documents, exactly what project updates accept (see
+    ALLOWED_WORKSPACE_ATTACHMENT_TYPES) -- as well as links."""
+    if len(files) > MAX_MILESTONE_ATTACHMENTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"You selected {len(files)} files; a milestone can have at most {MAX_MILESTONE_ATTACHMENTS}.",
+        )
+    # Reject an unauthorised caller or bad links *before* writing anything to disk.
+    if party_type not in COLLABORATION_PARTIES:
+        raise HTTPException(status_code=403, detail="Only the university or industry team may submit milestones")
+    _require_party(problem_id, party_type, party_name)
+    try:
+        clean_links = points_storage.normalize_links(links)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    attachments = await _store_attachments(files, ALLOWED_WORKSPACE_ATTACHMENT_TYPES, WORKSPACE_ATTACHMENT_LABEL)
+    try:
+        return _submit_milestone(
+            problem_id, party_type, party_name, user_id, user_name, milestone_type, note, clean_links, attachments,
+        )
+    except Exception:
+        _discard_attachments(attachments)
+        raise
+
+
+@app.get("/projects/{problem_id}/milestones")
+def list_project_milestones_endpoint(problem_id: str, party_type: str, party_name: str):
+    _require_party(problem_id, party_type, party_name)
+    return {
+        "milestones": points_storage.list_milestones(problem_id),
+        "point_events": points_storage.list_point_events(problem_id=problem_id),
+    }
+
+
+@app.get("/milestones", response_model=List[points_storage.Milestone])
+def list_pending_milestones_endpoint(status: str = "submitted", limit: int = 100):
+    """The government officer's review queue -- unfiltered by party, same as the existing problem
+    verification queue (GET /problems), since the government portal isn't gated at this layer."""
+    if status != "submitted":
+        raise HTTPException(status_code=400, detail="Only status=submitted is supported")
+    return points_storage.list_pending_milestones(limit=min(max(limit, 1), 500))
+
+
+@app.patch("/milestones/{milestone_id}/verification")
+def verify_milestone_endpoint(milestone_id: str, decision: MilestoneVerificationDecision):
+    if decision.decision == "reject" and not (decision.note or "").strip():
+        raise HTTPException(status_code=400, detail="A rejection note is required")
+    try:
+        milestone, new_events = points_storage.verify_milestone(
+            milestone_id, decision.decision, decision.note, decision.officer_id, decision.officer_name,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    problem = get_problem(milestone.problem_id)
+    if problem:
+        parties = get_project_parties(problem)
+        title = problem.title or problem.problem_text
+        verb = "verified" if milestone.status == "verified" else "rejected"
+        message = f"Your '{milestone.milestone_type.replace('_', ' ')}' milestone for '{title}' was {verb}" + (
+            f": {milestone.decision_note}" if milestone.decision_note else "."
+        )
+        # sender_type="government" never matches a university/industry party, so this reaches both
+        # the lead and any collaborator -- whoever submitted it and whoever didn't.
+        _notify_other_parties(
+            problem, parties, sender_type="government", sender_name=decision.officer_name,
+            type="success" if verb == "verified" else "warning",
+            title=f"Milestone {verb}", message=message,
+        )
+        _notify_owners(problem, category="milestone", type="update", title=f"Project milestone {verb}", message=message)
+    return {"milestone": milestone, "new_point_events": new_events}
+
+
+@app.get("/points/summary")
+def points_summary_endpoint(actor_type: str, actor_id: str):
+    if actor_type not in ("user", "university", "industry"):
+        raise HTTPException(status_code=400, detail="actor_type must be 'user', 'university', or 'industry'")
+    return points_storage.summarize_actor(actor_type, actor_id)
+
+
+@app.get("/certificates")
+def certificates_endpoint(actor_type: str, actor_id: str):
+    if actor_type not in ("user", "university", "industry"):
+        raise HTTPException(status_code=400, detail="actor_type must be 'user', 'university', or 'industry'")
+    return points_storage.list_certificates(actor_type, actor_id)
+
+
+@app.get("/leaderboard/organizations")
+def organization_leaderboard_endpoint(
+    org_type: str = "all", region: Optional[str] = None, period: Optional[str] = None, limit: int = 50,
+):
+    actor_types = ["university", "industry"] if org_type == "all" else [org_type]
+    if any(t not in ("university", "industry") for t in actor_types):
+        raise HTTPException(status_code=400, detail="org_type must be 'all', 'university', or 'industry'")
+    return points_storage.list_leaderboard(actor_types, region=region, period=period, limit=min(max(limit, 1), 200))
+
+
+@app.get("/leaderboard/users")
+def user_leaderboard_endpoint(region: Optional[str] = None, period: Optional[str] = None, limit: int = 50):
+    return points_storage.list_leaderboard(["user"], region=region, period=period, limit=min(max(limit, 1), 200))
 
 
 # --- Downloading workspace files -------------------------------------------------------------

@@ -174,23 +174,29 @@ function uploadErrorFor(status: number, detail: unknown): UploadError {
 /**
  * POST a multipart form with upload progress (fetch can't report upload progress).
  * Rejects with an UploadError whose message says in plain words what went wrong.
+ *
+ * `baseUrl` defaults to the FastAPI service. Pass "" to post to one of this app's own /api routes
+ * instead (used where the route has to resolve the signed-in user's identity before forwarding the
+ * upload). Those routes report their own errors as `error`, FastAPI as `detail`; both are read.
  */
-export function uploadForm<T>(path: string, formData: FormData, onProgress?: (fraction: number) => void): Promise<T> {
+export function uploadForm<T>(
+  path: string, formData: FormData, onProgress?: (fraction: number) => void, baseUrl: string = API_URL,
+): Promise<T> {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
-    request.open("POST", `${API_URL}${path}`);
+    request.open("POST", `${baseUrl}${path}`);
     request.upload.onprogress = (event) => {
       if (event.lengthComputable && onProgress) onProgress(event.loaded / event.total);
     };
     request.onload = () => {
-      let body: { detail?: unknown } = {};
+      let body: { detail?: unknown; error?: unknown } = {};
       try {
         body = JSON.parse(request.responseText);
       } catch {
         // non-JSON error page; handled by status below
       }
       if (request.status >= 200 && request.status < 300) resolve(body as T);
-      else reject(uploadErrorFor(request.status, body.detail));
+      else reject(uploadErrorFor(request.status, body.detail ?? body.error));
     };
     request.onerror = () =>
       reject(new UploadError(0, "Couldn't reach the server. Check your internet connection (and that the API is running), then try again."));
