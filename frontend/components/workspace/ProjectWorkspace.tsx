@@ -197,15 +197,8 @@ export default function ProjectWorkspace({
     );
   }
 
-  const isLead = project.my_role === "lead";
+    const isLead = project.my_role === "lead";
   const isOwner = project.my_role === "owner";
-  const tabs: { id: Tab; label: string; icon: typeof Megaphone }[] = [
-    { id: "updates", label: "Updates", icon: Megaphone },
-    { id: "milestones", label: "Milestones", icon: Award },
-    { id: "chat", label: "Chat", icon: MessageSquare },
-    // Inviting partners is the solving organisations' job; the citizen sees partners in the header.
-    ...(isOwner ? [] : [{ id: "collaboration" as const, label: "Collaboration", icon: Handshake }]),
-
   const tabs: {
     id: Tab;
     label: string;
@@ -217,10 +210,16 @@ export default function ProjectWorkspace({
       icon: Megaphone,
     },
     {
+      id: "milestones",
+      label: tr("Milestones", "माइलस्टोन"),
+      icon: Award,
+    },
+    {
       id: "chat",
       label: tr("Chat", "चैट"),
       icon: MessageSquare,
     },
+    // Inviting partners is the solving organisations' job; the citizen sees partners in the header.
     ...(isOwner
       ? []
       : [

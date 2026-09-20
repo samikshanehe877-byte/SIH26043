@@ -382,11 +382,11 @@ export function UploadProgress({
 }
 
 export function UploadFailedNotice({
-  error, hadFiles, onRetry, onDismiss, failedTitle = "Couldn't post the update.",
   error,
   hadFiles,
   onRetry,
   onDismiss,
+  failedTitle = "Couldn't post the update.",
 }: {
   error: UploadError | Error;
   hadFiles: boolean;
