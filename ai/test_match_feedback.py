@@ -117,6 +117,7 @@ def test_dismissing_every_match_still_frees_the_order_and_reports_what_was_set_a
         "university", ORG, ProblemFeedbackRequest(user_id=ME, action="dismiss", problem_ids=everything)
     )
     result = organization_problem_matches_endpoint("university", ORG, top_k=3, ai="wait", user_id=ME)
+    assert result["matches"], "dismissing orders the list, it never empties it: a match is always shown"
     assert all(m["feedback"]["dismissed"] for m in result["matches"]), "nothing else is left to offer"
     assert sorted(d["id"] for d in result["dismissed"]) == sorted(everything), "the dashboard can restore all of them"
 
