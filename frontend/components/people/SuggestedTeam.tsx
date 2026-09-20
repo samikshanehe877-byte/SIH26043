@@ -37,7 +37,14 @@ export default function SuggestedTeam({ team }: { team: MatchedPerson[] }) {
                 {KIND_LABEL[member.kind]}
               </span>
             </div>
-            {member.unit_name && <p className="truncate text-xs text-slate-400">{member.unit_name}</p>}
+            {(member.role_in_team || member.unit_name) && (
+              <p className="truncate text-xs text-slate-400">
+                {member.role_in_team && <span className="font-semibold text-slate-600">{member.role_in_team}</span>}
+                {member.role_in_team && member.unit_name && " - "}
+                {member.unit_name}
+              </p>
+            )}
+            {member.reason && <p className="mt-1 text-xs text-slate-600">{member.reason}</p>}
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {member.brings?.map((label) => (
                 <span key={label} className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-800">

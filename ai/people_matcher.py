@@ -56,25 +56,25 @@ def database_url() -> Optional[str]:
 
 
 _MEMBER_SELECTS = [
-    # kind, org_type, table, org column, title, years, specialization, capacity, load
-    ("student", "university", "university_students", "university_id", "(m.course || ', year ' || m.year::text)", "NULL::int", "m.bio", "NULL::int", "NULL::int"),
-    ("faculty", "university", "university_faculty", "university_id", "m.designation", "m.experience_years", "m.specialization", "NULL::int", "NULL::int"),
-    ("mentor", "university", "university_mentors", "university_id", "m.designation", "m.experience_years", "m.specialization", "m.max_capacity", "m.current_load"),
-    ("employee", "industry", "industry_employees", "industry_id", "m.designation", "m.experience_years", "NULL::text", "NULL::int", "NULL::int"),
-    ("mentor", "industry", "industry_mentors", "industry_id", "m.designation", "m.experience_years", "m.expertise", "m.max_capacity", "m.current_load"),
-    ("expert", "industry", "industry_experts", "industry_id", "'Domain expert'", "m.experience_years", "m.expertise", "NULL::int", "NULL::int"),
+    # kind, org_type, table, org column, title, years, specialization, capacity, load, bio
+    ("student", "university", "university_students", "university_id", "(m.course || ', year ' || m.year::text)", "NULL::int", "m.bio", "NULL::int", "NULL::int", "m.bio"),
+    ("faculty", "university", "university_faculty", "university_id", "m.designation", "m.experience_years", "m.specialization", "NULL::int", "NULL::int", "m.bio"),
+    ("mentor", "university", "university_mentors", "university_id", "m.designation", "m.experience_years", "m.specialization", "m.max_capacity", "m.current_load", "m.bio"),
+    ("employee", "industry", "industry_employees", "industry_id", "m.designation", "m.experience_years", "NULL::text", "NULL::int", "NULL::int", "NULL::text"),
+    ("mentor", "industry", "industry_mentors", "industry_id", "m.designation", "m.experience_years", "m.expertise", "m.max_capacity", "m.current_load", "m.bio"),
+    ("expert", "industry", "industry_experts", "industry_id", "'Domain expert'", "m.experience_years", "m.expertise", "NULL::int", "NULL::int", "m.certifications"),
 ]
 
 _PEOPLE_COLUMNS = (
     "SELECT p.kind, p.org_type, p.member_id, p.user_id, p.org_id, COALESCE(uo.name, io.company_name) AS org_name, "
-    "p.unit_id, un.name AS unit_name, u.name, p.title, p.years, p.specialization, p.max_capacity, p.current_load "
+    "p.unit_id, un.name AS unit_name, u.name, p.title, p.years, p.specialization, p.max_capacity, p.current_load, p.bio "
 )
 
 PEOPLE_SQL = _PEOPLE_COLUMNS + "FROM (" + " UNION ALL ".join(
     f"SELECT '{kind}' AS kind, '{org_type}' AS org_type, m.id AS member_id, m.user_id AS user_id, "
     f"m.{org_col} AS org_id, m.unit_id AS unit_id, {title} AS title, {years} AS years, "
-    f"{spec} AS specialization, {cap} AS max_capacity, {load} AS current_load FROM {table} m"
-    for kind, org_type, table, org_col, title, years, spec, cap, load in _MEMBER_SELECTS
+    f"{spec} AS specialization, {cap} AS max_capacity, {load} AS current_load, {bio} AS bio FROM {table} m"
+    for kind, org_type, table, org_col, title, years, spec, cap, load, bio in _MEMBER_SELECTS
 ) + """) p
 JOIN users u ON u.id = p.user_id
 LEFT JOIN universities uo ON p.org_type = 'university' AND uo.id = p.org_id
@@ -315,6 +315,7 @@ def _public_person(person: Dict) -> Dict:
         "org_name": person["org_name"],
         "years": person.get("years"),
         "specialization": person.get("specialization"),
+        "bio": person.get("bio"),
         "skills": [{"name": n, "proficiency": p} for n, p in sorted(person.get("skills", []), key=lambda s: -s[1])],
         "domains": [{"domain": d, "subdomain": s, "proficiency": p} for d, s, p in sorted(person.get("domains", []), key=lambda c: -c[2])],
         "max_capacity": person.get("max_capacity"),
@@ -380,11 +381,40 @@ def build_team(org_people: List[Dict], needs: List[Dict], size: int = TEAM_SIZE)
     return team, covered, [n["label"] for n in remaining]
 
 
-def score_organization(members: List[Dict], needs: List[Dict], org_type: str) -> Optional[Dict]:
-    """How well one organization's people, as a team, cover the needs. None if nobody is relevant."""
+def team_from_choice(members: List[Dict], needs: List[Dict], chosen: List[Dict]) -> Tuple[List[Dict], List[str], List[str]]:
+    """Builds a team from an explicit selection (member id, optional role and reason, in order).
+
+    Coverage is recomputed from the people actually chosen, never taken on trust from whoever chose
+    them, so a team picked by a model reports exactly what it does and does not cover.
+    """
+    by_id = {m["member_id"]: m for m in members}
+    remaining = list(needs)
+    team: List[Dict] = []
+    for pick in chosen:
+        person = by_id[pick["id"]]
+        newly = [n for n in remaining if _strength(person, n) >= COVERED_STRENGTH]
+        backs_up = [n["label"] for n in needs if n not in newly and _strength(person, n) >= COVERED_STRENGTH]
+        team.append({
+            **_public_person(person),
+            "brings": [n["label"] for n in newly],
+            "supports": backs_up,
+            "role_group": _role_group(person["kind"]),
+            "role_in_team": pick.get("role"),
+            "reason": pick.get("reason"),
+        })
+        remaining = [n for n in remaining if n not in newly]
+    team.sort(key=lambda m: m["role_group"] != "guide")
+    return team, [n["label"] for n in needs if n not in remaining], [n["label"] for n in remaining]
+
+
+def score_organization(members: List[Dict], needs: List[Dict], org_type: str, chosen: Optional[List[Dict]] = None) -> Optional[Dict]:
+    """How well one organization's people, as a team, cover the needs. None if nobody is relevant.
+
+    `chosen` (member ids with roles and reasons) replaces the greedy team, e.g. one picked by a model.
+    """
     if not needs or not members:
         return None
-    team, covered, missing = build_team(members, needs)
+    team, covered, missing = team_from_choice(members, needs, chosen) if chosen else build_team(members, needs)
     if not team:
         return None
     total_weight = sum(n["weight"] for n in needs)
@@ -414,12 +444,17 @@ def score_organization(members: List[Dict], needs: List[Dict], org_type: str) ->
     }
 
 
-def rank_organizations(people: List[Dict], needs: List[Dict], org_type: str, top_k: int = 3) -> List[Dict]:
-    """Organizations ranked by how well their people together cover the needs."""
-    by_org: Dict[str, List[Dict]] = {}
+def group_by_org(people: List[Dict], org_type: str) -> Dict[str, List[Dict]]:
+    grouped: Dict[str, List[Dict]] = {}
     for person in people:
         if person["org_type"] == org_type:
-            by_org.setdefault(person["org_id"], []).append(person)
+            grouped.setdefault(person["org_id"], []).append(person)
+    return grouped
+
+
+def rank_organizations(people: List[Dict], needs: List[Dict], org_type: str, top_k: int = 3) -> List[Dict]:
+    """Organizations ranked by how well their people together cover the needs."""
+    by_org = group_by_org(people, org_type)
     results = [r for r in (score_organization(members, needs, org_type) for members in by_org.values()) if r]
     results.sort(key=lambda r: r["score"], reverse=True)
     return results[:top_k]
@@ -427,6 +462,7 @@ def rank_organizations(people: List[Dict], needs: List[Dict], org_type: str, top
 
 def rank_problems_for_organization(
     problems: List[Dict], members: List[Dict], org_type: str, taxonomy: Dict, top_k: int = 5, skill_names: Optional[Iterable[str]] = None,
+    resolve_needs=None,
 ) -> List[Dict]:
     """The problems one organization is best placed to take on, each with the team it would field.
 
@@ -437,9 +473,10 @@ def rank_problems_for_organization(
     """
     if skill_names is None:
         skill_names = {name for person in members for name, _ in person.get("skills", [])}
+    resolve = resolve_needs or extract_requirements
     results = []
     for problem in problems:
-        needs = extract_requirements(problem, taxonomy, skill_names)
+        needs = resolve(problem, taxonomy, skill_names)
         match = score_organization(members, needs, org_type)
         if match:
             results.append({"problem": problem, "needs": needs, "match": match})
@@ -447,10 +484,10 @@ def rank_problems_for_organization(
     return results[:top_k]
 
 
-def match_problem(problem: Dict, people: List[Dict], taxonomy: Dict, top_k: int = 3) -> Dict:
+def match_problem(problem: Dict, people: List[Dict], taxonomy: Dict, top_k: int = 3, resolve_needs=None) -> Dict:
     """Everything the UI needs for one problem: its needs, ranked universities and industries, top individuals."""
     skill_names = {name for person in people for name, _ in person.get("skills", [])}
-    needs = extract_requirements(problem, taxonomy, skill_names)
+    needs = (resolve_needs or extract_requirements)(problem, taxonomy, skill_names)
     return {
         "needs": needs,
         "universities": rank_organizations(people, needs, "university", top_k),

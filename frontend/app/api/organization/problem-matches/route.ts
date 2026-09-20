@@ -5,8 +5,9 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 /**
  * The open problems the signed-in user's own university or company is best placed to take on, with
- * the mixed-role team it would field. The organization is resolved from the session, never from the
- * request, so a client can't ask for another organization's people.
+ * the mixed-role team it would field. The organization and the user are resolved from the session,
+ * never from the request, so a client can't ask for another organization's people or apply another
+ * person's "not interested" choices to its own list.
  */
 export async function GET(request: Request) {
   const user = await getAuthUser();
@@ -22,9 +23,10 @@ export async function GET(request: Request) {
   const topK = Number.isInteger(requested) && requested >= 1 && requested <= 10 ? requested : 3;
 
   try {
-    const response = await fetch(`${API_URL}/organizations/${orgType}/${encodeURIComponent(orgId)}/problem-matches?top_k=${topK}`, {
-      cache: "no-store",
-    });
+    const response = await fetch(
+      `${API_URL}/organizations/${orgType}/${encodeURIComponent(orgId)}/problem-matches?top_k=${topK}&user_id=${encodeURIComponent(user.id)}`,
+      { cache: "no-store" }
+    );
     const data = await response.json().catch(() => ({}));
     return NextResponse.json(data, { status: response.status });
   } catch (error) {

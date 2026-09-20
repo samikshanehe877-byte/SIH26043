@@ -38,11 +38,15 @@ export default function CitizenDashboard() {
     return null;
   }
 
+  // "Discover" is for problems that still need a solver. Once a volunteer is accepted the problem has a
+  // workspace and leaves this feed (it stays under My Problems, Projects and Explore).
+  const query = search.toLowerCase();
   const filtered = publicProblems.filter(
     (p) =>
-      p.title.toLowerCase().includes(search.toLowerCase()) ||
-      p.description.toLowerCase().includes(search.toLowerCase()) ||
-      p.location.toLowerCase().includes(search.toLowerCase())
+      p.status === "Verified" &&
+      (p.title.toLowerCase().includes(query) ||
+        p.description.toLowerCase().includes(query) ||
+        p.location.toLowerCase().includes(query))
   );
 
   const myProblemsCount = myProblems.length;

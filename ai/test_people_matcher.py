@@ -12,6 +12,12 @@ import problem_storage
 from api import organization_problem_matches_endpoint, problem_team_matches_endpoint
 from problem_storage import ProblemBase, ProblemUpdate, create_problem, update_problem
 
+@pytest.fixture(autouse=True)
+def matching_ai_off(monkeypatch):
+    """These tests cover the rule-based core; the model layer has its own tests and must never be reached from here."""
+    monkeypatch.setenv("MATCHING_AI", "off")
+
+
 TAXONOMY = pm.load_taxonomy()
 _counter = iter(range(10_000))
 
@@ -244,7 +250,7 @@ def test_organization_endpoint_returns_only_that_organizations_best_problems(iso
     ]
     monkeypatch.setattr(pm, "load_people", lambda org_type=None: [p for p in people if org_type in (None, p["org_type"])])
 
-    result = organization_problem_matches_endpoint("university", "U1", top_k=3)
+    result = organization_problem_matches_endpoint("university", "U1", top_k=3, user_id=None)
 
     assert result["organization"]["name"] == "U1"
     assert [m["problem"]["id"] for m in result["matches"]] == [flood.id], "only verified problems this organization can serve"
@@ -255,10 +261,10 @@ def test_organization_endpoint_returns_only_that_organizations_best_problems(iso
 
 def test_organization_endpoint_with_no_people_returns_no_matches(isolated_db, monkeypatch):
     monkeypatch.setattr(pm, "load_people", lambda org_type=None: [])
-    assert organization_problem_matches_endpoint("industry", "nobody", top_k=3) == {"organization": None, "matches": []}
+    assert organization_problem_matches_endpoint("industry", "nobody", top_k=3, ai="background", user_id=None) == {"organization": None, "ai_pending": False, "matches": []}
 
 
 def test_organization_endpoint_rejects_an_unknown_organization_type(isolated_db):
     with pytest.raises(HTTPException) as caught:
-        organization_problem_matches_endpoint("government", "x", top_k=3)
+        organization_problem_matches_endpoint("government", "x", top_k=3, user_id=None)
     assert caught.value.status_code == 400

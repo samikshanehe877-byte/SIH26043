@@ -51,7 +51,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from notification_service import notify_fanout
 from project_storage import (
@@ -68,6 +68,8 @@ from project_storage import (
 )
 import points_storage
 from frontend_adapter import to_university_challenge, to_university_mentor
+import match_feedback
+import matching_ai
 import people_matcher
 from department_matcher import list_departments_for_university, match_departments
 from problem_structurer import structure_raw_problem, StructuredProblemDraft
@@ -2124,7 +2126,7 @@ def departments(university_id: str):
 
 
 @app.get("/problems/{problem_id}/team-matches")
-def problem_team_matches_endpoint(problem_id: str, top_k: int = Query(3, ge=1, le=10)):
+def problem_team_matches_endpoint(problem_id: str, top_k: int = Query(3, ge=1, le=10), ai: str = Query("background", pattern="^(background|wait)$")):
     """
     Ranks universities and industries for a problem by how well their real people (from the shared
     Postgres directory) collectively cover what it needs, and returns the suggested team from each.
@@ -2139,15 +2141,32 @@ def problem_team_matches_endpoint(problem_id: str, top_k: int = Query(3, ge=1, l
     except people_matcher.PeopleDataUnavailable as error:
         logger.error("People directory unavailable: %s", error)
         raise HTTPException(status_code=503, detail="The people directory is unavailable right now")
-    return {"problem_id": problem.id, **people_matcher.match_problem(problem.model_dump(), people, taxonomy, top_k)}
+    background = ai == "background"
+    record = problem.model_dump()
+    resolve = lambda p, t, s: matching_ai.resolve_needs(p, t, s, background=background)  # noqa: E731
+    result = people_matcher.match_problem(record, people, taxonomy, top_k, resolve_needs=resolve)
+    for key, org_type in (("universities", "university"), ("industries", "industry")):
+        result[key] = matching_ai.enhance_matches(
+            record, result["needs"], result[key], people_matcher.group_by_org(people, org_type), org_type, background=background
+        )
+    return {"problem_id": problem.id, "ai_pending": matching_ai.pending(), **result}
 
 
 @app.get("/organizations/{org_type}/{org_id}/problem-matches")
-def organization_problem_matches_endpoint(org_type: str, org_id: str, top_k: int = Query(3, ge=1, le=10)):
+def organization_problem_matches_endpoint(
+    org_type: str, org_id: str, top_k: int = Query(3, ge=1, le=10), ai: str = Query("background", pattern="^(background|wait)$"),
+    user_id: Optional[str] = Query(None, max_length=100),
+):
     """
     The open, verified problems one university or industry is best placed to take on, ranked by how
     well its own people cover what each problem needs, with the mixed-role team it would field.
-    Called from the Next.js proxy, which resolves org_id from the signed-in session.
+    Called from the Next.js proxy, which resolves org_id and user_id from the signed-in session.
+
+    Only `verified` problems are candidates, so anything a citizen has already accepted a volunteer
+    for (which moves it to `assigned` and opens its workspace) never appears. With a user_id, the
+    order also reflects what that person has already seen or marked "not interested" (match_feedback.py).
+    `matches` holds the best problems they have not set aside, and `dismissed` lists the ones they have,
+    last of all, so the dashboard can show them at the bottom and offer to bring them back.
     """
     if org_type not in ("university", "industry"):
         raise HTTPException(status_code=400, detail="org_type must be 'university' or 'industry'")
@@ -2159,11 +2178,36 @@ def organization_problem_matches_endpoint(org_type: str, org_id: str, top_k: int
         raise HTTPException(status_code=503, detail="The people directory is unavailable right now")
     people = [p for p in everyone if p["org_type"] == org_type and p["org_id"] == org_id]
     if not people:
-        return {"organization": None, "matches": []}
+        return {"organization": None, "ai_pending": False, "matches": []}
     skill_catalogue = {name for person in everyone for name, _ in person.get("skills", [])}
 
     open_problems = [problem.model_dump() for problem in list_problems(status="verified", limit=500)]
-    matches = people_matcher.rank_problems_for_organization(open_problems, people, org_type, taxonomy, top_k, skill_catalogue)
+    background = ai == "background"
+    resolve = lambda p, t, s: matching_ai.resolve_needs(p, t, s, background=background)  # noqa: E731
+    # Rank every open problem, apply this person's feedback to the order, and only then cut to top_k,
+    # so a dismissed or already-seen problem makes room for a fresh one and the AI is only asked about the ones shown.
+    ranked = people_matcher.rank_problems_for_organization(
+        open_problems, people, org_type, taxonomy, max(len(open_problems), 1), skill_catalogue, resolve_needs=resolve
+    )
+    ranked = match_feedback.rerank(ranked, match_feedback.load(user_id, org_id) if user_id else {})
+    # "Not interested" sinks a problem beneath every other candidate, but does not hide it. The cards
+    # are the best problems NOT set aside, recomputed from every open problem on each request, so one
+    # dismissal always promotes the next best problem into the list rather than reshuffling the same
+    # few. The ones set aside follow in `dismissed`, lowest of all, named so they can be brought back.
+    # They are listed rather than carded so the AI is only asked about problems actually on offer.
+    undismissed = [item for item in ranked if not item["feedback"]["dismissed"]]
+    set_aside = [item for item in ranked if item["feedback"]["dismissed"]]
+    dismissed = [
+        {
+            "id": item["problem"]["id"],
+            "title": item["problem"].get("title") or item["problem"].get("problem_text"),
+            "score": item["match"]["score"],
+        }
+        for item in set_aside
+    ]
+    # With nothing left to offer, the problems set aside are all there is; the dashboard says so.
+    matches = (undismissed or set_aside)[:top_k]
+    matches = matching_ai.enhance_items(matches, people, org_type, background=background)
     for item in matches:
         problem = item["problem"]
         item["problem"] = {
@@ -2174,7 +2218,37 @@ def organization_problem_matches_endpoint(org_type: str, org_id: str, top_k: int
             "district": problem.get("district"),
             "location": problem.get("location"),
         }
-    return {"organization": {"id": org_id, "type": org_type, "name": people[0]["org_name"]}, "matches": matches}
+    return {
+        "organization": {"id": org_id, "type": org_type, "name": people[0]["org_name"]},
+        "ai_pending": matching_ai.pending(),
+        "matches": matches,
+        "dismissed": dismissed,
+    }
+
+
+class ProblemFeedbackRequest(BaseModel):
+    user_id: str = Field(min_length=1, max_length=100)
+    action: Literal["seen", "dismiss", "restore"]
+    problem_ids: List[str] = Field(min_length=1, max_length=match_feedback.MAX_IDS_PER_CALL)
+
+
+@app.post("/organizations/{org_type}/{org_id}/problem-feedback")
+def organization_problem_feedback_endpoint(org_type: str, org_id: str, req: ProblemFeedbackRequest):
+    """
+    Records that a person saw some Best Match cards, marked one "not interested", or took that back,
+    so the list rotates instead of repeating. Called from the Next.js proxy, which supplies user_id
+    from the signed-in session.
+    """
+    if org_type not in ("university", "industry"):
+        raise HTTPException(status_code=400, detail="org_type must be 'university' or 'industry'")
+    problem_ids = list(dict.fromkeys(req.problem_ids))
+    if any(get_problem(problem_id) is None for problem_id in problem_ids):
+        raise HTTPException(status_code=404, detail="Problem not found")
+    if req.action == "seen":
+        updated = match_feedback.record_seen(req.user_id, org_type, org_id, problem_ids)
+    else:
+        updated = match_feedback.set_dismissed(req.user_id, org_type, org_id, problem_ids, dismissed=req.action == "dismiss")
+    return {"updated": updated}
 
 
 @app.post("/analyze-for-frontend")

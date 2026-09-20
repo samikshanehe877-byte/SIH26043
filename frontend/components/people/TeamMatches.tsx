@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { CircleAlert, Sparkles } from "lucide-react";
+import AiRationale from "@/components/people/AiRationale";
 import SuggestedTeam from "@/components/people/SuggestedTeam";
 import { useTeamMatches, type MatchLevel, type OrganizationMatch } from "@/lib/teamMatches";
 
@@ -45,6 +46,7 @@ function OrganizationCard({ match, rank }: { match: OrganizationMatch; rank: num
         </p>
       )}
 
+      <AiRationale ai={match.ai} />
       <p className="mb-2 mt-4 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Suggested team</p>
       <SuggestedTeam team={match.team} />
     </div>
