@@ -21,7 +21,8 @@ export default function Button({
   disabled = false,
   type = "button",
 }: ButtonProps) {
-  const baseClasses = "flex items-center justify-center gap-2 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed";
+  const baseClasses =
+    "flex items-center justify-center gap-2 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed";
 
   const variantClasses = {
     default: "bg-primary-600 text-primary-foreground hover:bg-primary-700",
