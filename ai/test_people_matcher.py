@@ -268,3 +268,132 @@ def test_organization_endpoint_rejects_an_unknown_organization_type(isolated_db)
     with pytest.raises(HTTPException) as caught:
         organization_problem_matches_endpoint("government", "x", top_k=3, user_id=None)
     assert caught.value.status_code == 400
+
+
+# ------------------------------------------------------------------- complementarity between orgs
+
+NEEDS = [
+    {"kind": "skill", "label": "Hydrology", "skill": "Hydrology", "weight": 2.0, "source": "capability"},
+    {"kind": "skill", "label": "GIS Mapping", "skill": "GIS Mapping", "weight": 1.0, "source": "capability"},
+    {"kind": "skill", "label": "IoT Sensor Networks", "skill": "IoT Sensor Networks", "weight": 1.0, "source": "capability"},
+    {"kind": "skill", "label": "Water Treatment", "skill": "Water Treatment", "weight": 1.0, "source": "capability"},
+]
+
+
+def _research_and_deployment():
+    """A university strong on analysis, an industry strong on hardware: neither covers the problem alone."""
+    return [
+        person("Hydrologist", "Uni", kind="faculty", skills=[("Hydrology", 5)]),
+        person("Mapper", "Uni", kind="student", skills=[("GIS Mapping", 4)]),
+        person("Sensor Lead", "Ind", org_type="industry", kind="expert", skills=[("IoT Sensor Networks", 5)]),
+        person("Plant Engineer", "Ind", org_type="industry", kind="employee", skills=[("Water Treatment", 4)]),
+    ]
+
+
+def test_a_partnership_beats_either_organization_alone():
+    people = _research_and_deployment()
+    pairs = pm.pair_organizations(people, NEEDS)
+    assert pairs, "a university and an industry each holding half the needs is a partnership"
+    best = pairs[0]
+    assert best["coverage"] > best["best_alone"], "the pair must cover more than the stronger side alone"
+    assert best["cross_type"] is True
+    assert not best["missing"], "between them they cover everything"
+
+
+def test_each_side_is_named_with_what_only_it_brings():
+    best = pm.pair_organizations(_research_and_deployment(), NEEDS)[0]
+    brings = {org["name"]: set(org["brings"]) for org in best["organizations"]}
+    assert brings["Uni"] == {"Hydrology", "GIS Mapping"}
+    assert brings["Ind"] == {"IoT Sensor Networks", "Water Treatment"}
+
+
+def test_the_joint_team_has_people_from_both_organizations():
+    best = pm.pair_organizations(_research_and_deployment(), NEEDS)[0]
+    assert {m["org_id"] for m in best["team"]} == {"Uni", "Ind"}, "a partnership nobody from one side joins is not a partnership"
+
+
+def test_an_organization_that_adds_nothing_is_not_offered_as_a_partner():
+    """The passenger test: a second organization has to cover something the first cannot."""
+    people = [
+        person("Hydrologist", "Uni", kind="faculty", skills=[("Hydrology", 5)]),
+        person("Mapper", "Uni", kind="student", skills=[("GIS Mapping", 4)]),
+        person("Sensor Lead", "Uni", kind="mentor", skills=[("IoT Sensor Networks", 5)]),
+        person("Plant Engineer", "Uni", kind="faculty", skills=[("Water Treatment", 4)]),
+        # Everything this industry can do, the university already does.
+        person("Second Hydrologist", "Ind", org_type="industry", kind="expert", skills=[("Hydrology", 5)]),
+    ]
+    assert pm.pair_organizations(people, NEEDS) == []
+
+
+def test_a_partner_worth_less_than_the_coordination_is_dropped(monkeypatch):
+    """A pair has to clear MIN_COMPLEMENT_UPLIFT, because a second organization is not free."""
+    people = [
+        person("Hydrologist", "Uni", kind="faculty", skills=[("Hydrology", 5)]),
+        person("Mapper", "Uni", kind="student", skills=[("GIS Mapping", 4)]),
+        person("Treater", "Uni", kind="mentor", skills=[("Water Treatment", 4)]),
+        person("Sensor Lead", "Ind", org_type="industry", kind="expert", skills=[("IoT Sensor Networks", 5)]),
+        person("Hydro Two", "Ind", org_type="industry", kind="employee", skills=[("Hydrology", 4)]),
+    ]
+    assert pm.pair_organizations(people, NEEDS), "one need out of five weight is worth the partner by default"
+    monkeypatch.setattr(pm, "MIN_COMPLEMENT_UPLIFT", 0.5)
+    assert pm.pair_organizations(people, NEEDS) == [], "raise the bar and the same pair stops being worth proposing"
+
+
+def test_partnership_coverage_is_recomputed_from_the_team_that_was_built():
+    """Coverage is never the union of what the two sides claim; it is what the joint team actually delivers."""
+    best = pm.pair_organizations(_research_and_deployment(), NEEDS)[0]
+    delivered = {label for member in best["team"] for label in member["brings"]}
+    assert set(best["covered"]) == delivered
+    total = sum(n["weight"] for n in NEEDS)
+    assert best["coverage"] == round(sum(n["weight"] for n in NEEDS if n["label"] in best["covered"]) / total, 3)
+
+
+def test_a_partnership_is_scored_on_the_same_scale_as_a_single_organization():
+    people = _research_and_deployment()
+    best = pm.pair_organizations(people, NEEDS)[0]
+    alone = max(m["score"] for m in (
+        pm.score_organization([p for p in people if p["org_id"] == org], NEEDS, p_type)
+        for org, p_type in (("Uni", "university"), ("Ind", "industry"))
+    ) if m)
+    assert best["score"] > alone, "the same formula, so the numbers on the two cards are comparable"
+
+
+def test_no_needs_or_no_people_gives_no_partnerships():
+    assert pm.pair_organizations(_research_and_deployment(), []) == []
+    assert pm.pair_organizations([], NEEDS) == []
+
+
+# ------------------------------------------------------------------- required vs helpful needs
+
+
+def test_problem_areas_are_required_and_skills_are_helpful():
+    needs = pm.extract_requirements(FLOOD_PROBLEM, TAXONOMY, SKILLS)
+    kinds = {n["label"]: pm.requirement_of(n) for n in needs}
+    assert kinds["Flood Management"] == "required", "what the problem is about is a must-have"
+    assert kinds["Hydrology"] == "helpful", "there is usually more than one way to do the work"
+
+
+def test_holding_every_must_have_reads_as_capable_despite_missing_extras():
+    """The point of the split: optional gaps should not drag a fully-qualified organization down."""
+    needs = pm.extract_requirements(FLOOD_PROBLEM, TAXONOMY, SKILLS)
+    covered = [n["label"] for n in needs if pm.requirement_of(n) == "required"]
+    split = pm.split_coverage(needs, covered)
+    assert split["required_coverage"] == 1.0
+    assert split["helpful_coverage"] == 0.0
+    assert split["coverage"] == pytest.approx(pm.REQUIRED_SHARE), "must-haves carry most of the figure"
+
+
+def test_a_missing_must_have_is_called_out_separately_from_a_missing_extra():
+    people = [person("GIS Only", "U", kind="student", skills=[("GIS Mapping", 5)])]
+    needs = pm.extract_requirements(FLOOD_PROBLEM, TAXONOMY, SKILLS)
+    match = pm.score_organization(people, needs, "university")
+    assert "Flood Management" in match["missing_required"], "the problem area is a must-have and is not covered"
+    assert match["required_coverage"] == 0.0
+    assert any("Missing must-haves" in r for r in match["reasons"])
+
+
+def test_a_problem_with_only_skills_is_not_diluted_by_an_absent_required_group():
+    """With no problem area at all, the skills carry the whole figure rather than a phantom 100%."""
+    needs = [{"kind": "skill", "label": "Hydrology", "skill": "Hydrology", "weight": 1.0, "source": "capability"}]
+    assert pm.split_coverage(needs, [])["coverage"] == 0.0
+    assert pm.split_coverage(needs, ["Hydrology"])["coverage"] == 1.0

@@ -8,7 +8,9 @@ export interface Need {
   kind: "domain" | "skill";
   label: string;
   weight: number;
-  source: "classification" | "text" | "capability";
+  source: "classification" | "text" | "capability" | "ai";
+  /** Must-haves are what the problem is about; helpful ones are ways of doing the work. */
+  requirement?: "required" | "helpful";
 }
 
 export interface MatchedPerson {
@@ -50,13 +52,49 @@ export interface OrganizationMatch {
   score: number;
   match_level: MatchLevel;
   coverage: number;
+  /** Coverage of the must-have needs alone, and of the optional ones alone. */
+  required_coverage?: number;
+  helpful_coverage?: number;
   covered: string[];
   missing: string[];
+  /** The subset of `missing` that the problem actually requires, rather than would merely benefit from. */
+  missing_required?: string[];
   team: MatchedPerson[];
   relevant_people: number;
   total_people: number;
   reasons: string[];
   ai?: AiInfo;
+}
+
+/** One side of a partnership: the organization, and what only it brings to that pairing. */
+export interface PartnerOrganization {
+  org_id: string;
+  org_type: "university" | "industry";
+  name: string;
+  coverage_alone: number;
+  brings: string[];
+}
+
+/**
+ * Two organizations that together cover what neither covers alone. `brings` is relative to this
+ * pairing, so the same organization can bring different things alongside a different partner.
+ */
+export interface Partnership {
+  organizations: PartnerOrganization[];
+  score: number;
+  coverage: number;
+  required_coverage?: number;
+  helpful_coverage?: number;
+  /** What the pair could reach between them, before a team of six is actually assembled from it. */
+  reachable_coverage: number;
+  /** Coverage gained over the stronger of the two on its own. */
+  uplift: number;
+  best_alone: number;
+  covered: string[];
+  missing: string[];
+  team: MatchedPerson[];
+  cross_type: boolean;
+  reasons: string[];
 }
 
 export interface TeamMatches {
@@ -65,6 +103,7 @@ export interface TeamMatches {
   needs: Need[];
   universities: OrganizationMatch[];
   industries: OrganizationMatch[];
+  partnerships: Partnership[];
   people: MatchedPerson[];
 }
 

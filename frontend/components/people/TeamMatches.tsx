@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { CircleAlert, Sparkles } from "lucide-react";
+import { CircleAlert, Handshake, Sparkles } from "lucide-react";
 import AiRationale from "@/components/people/AiRationale";
 import SuggestedTeam from "@/components/people/SuggestedTeam";
+import PartnershipCard from "@/components/people/PartnershipCard";
 import { useTeamMatches, type MatchLevel, type OrganizationMatch } from "@/lib/teamMatches";
 
 const LEVEL_STYLE: Record<MatchLevel, string> = {
@@ -83,16 +84,39 @@ export default function TeamMatches({ problemId }: { problemId: string }) {
           <Sparkles size={12} /> What this problem needs
         </p>
         <div className="flex flex-wrap gap-1.5">
-          {data.needs.map((need) => (
-            <span
-              key={`${need.kind}-${need.label}`}
-              className={`rounded-lg px-2.5 py-1 text-xs font-medium ${need.kind === "domain" ? "bg-indigo-50 text-indigo-700" : "bg-slate-100 text-slate-700"}`}
-            >
-              {need.label}
-            </span>
-          ))}
+          {data.needs.map((need) => {
+            const mustHave = (need.requirement ?? (need.weight >= 1.5 ? "required" : "helpful")) === "required";
+            return (
+              <span
+                key={`${need.kind}-${need.label}`}
+                title={mustHave ? "Must-have: what this problem is about" : "Helpful: one way of doing the work"}
+                className={`rounded-lg px-2.5 py-1 text-xs font-medium ${
+                  mustHave ? "bg-indigo-100 font-semibold text-indigo-800 ring-1 ring-indigo-200" : "bg-slate-100 text-slate-700"
+                }`}
+              >
+                {need.label}
+                {mustHave && <span className="ml-1 text-indigo-500">*</span>}
+              </span>
+            );
+          })}
         </div>
       </div>
+
+      {data.partnerships?.length > 0 && (
+        <div>
+          <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+            <Handshake size={12} /> Stronger together
+          </p>
+          <p className="mb-3 text-xs text-slate-500">
+            Pairs that cover what neither covers alone. Each side is listed with what only it brings.
+          </p>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {data.partnerships.map((pair, index) => (
+              <PartnershipCard key={pair.organizations.map((o) => o.org_id).join("+")} pair={pair} rank={index + 1} />
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex gap-1 rounded-xl bg-slate-100 p-1 text-sm font-semibold" role="tablist">
         {(["universities", "industries"] as const).map((key) => (

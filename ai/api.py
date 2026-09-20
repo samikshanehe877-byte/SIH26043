@@ -2131,6 +2131,10 @@ def problem_team_matches_endpoint(problem_id: str, top_k: int = Query(3, ge=1, l
     Ranks universities and industries for a problem by how well their real people (from the shared
     Postgres directory) collectively cover what it needs, and returns the suggested team from each.
     See people_matcher.py.
+
+    `partnerships` answers a question no single organization can: which two, together, cover what
+    neither covers alone. Research capability and deployment capability usually sit in different
+    places, so the best answer to a problem is often a university and an industry rather than either.
     """
     problem = get_problem(problem_id)
     if not problem:
@@ -2149,7 +2153,8 @@ def problem_team_matches_endpoint(problem_id: str, top_k: int = Query(3, ge=1, l
         result[key] = matching_ai.enhance_matches(
             record, result["needs"], result[key], people_matcher.group_by_org(people, org_type), org_type, background=background
         )
-    return {"problem_id": problem.id, "ai_pending": matching_ai.pending(), **result}
+    partnerships = people_matcher.pair_organizations(people, result["needs"], top_k)
+    return {"problem_id": problem.id, "ai_pending": matching_ai.pending(), "partnerships": partnerships, **result}
 
 
 @app.get("/organizations/{org_type}/{org_id}/problem-matches")

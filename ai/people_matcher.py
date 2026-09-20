@@ -28,6 +28,8 @@ TAXONOMY_PATH = os.path.join(os.path.dirname(__file__), "data", "taxonomy.json")
 FRONTEND_ENV_PATH = os.path.join(os.path.dirname(__file__), "..", "frontend", ".env")
 
 COVERED_STRENGTH = 0.6  # a need counts as covered by someone at proficiency >= 3 of 5
+REQUIRED_WEIGHT = 1.5      # a need at or above this weight is required; lighter ones are helpful
+REQUIRED_SHARE = 0.75      # how much of the coverage figure the required needs account for
 TEAM_SIZE = 4
 MIN_SUPPORT_RELEVANCE = 0.1  # a role-mix pick must be at least this relevant, or we would pad teams with strangers
 MIN_INFERRED_SCORE = 3.0  # IDF-weighted: one distinctive word in a subdomain's name clears it, one common word does not
@@ -238,6 +240,42 @@ def extract_requirements(problem: Dict, taxonomy: Dict, skill_names: Iterable[st
 
 # --------------------------------------------------------------------------------------- scoring
 
+def requirement_of(need: Dict) -> str:
+    """"required" or "helpful".
+
+    The heavy needs -- the problem's own classification, and the problem areas read out of its text --
+    are what it is actually about, so they are required. Individual skills are how the work gets done
+    and there is usually more than one way, so they are helpful. An organization holding every
+    required need should read as capable even when it lacks some of the optional extras.
+    """
+    return need.get("requirement") or ("required" if need.get("weight", 0) >= REQUIRED_WEIGHT else "helpful")
+
+
+def split_coverage(needs: List[Dict], covered: Iterable[str]) -> Dict[str, float]:
+    """Required and helpful coverage separately, plus the blended figure used for scoring.
+
+    Reported apart so a card can say "every must-have, most of the nice-to-haves" instead of one
+    number that hides which half is missing.
+    """
+    covered = set(covered)
+    out = {}
+    for group in ("required", "helpful"):
+        members = [n for n in needs if requirement_of(n) == group]
+        total = sum(n["weight"] for n in members)
+        out[group] = (sum(n["weight"] for n in members if n["label"] in covered) / total) if total else 1.0
+        out[f"has_{group}"] = bool(members)
+    # With nothing of one kind, the other carries the whole figure rather than being diluted by a
+    # default of 1.0 for a group the problem never had.
+    if not out["has_required"]:
+        blended = out["helpful"]
+    elif not out["has_helpful"]:
+        blended = out["required"]
+    else:
+        blended = REQUIRED_SHARE * out["required"] + (1 - REQUIRED_SHARE) * out["helpful"]
+    return {"required_coverage": round(out["required"], 3), "helpful_coverage": round(out["helpful"], 3),
+            "coverage": round(blended, 3)}
+
+
 def _strength(person: Dict, need: Dict) -> float:
     """0-1: how strongly this person covers one need."""
     if need["kind"] == "domain":
@@ -417,16 +455,17 @@ def score_organization(members: List[Dict], needs: List[Dict], org_type: str, ch
     team, covered, missing = team_from_choice(members, needs, chosen) if chosen else build_team(members, needs)
     if not team:
         return None
-    total_weight = sum(n["weight"] for n in needs)
-    coverage = sum(n["weight"] for n in needs if n["label"] in covered) / total_weight
+    split = split_coverage(needs, covered)
+    coverage = split["coverage"]
     individual = rank_people(members, needs)
-    team_relevance = sum(m["score"] for m in individual[:TEAM_SIZE]) / TEAM_SIZE
-    depth = min(1.0, len(individual) / 4)
-    score = round(min(1.0, 0.65 * coverage + 0.25 * min(1.0, team_relevance * 2) + 0.10 * depth), 3)
+    score = _score_from(coverage, individual)
 
     reasons = [f"Team covers {len(covered)} of {len(needs)} needs: {', '.join(covered)}" if covered else "No need fully covered"]
-    if missing:
-        reasons.append(f"Not covered: {', '.join(missing)}")
+    missing_required = [n["label"] for n in needs if n["label"] in missing and requirement_of(n) == "required"]
+    if missing_required:
+        reasons.append(f"Missing must-haves: {', '.join(missing_required)}")
+    elif missing:
+        reasons.append(f"Has every must-have; missing optional: {', '.join(missing)}")
     reasons.append(f"{len(individual)} of {len(members)} people have relevant experience")
     return {
         "org_id": members[0]["org_id"],
@@ -434,9 +473,12 @@ def score_organization(members: List[Dict], needs: List[Dict], org_type: str, ch
         "name": members[0]["org_name"],
         "score": score,
         "match_level": _match_level(score),
-        "coverage": round(coverage, 3),
+        "coverage": coverage,
+        "required_coverage": split["required_coverage"],
+        "helpful_coverage": split["helpful_coverage"],
         "covered": covered,
         "missing": missing,
+        "missing_required": [n["label"] for n in needs if n["label"] in missing and requirement_of(n) == "required"],
         "team": team,
         "relevant_people": len(individual),
         "total_people": len(members),
@@ -458,6 +500,157 @@ def rank_organizations(people: List[Dict], needs: List[Dict], org_type: str, top
     results = [r for r in (score_organization(members, needs, org_type) for members in by_org.values()) if r]
     results.sort(key=lambda r: r["score"], reverse=True)
     return results[:top_k]
+
+
+# ------------------------------------------------------------------------------- complementarity
+
+COMPLEMENT_TEAM_SIZE = 6       # a joint team is larger than one organization's, but still not a crowd
+MIN_COMPLEMENT_UPLIFT = 0.10   # a partnership has to beat the better side alone by this much in coverage
+MAX_PARTNER_CANDIDATES = 8     # organizations considered for pairing, best first; pairs grow as the square
+
+
+def covered_by(members: List[Dict], needs: List[Dict]) -> set:
+    """Every need anyone in this group covers, ignoring team size.
+
+    Deliberately not the team's coverage: for judging whether two organizations complement each
+    other, what matters is what each side *can* cover, not who happened to make a team of four.
+    """
+    return {n["label"] for n in needs if any(_strength(person, n) >= COVERED_STRENGTH for person in members)}
+
+
+def build_joint_team(groups: List[List[Dict]], needs: List[Dict], size: int = COMPLEMENT_TEAM_SIZE) -> Tuple[List[Dict], List[str], List[str]]:
+    """The same greedy marginal-gain cover as build_team, run over several organizations' people at once.
+
+    Each member still lists only the needs nobody before them covered, so a joint team shows exactly
+    what the second organization added. Greedy can fill every slot from the stronger side, so any
+    organization with nobody on the team contributes its most relevant person as support: a
+    partnership that nobody from one side joins is not a partnership.
+    """
+    pooled = [person for group in groups for person in group]
+    remaining = list(needs)
+    team: List[Dict] = []
+    used = set()
+    while remaining and len(team) < size:
+        best, best_gain, best_new = None, 0.0, []
+        for person in pooled:
+            if person["member_id"] in used:
+                continue
+            new = [n for n in remaining if _strength(person, n) >= COVERED_STRENGTH]
+            gain = sum(n["weight"] * _strength(person, n) for n in new) * _availability_factor(person)
+            if gain > best_gain:
+                best, best_gain, best_new = person, gain, new
+        if best is None:
+            break
+        used.add(best["member_id"])
+        team.append({**_public_person(best), "brings": [n["label"] for n in best_new], "supports": []})
+        remaining = [n for n in remaining if n not in best_new]
+
+    for group in groups:
+        if not group or any(member["org_id"] == group[0]["org_id"] for member in team):
+            continue
+        relevance = {r["id"]: r["score"] for r in rank_people(group, needs)}
+        candidates = [p for p in group if p["member_id"] not in used and relevance.get(p["member_id"], 0) >= MIN_SUPPORT_RELEVANCE]
+        if candidates:
+            pick = max(candidates, key=lambda p: relevance[p["member_id"]])
+            used.add(pick["member_id"])
+            team.append({
+                **_public_person(pick),
+                "brings": [],
+                "supports": [n["label"] for n in needs if _strength(pick, n) >= COVERED_STRENGTH],
+            })
+
+    for member in team:
+        member["role_group"] = _role_group(member["kind"])
+    team.sort(key=lambda m: m["role_group"] != "guide")
+    return team, [n["label"] for n in needs if n not in remaining], [n["label"] for n in remaining]
+
+
+def _score_from(coverage: float, individual: List[Dict]) -> float:
+    """The organization score formula, shared so a partnership is measured on the same scale as one org."""
+    team_relevance = sum(m["score"] for m in individual[:TEAM_SIZE]) / TEAM_SIZE
+    depth = min(1.0, len(individual) / 4)
+    return round(min(1.0, 0.65 * coverage + 0.25 * min(1.0, team_relevance * 2) + 0.10 * depth), 3)
+
+
+def pair_organizations(people: List[Dict], needs: List[Dict], top_k: int = 3) -> List[Dict]:
+    """Pairs of organizations that together cover what neither covers alone, best first.
+
+    A pair is only proposed when each side covers at least one need the other cannot: that is what
+    makes it a partnership rather than a strong organization with a passenger. Pairs adding less than
+    MIN_COMPLEMENT_UPLIFT of coverage over the better side alone are dropped, because bringing in a
+    second organization has a real coordination cost and should have to earn it.
+
+    Cross-type pairs (a university with an industry) are not privileged by the scoring; they simply
+    tend to win, because research capability and deployment capability sit in different places.
+    """
+    if not needs or not people:
+        return []
+    groups: Dict[Tuple[str, str], List[Dict]] = {}
+    for person in people:
+        groups.setdefault((person["org_type"], person["org_id"]), []).append(person)
+
+    total_weight = sum(n["weight"] for n in needs)
+    solo = []
+    for (org_type, org_id), members in groups.items():
+        covers = covered_by(members, needs)
+        if not covers:
+            continue
+        solo.append({
+            "members": members,
+            "covers": covers,
+            "coverage": sum(n["weight"] for n in needs if n["label"] in covers) / total_weight,
+            "name": members[0]["org_name"],
+            "org_type": org_type,
+            "org_id": org_id,
+        })
+    solo.sort(key=lambda entry: entry["coverage"], reverse=True)
+    solo = solo[:MAX_PARTNER_CANDIDATES]
+
+    partnerships = []
+    for index, first in enumerate(solo):
+        for second in solo[index + 1:]:
+            first_only = first["covers"] - second["covers"]
+            second_only = second["covers"] - first["covers"]
+            if not first_only or not second_only:
+                continue  # one side adds nothing the other lacks: not complementary
+            best_alone = max(first["coverage"], second["coverage"])
+            reachable = sum(n["weight"] for n in needs if n["label"] in first["covers"] | second["covers"]) / total_weight
+            if reachable - best_alone < MIN_COMPLEMENT_UPLIFT:
+                continue
+            team, covered, missing = build_joint_team([first["members"], second["members"]], needs)
+            if not team:
+                continue
+            members = first["members"] + second["members"]
+            split = split_coverage(needs, covered)
+            coverage = split["coverage"]
+            individual = rank_people(members, needs)
+            partnerships.append({
+                "organizations": [
+                    {"org_id": entry["org_id"], "org_type": entry["org_type"], "name": entry["name"],
+                     "coverage_alone": round(entry["coverage"], 3), "brings": sorted(only)}
+                    for entry, only in ((first, first_only), (second, second_only))
+                ],
+                "score": _score_from(coverage, individual),
+                "coverage": coverage,
+                "required_coverage": split["required_coverage"],
+                "helpful_coverage": split["helpful_coverage"],
+                "reachable_coverage": round(reachable, 3),
+                "uplift": round(reachable - best_alone, 3),
+                "best_alone": round(best_alone, 3),
+                "covered": covered,
+                "missing": missing,
+                "team": team,
+                "cross_type": first["org_type"] != second["org_type"],
+                "reasons": [
+                    "{} brings {}".format(first["name"], ", ".join(sorted(first_only))),
+                    "{} brings {}".format(second["name"], ", ".join(sorted(second_only))),
+                    "Together they reach {}% of what the problem needs, against {}% for the stronger of the two alone".format(
+                        round(reachable * 100), round(best_alone * 100)
+                    ),
+                ],
+            })
+    partnerships.sort(key=lambda entry: (entry["score"], entry["uplift"]), reverse=True)
+    return partnerships[:top_k]
 
 
 def rank_problems_for_organization(
