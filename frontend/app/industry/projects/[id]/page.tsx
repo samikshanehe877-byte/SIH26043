@@ -1,9 +1,19 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import TeamMatches from "@/components/people/TeamMatches";
 import ProjectWorkspace from "@/components/workspace/ProjectWorkspace";
 
 export default function IndustryProjectWorkspacePage() {
   const { id } = useParams<{ id: string }>();
-  return <ProjectWorkspace problemId={id} partyType="industry" basePath="/industry" accent="blue" />;
+  return (
+    <div className="space-y-10">
+      <ProjectWorkspace problemId={id} partyType="industry" basePath="/industry" accent="blue" />
+      <section>
+        <h2 className="mb-1 text-lg font-bold text-slate-900">Suggested people</h2>
+        <p className="mb-4 text-sm text-slate-500">Who, across universities and industries, has the experience this project needs.</p>
+        <TeamMatches problemId={id} />
+      </section>
+    </div>
+  );
 }

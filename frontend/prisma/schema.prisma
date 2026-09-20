@@ -132,6 +132,8 @@ model User {
   verificationHistory    GovernmentOfficer[]      @relation("VerificationOfficer")
   region                 Region?                  @relation(fields: [regionId], references: [id])
 
+  domainClaims           MemberDomainClaim[]
+
   @@map("users")
 }
 
@@ -178,6 +180,8 @@ model University {
   projects           Project[]        @relation("UniversityProjects")
   collaborations     Collaboration[]
 
+  units              OrganizationUnit[]
+
   @@map("universities")
 }
 
@@ -199,6 +203,9 @@ model UniversityStudent {
   university University @relation(fields: [universityId], references: [id], onDelete: Cascade)
   teamMembers UniversityTeamMember[]
 
+  unitId String?           @map("unit_id")
+  unit   OrganizationUnit? @relation(fields: [unitId], references: [id])
+
   @@map("university_students")
 }
 
@@ -217,6 +224,9 @@ model UniversityFaculty {
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   university University @relation(fields: [universityId], references: [id], onDelete: Cascade)
 
+  unitId String?           @map("unit_id")
+  unit   OrganizationUnit? @relation(fields: [unitId], references: [id])
+
   @@map("university_faculty")
 }
 
@@ -234,6 +244,11 @@ model UniversityMentor {
 
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   university University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+
+  maxCapacity  Int     @default(3) @map("max_capacity")
+  currentLoad  Int     @default(0) @map("current_load")
+  unitId String?           @map("unit_id")
+  unit   OrganizationUnit? @relation(fields: [unitId], references: [id])
 
   @@map("university_mentors")
 }
@@ -293,6 +308,8 @@ model Industry {
   projects    Project[]        @relation("IndustryProjects")
   collaborations Collaboration[]
 
+  units       OrganizationUnit[]
+
   @@map("industries")
 }
 
@@ -310,6 +327,9 @@ model IndustryEmployee {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   industry  Industry  @relation(fields: [industryId], references: [id], onDelete: Cascade)
   teamMembers IndustryTeamMember[]
+
+  unitId String?           @map("unit_id")
+  unit   OrganizationUnit? @relation(fields: [unitId], references: [id])
 
   @@map("industry_employees")
 }
@@ -329,6 +349,11 @@ model IndustryMentor {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   industry  Industry  @relation(fields: [industryId], references: [id], onDelete: Cascade)
 
+  maxCapacity  Int     @default(3) @map("max_capacity")
+  currentLoad  Int     @default(0) @map("current_load")
+  unitId String?           @map("unit_id")
+  unit   OrganizationUnit? @relation(fields: [unitId], references: [id])
+
   @@map("industry_mentors")
 }
 
@@ -344,6 +369,9 @@ model IndustryExpert {
 
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   industry  Industry  @relation(fields: [industryId], references: [id], onDelete: Cascade)
+
+  unitId String?           @map("unit_id")
+  unit   OrganizationUnit? @relation(fields: [unitId], references: [id])
 
   @@map("industry_experts")
 }
@@ -612,4 +640,72 @@ model Collaboration {
   government Government? @relation(fields: [governmentId], references: [id])
 
   @@map("collaborations")
+}
+enum OrgUnitType {
+  DEPARTMENT
+  BUSINESS_UNIT
+}
+
+// A university department or an industry business unit. Exactly one of universityId / industryId is set.
+model OrganizationUnit {
+  id           String      @id @default(cuid())
+  type         OrgUnitType
+  name         String
+  description  String?
+  universityId String?     @map("university_id")
+  industryId   String?     @map("industry_id")
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  university   University? @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  industry     Industry?   @relation(fields: [industryId], references: [id], onDelete: Cascade)
+
+  universityStudents UniversityStudent[]
+  universityFaculty  UniversityFaculty[]
+  universityMentors  UniversityMentor[]
+  industryEmployees  IndustryEmployee[]
+  industryMentors    IndustryMentor[]
+  industryExperts    IndustryExpert[]
+
+  @@unique([universityId, name])
+  @@unique([industryId, name])
+  @@map("organization_units")
+}
+
+model Domain {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  description String?
+  subdomains  Subdomain[]
+  claims      MemberDomainClaim[]
+
+  @@map("domains")
+}
+
+model Subdomain {
+  id       String @id @default(cuid())
+  domainId String @map("domain_id")
+  name     String
+
+  domain Domain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  claims MemberDomainClaim[]
+
+  @@unique([domainId, name])
+  @@map("subdomains")
+}
+
+// "This person works in this problem area." source: seed | self | ai | verified.
+model MemberDomainClaim {
+  id          String  @id @default(cuid())
+  userId      String  @map("user_id")
+  domainId    String  @map("domain_id")
+  subdomainId String? @map("subdomain_id")
+  proficiency Int     @default(3)
+  source      String  @default("seed")
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  domain    Domain     @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  subdomain Subdomain? @relation(fields: [subdomainId], references: [id])
+
+  @@unique([userId, domainId, subdomainId])
+  @@map("member_domain_claims")
 }

@@ -14,6 +14,7 @@ import {
   UserCircle,
   Settings,
   LogOut,
+  Network,
 } from "lucide-react";
 import { currentOfficial } from "@/data/governmentData";
 import { useAuth } from "@/context/AuthContext";
@@ -24,6 +25,7 @@ const navItems = [
   { name: "Dashboard", href: "/government", icon: LayoutDashboard },
   { name: "Verification Queue", href: "/government/verify", icon: ShieldCheck },
   { name: "Milestone Verification", href: "/government/milestones", icon: Award },
+  { name: "Team Matchmaking", href: "/government/matchmaking", icon: Network },
   { name: "Project Monitoring", href: "/government/projects", icon: FolderKanban },
   { name: "Impact Analytics", href: "/government/analytics", icon: BarChart3 },
   { name: "Regional Map", href: "/government/map", icon: Map },

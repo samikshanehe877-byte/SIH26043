@@ -46,7 +46,7 @@ import zipfile
 from datetime import datetime
 from typing import Optional, List, Dict, Any, Literal, Tuple
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -68,6 +68,7 @@ from project_storage import (
 )
 import points_storage
 from frontend_adapter import to_university_challenge, to_university_mentor
+import people_matcher
 from department_matcher import list_departments_for_university, match_departments
 from problem_structurer import structure_raw_problem, StructuredProblemDraft
 from problem_storage import (
@@ -2120,6 +2121,60 @@ def analyze(req: AnalyzeRequest):
 def departments(university_id: str):
     """Lists the departments on file for one university (see department_matcher.py)."""
     return {"university_id": university_id, "departments": list_departments_for_university(university_id)}
+
+
+@app.get("/problems/{problem_id}/team-matches")
+def problem_team_matches_endpoint(problem_id: str, top_k: int = Query(3, ge=1, le=10)):
+    """
+    Ranks universities and industries for a problem by how well their real people (from the shared
+    Postgres directory) collectively cover what it needs, and returns the suggested team from each.
+    See people_matcher.py.
+    """
+    problem = get_problem(problem_id)
+    if not problem:
+        raise HTTPException(status_code=404, detail="Problem not found")
+    try:
+        people = people_matcher.load_people()
+        taxonomy = people_matcher.load_taxonomy()
+    except people_matcher.PeopleDataUnavailable as error:
+        logger.error("People directory unavailable: %s", error)
+        raise HTTPException(status_code=503, detail="The people directory is unavailable right now")
+    return {"problem_id": problem.id, **people_matcher.match_problem(problem.model_dump(), people, taxonomy, top_k)}
+
+
+@app.get("/organizations/{org_type}/{org_id}/problem-matches")
+def organization_problem_matches_endpoint(org_type: str, org_id: str, top_k: int = Query(3, ge=1, le=10)):
+    """
+    The open, verified problems one university or industry is best placed to take on, ranked by how
+    well its own people cover what each problem needs, with the mixed-role team it would field.
+    Called from the Next.js proxy, which resolves org_id from the signed-in session.
+    """
+    if org_type not in ("university", "industry"):
+        raise HTTPException(status_code=400, detail="org_type must be 'university' or 'industry'")
+    try:
+        everyone = people_matcher.load_people()
+        taxonomy = people_matcher.load_taxonomy()
+    except people_matcher.PeopleDataUnavailable as error:
+        logger.error("People directory unavailable: %s", error)
+        raise HTTPException(status_code=503, detail="The people directory is unavailable right now")
+    people = [p for p in everyone if p["org_type"] == org_type and p["org_id"] == org_id]
+    if not people:
+        return {"organization": None, "matches": []}
+    skill_catalogue = {name for person in everyone for name, _ in person.get("skills", [])}
+
+    open_problems = [problem.model_dump() for problem in list_problems(status="verified", limit=500)]
+    matches = people_matcher.rank_problems_for_organization(open_problems, people, org_type, taxonomy, top_k, skill_catalogue)
+    for item in matches:
+        problem = item["problem"]
+        item["problem"] = {
+            "id": problem["id"],
+            "title": problem.get("title") or problem.get("problem_text"),
+            "description": problem.get("description") or problem.get("problem_text"),
+            "category": problem.get("category"),
+            "district": problem.get("district"),
+            "location": problem.get("location"),
+        }
+    return {"organization": {"id": org_id, "type": org_type, "name": people[0]["org_name"]}, "matches": matches}
 
 
 @app.post("/analyze-for-frontend")

@@ -15,6 +15,7 @@ import {
   LogOut,
   Sparkles,
   Trophy,
+  UsersRound,
 } from "lucide-react";
 import { useIndustry } from "@/context/IndustryContext";
 import { useAuth } from "@/context/AuthContext";
@@ -28,6 +29,7 @@ const navItems = [
   { name: "Leaderboard",            href: "/industry/leaderboard",   icon: Trophy          },
   { name: "Supported Challenges",   href: "/industry/challenges",    icon: Award           },
   { name: "Universities & Teams",   href: "/industry/universities",  icon: Building2       },
+  { name: "People",                 href: "/industry/people",        icon: UsersRound      },
   { name: "Expertise & Resources",  href: "/industry/expertise",     icon: Cpu             },
   { name: "Impact & Reports",       href: "/industry/impact",        icon: PieChart        },
   { name: "Notifications",          href: "/industry/notifications", icon: Bell            },

@@ -13,6 +13,7 @@ import {
   LogOut,
   Handshake,
   Trophy,
+  UsersRound,
 } from "lucide-react";
 import { getOrganizationName, useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
@@ -26,6 +27,7 @@ const navItems = [
   { name: "Collaboration Requests", href: "/university/collaboration-requests", icon: Handshake       },
   { name: "Leaderboard",            href: "/university/leaderboard",            icon: Trophy          },
   { name: "Departments",            href: "/university/departments",           icon: Building2       },
+  { name: "People",                 href: "/university/people",                 icon: UsersRound      },
   { name: "Mentors",                href: "/university/mentors",                icon: Users           },
   { name: "Notifications",          href: "/university/notifications",          icon: Bell            },
   { name: "University Profile",     href: "/university/profile",                icon: UserCircle      },
