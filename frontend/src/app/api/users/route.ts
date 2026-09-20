@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { UserRole, AccountStatus } from '@prisma/client'
 import { getAuthUser } from '@/lib/auth'
 
-const ALLOWED_ROLES: UserRole[] = ["ADMIN"]
+const ALLOWED_ROLES: string[] = ["ADMIN"]
 
 export async function GET(request: NextRequest) {
   const user = await getAuthUser();

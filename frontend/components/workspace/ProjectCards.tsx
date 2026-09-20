@@ -1,8 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Building2, Crown, Factory, FolderKanban } from "lucide-react";
-import { Accent, ACCENTS, formatRelativeTime, PROJECT_STATUS_LABELS, ProjectSummary } from "@/lib/projects";
+import {
+  ArrowRight,
+  Building2,
+  Crown,
+  Factory,
+  FolderKanban,
+} from "lucide-react";
+import {
+  Accent,
+  ACCENTS,
+  formatRelativeTime,
+  PROJECT_STATUS_LABELS,
+  ProjectSummary,
+} from "@/lib/projects";
+import { useLanguage } from "@/context/LanguageContext";
 
 /** Cards for accepted-problem workspaces; used on the projects page and dashboards. */
 export default function ProjectCards({
@@ -18,11 +31,19 @@ export default function ProjectCards({
 }) {
   const colors = ACCENTS[accent];
 
+  const { language } = useLanguage();
+  const hindi = language === "Hindi";
+
+  const tr = (english: string, hindiText: string) =>
+    hindi ? hindiText : english;
+
   if (projects.length === 0) {
     return (
       <div className="flex flex-col items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-10 text-center">
         <FolderKanban size={32} className="mb-2 text-slate-300" />
-        <p className="max-w-sm text-sm text-slate-500">{emptyText}</p>
+        <p className="max-w-sm text-sm text-slate-500">
+          {emptyText}
+        </p>
       </div>
     );
   }
@@ -36,21 +57,43 @@ export default function ProjectCards({
           className="group flex flex-col rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition hover:shadow-md"
         >
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${colors.soft}`}>
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${colors.soft}`}
+            >
               {PROJECT_STATUS_LABELS[project.status]}
             </span>
+
             <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">
               {project.my_role === "lead" && <Crown size={11} />}
-              {project.my_role === "lead" ? "Lead" : project.my_role === "owner" ? "Your problem" : "Collaborator"}
+
+              {project.my_role === "lead"
+                ? tr("Lead", "मुख्य")
+                : project.my_role === "owner"
+                  ? tr("Your problem", "आपकी समस्या")
+                  : tr("Collaborator", "सहयोगी")}
             </span>
           </div>
+
+          {/* Project title and description are user/project data — keep unchanged */}
           <h3 className="font-bold text-slate-900">{project.title}</h3>
-          <p className="mt-1 line-clamp-2 text-sm text-slate-500">{project.description}</p>
+
+          <p className="mt-1 line-clamp-2 text-sm text-slate-500">
+            {project.description}
+          </p>
 
           <div className="mt-3 flex flex-wrap gap-1.5">
             {project.parties.map((party) => (
-              <span key={`${party.type}-${party.name}`} className="inline-flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-600">
-                {party.type === "university" ? <Building2 size={11} /> : <Factory size={11} />}
+              <span
+                key={`${party.type}-${party.name}`}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-600"
+              >
+                {party.type === "university" ? (
+                  <Building2 size={11} />
+                ) : (
+                  <Factory size={11} />
+                )}
+
+                {/* Organization names are data — keep unchanged */}
                 {party.name}
               </span>
             ))}
@@ -60,16 +103,32 @@ export default function ProjectCards({
             <div className="mb-1 flex justify-between text-xs">
               <span className="text-slate-400">
                 {project.latest_update
-                  ? `Last update ${formatRelativeTime(project.latest_update.created_at)}`
-                  : "No updates yet"}
+                  ? `${tr("Last update", "अंतिम अपडेट")} ${formatRelativeTime(
+                      project.latest_update.created_at
+                    )}`
+                  : tr("No updates yet", "अभी तक कोई अपडेट नहीं")}
               </span>
-              <span className={`font-bold ${colors.text}`}>{project.progress}%</span>
+
+              <span className={`font-bold ${colors.text}`}>
+                {project.progress}%
+              </span>
             </div>
+
             <div className="h-1.5 overflow-hidden rounded-full bg-slate-100">
-              <div className={`h-full rounded-full ${colors.bar}`} style={{ width: `${project.progress}%` }} />
+              <div
+                className={`h-full rounded-full ${colors.bar}`}
+                style={{ width: `${project.progress}%` }}
+              />
             </div>
-            <p className={`mt-3 flex items-center gap-1 text-sm font-semibold ${colors.text}`}>
-              Open workspace <ArrowRight size={14} className="transition group-hover:translate-x-0.5" />
+
+            <p
+              className={`mt-3 flex items-center gap-1 text-sm font-semibold ${colors.text}`}
+            >
+              {tr("Open workspace", "वर्कस्पेस खोलें")}
+              <ArrowRight
+                size={14}
+                className="transition group-hover:translate-x-0.5"
+              />
             </p>
           </div>
         </Link>
