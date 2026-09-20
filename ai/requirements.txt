@@ -11,3 +11,15 @@ uvicorn>=0.29
 requests>=2.31
 psycopg[binary]>=3.1
 # twilio>=8.0        # uncomment only if SMS_PROVIDER=twilio in .env
+fastapi
+uvicorn
+python-multipart
+pydantic
+streamlit
+sentence-transformers
+scikit-learn
+numpy
+python-dotenv
+pytest
+httpx
+google-genai

@@ -2,8 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Shield, Palette, Globe, ChevronRight, Check } from "lucide-react";
+import {
+  Bell,
+  Shield,
+  Palette,
+  Globe,
+  ChevronRight,
+  Check,
+} from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useLanguage } from "@/context/LanguageContext";
 
 interface ToggleProps {
   checked: boolean;
@@ -42,17 +50,24 @@ interface SettingSection {
 export default function SettingsPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { language } = useLanguage();
+
+  const hindi = language === "Hindi";
+
+  const tr = (english: string, hindiText: string) =>
+    hindi ? hindiText : english;
+
   const [settings, setSettings] = useState({
-    emailNotifications:   true,
-    pushNotifications:    true,
-    statusUpdates:        true,
-    communityAlerts:      false,
-    weeklyDigest:         false,
-    profileVisibility:    true,
-    showLocation:         true,
-    dataSharing:          false,
-    highContrast:         false,
-    compactView:          false,
+    emailNotifications: true,
+    pushNotifications: true,
+    statusUpdates: true,
+    communityAlerts: false,
+    weeklyDigest: false,
+    profileVisibility: true,
+    showLocation: true,
+    dataSharing: false,
+    highContrast: false,
+    compactView: false,
   });
 
   const [saved, setSaved] = useState(false);
@@ -67,31 +82,101 @@ export default function SettingsPage() {
 
   const sections: SettingSection[] = [
     {
-      title: "Notifications",
+      title: tr("Notifications", "सूचनाएँ"),
       icon: Bell,
       items: [
-        { key: "emailNotifications", label: "Email Notifications",  description: "Receive updates about your problems via email"         },
-        { key: "pushNotifications",  label: "Push Notifications",   description: "Browser push notifications for real-time updates"      },
-        { key: "statusUpdates",      label: "Status Updates",       description: "Notify when your problem status changes"               },
-        { key: "communityAlerts",    label: "Community Alerts",     description: "Get notified about new problems in your area"          },
-        { key: "weeklyDigest",       label: "Weekly Digest",        description: "A weekly summary of platform activity"                 },
+        {
+          key: "emailNotifications",
+          label: tr("Email Notifications", "ईमेल सूचनाएँ"),
+          description: tr(
+            "Receive updates about your problems via email",
+            "ईमेल के माध्यम से अपनी समस्याओं के अपडेट प्राप्त करें"
+          ),
+        },
+        {
+          key: "pushNotifications",
+          label: tr("Push Notifications", "पुश सूचनाएँ"),
+          description: tr(
+            "Browser push notifications for real-time updates",
+            "रीयल-टाइम अपडेट के लिए ब्राउज़र पुश सूचनाएँ प्राप्त करें"
+          ),
+        },
+        {
+          key: "statusUpdates",
+          label: tr("Status Updates", "स्थिति अपडेट"),
+          description: tr(
+            "Notify when your problem status changes",
+            "जब आपकी समस्या की स्थिति बदले तो सूचित करें"
+          ),
+        },
+        {
+          key: "communityAlerts",
+          label: tr("Community Alerts", "सामुदायिक अलर्ट"),
+          description: tr(
+            "Get notified about new problems in your area",
+            "अपने क्षेत्र में नई समस्याओं के बारे में सूचित हों"
+          ),
+        },
+        {
+          key: "weeklyDigest",
+          label: tr("Weekly Digest", "साप्ताहिक सारांश"),
+          description: tr(
+            "A weekly summary of platform activity",
+            "प्लेटफ़ॉर्म की गतिविधियों का साप्ताहिक सारांश"
+          ),
+        },
       ],
     },
     {
-      title: "Privacy",
+      title: tr("Privacy", "गोपनीयता"),
       icon: Shield,
       items: [
-        { key: "profileVisibility", label: "Public Profile",   description: "Allow other citizens to view your profile"              },
-        { key: "showLocation",      label: "Show Location",    description: "Display your city on your public profile"               },
-        { key: "dataSharing",       label: "Anonymous Analytics", description: "Share anonymous usage data to improve the platform"  },
+        {
+          key: "profileVisibility",
+          label: tr("Public Profile", "सार्वजनिक प्रोफ़ाइल"),
+          description: tr(
+            "Allow other citizens to view your profile",
+            "अन्य नागरिकों को आपकी प्रोफ़ाइल देखने की अनुमति दें"
+          ),
+        },
+        {
+          key: "showLocation",
+          label: tr("Show Location", "स्थान दिखाएँ"),
+          description: tr(
+            "Display your city on your public profile",
+            "अपनी सार्वजनिक प्रोफ़ाइल पर अपना शहर दिखाएँ"
+          ),
+        },
+        {
+          key: "dataSharing",
+          label: tr("Anonymous Analytics", "अनाम विश्लेषण"),
+          description: tr(
+            "Share anonymous usage data to improve the platform",
+            "प्लेटफ़ॉर्म को बेहतर बनाने के लिए अनाम उपयोग डेटा साझा करें"
+          ),
+        },
       ],
     },
     {
-      title: "Appearance",
+      title: tr("Appearance", "दिखावट"),
       icon: Palette,
       items: [
-        { key: "highContrast", label: "High Contrast Mode", description: "Increase contrast for better readability" },
-        { key: "compactView",  label: "Compact View",       description: "Show more content with reduced spacing"   },
+        {
+          key: "highContrast",
+          label: tr("High Contrast Mode", "उच्च कंट्रास्ट मोड"),
+          description: tr(
+            "Increase contrast for better readability",
+            "बेहतर पठनीयता के लिए कंट्रास्ट बढ़ाएँ"
+          ),
+        },
+        {
+          key: "compactView",
+          label: tr("Compact View", "कॉम्पैक्ट दृश्य"),
+          description: tr(
+            "Show more content with reduced spacing",
+            "कम अंतराल के साथ अधिक सामग्री दिखाएँ"
+          ),
+        },
       ],
     },
   ];
@@ -113,9 +198,15 @@ export default function SettingsPage() {
     <div className="mx-auto max-w-2xl space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Settings</h1>
+        <h1 className="text-2xl font-bold text-slate-900">
+          {tr("Settings", "सेटिंग्स")}
+        </h1>
+
         <p className="mt-1 text-sm text-slate-500">
-          Manage your notification preferences, privacy, and appearance.
+          {tr(
+            "Manage your notification preferences, privacy, and appearance.",
+            "अपनी सूचना प्राथमिकताओं, गोपनीयता और दिखावट को प्रबंधित करें।"
+          )}
         </p>
       </div>
 
@@ -123,32 +214,52 @@ export default function SettingsPage() {
       {saved && (
         <div className="flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
           <Check size={16} />
-          Settings saved successfully!
+          {tr(
+            "Settings saved successfully!",
+            "सेटिंग्स सफलतापूर्वक सहेजी गईं!"
+          )}
         </div>
       )}
 
       {/* Setting sections */}
       {sections.map(({ title, icon: Icon, items }) => (
-        <div key={title} className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+        <div
+          key={title}
+          className="rounded-2xl border border-slate-100 bg-white shadow-sm overflow-hidden"
+        >
           {/* Section header */}
           <div className="flex items-center gap-2.5 border-b border-slate-100 px-5 py-4">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
               <Icon size={16} className="text-blue-600" />
             </div>
-            <h2 className="text-sm font-bold text-slate-800">{title}</h2>
+
+            <h2 className="text-sm font-bold text-slate-800">
+              {title}
+            </h2>
           </div>
 
           {/* Items */}
           <div className="divide-y divide-slate-50">
             {items.map(({ key, label, description }) => (
-              <div key={key} className="flex items-center justify-between gap-4 px-5 py-4">
+              <div
+                key={key}
+                className="flex items-center justify-between gap-4 px-5 py-4"
+              >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-slate-800">{label}</p>
-                  <p className="mt-0.5 text-xs text-slate-500">{description}</p>
+                  <p className="text-sm font-semibold text-slate-800">
+                    {label}
+                  </p>
+
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    {description}
+                  </p>
                 </div>
+
                 <Toggle
                   checked={settings[key as keyof typeof settings]}
-                  onChange={() => toggle(key as keyof typeof settings)}
+                  onChange={() =>
+                    toggle(key as keyof typeof settings)
+                  }
                 />
               </div>
             ))}
@@ -162,21 +273,40 @@ export default function SettingsPage() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
             <Globe size={16} className="text-blue-600" />
           </div>
-          <h2 className="text-sm font-bold text-slate-800">Language & Region</h2>
+
+          <h2 className="text-sm font-bold text-slate-800">
+            {tr("Language & Region", "भाषा और क्षेत्र")}
+          </h2>
         </div>
+
         {[
-          { label: "Language",  value: "English (India)" },
-          { label: "Region",    value: "India"           },
-          { label: "Timezone",  value: "IST (UTC +5:30)" },
+          {
+            label: tr("Language", "भाषा"),
+            value: hindi ? "हिन्दी (भारत)" : "English (India)",
+          },
+          {
+            label: tr("Region", "क्षेत्र"),
+            value: "India",
+          },
+          {
+            label: tr("Timezone", "समय क्षेत्र"),
+            value: "IST (UTC +5:30)",
+          },
         ].map(({ label, value }) => (
           <button
             key={label}
             className="flex w-full items-center justify-between px-5 py-4 text-left transition hover:bg-slate-50 border-b border-slate-50 last:border-0"
           >
             <div>
-              <p className="text-sm font-semibold text-slate-800">{label}</p>
-              <p className="text-xs text-slate-500">{value}</p>
+              <p className="text-sm font-semibold text-slate-800">
+                {label}
+              </p>
+
+              <p className="text-xs text-slate-500">
+                {value}
+              </p>
             </div>
+
             <ChevronRight size={16} className="text-slate-400" />
           </button>
         ))}
@@ -187,7 +317,7 @@ export default function SettingsPage() {
         onClick={handleSave}
         className="w-full rounded-2xl bg-blue-600 py-3.5 text-sm font-bold text-white shadow-sm transition hover:bg-blue-700 hover:shadow-md active:scale-[0.99]"
       >
-        Save Settings
+        {tr("Save Settings", "सेटिंग्स सहेजें")}
       </button>
     </div>
   );
