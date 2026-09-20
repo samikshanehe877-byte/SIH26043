@@ -6,6 +6,7 @@ import {
   Building2, AlertCircle, Handshake, Send,
 } from "lucide-react";
 import Link from "next/link";
+import BestMatchProblems from "@/components/people/BestMatchProblems";
 import UniversityStatsCard from "@/components/university/UniversityStatsCard";
 import ChallengeCard from "@/components/university/ChallengeCard";
 import ChallengeDetails from "@/components/university/ChallengeDetails";
@@ -89,6 +90,38 @@ export default function UniversityDashboard() {
       )
   );
 
+  // Volunteer / Withdraw buttons for one problem, shared by the best-match cards and the full list below.
+  const volunteerActions = (problem: Problem) => {
+    const hasVolunteered = volunteeredIds.has(String(problem.id));
+    const existingVolunteer = problem.volunteers?.find(
+      (v) => v.solverType === "university" && v.solverName === universityName
+    );
+    const showVolunteer = !hasVolunteered && !existingVolunteer;
+    const showWithdraw = hasVolunteered || (existingVolunteer && existingVolunteer.status === "volunteered");
+    return (
+      <>
+        {showVolunteer && (
+          <button
+            onClick={() => handleVolunteer(String(problem.id), problem.requiredCapabilities?.join(", ") || "")}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700"
+          >
+            <Handshake size={12} />
+            Volunteer
+          </button>
+        )}
+        {showWithdraw && (
+          <button
+            onClick={() => handleWithdrawVolunteer(String(problem.id))}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+          >
+            <span className="text-amber-600">↶</span>
+            {existingVolunteer?.status === "accepted" ? "Withdrawn" : "Withdraw"}
+          </button>
+        )}
+      </>
+    );
+  };
+
   // Filter assigned problems by status
   const awaitingDecision = assignedProblems.filter((p) => p.status === "Awaiting Decision");
   const activeChallenges = assignedProblems.filter((p) => 
@@ -163,6 +196,15 @@ export default function UniversityDashboard() {
           />
         </div>
 
+        {/* Best Match Problems — ranked by how well this university's own people fit */}
+        <BestMatchProblems
+          accent="indigo"
+          renderActions={(problemId) => {
+            const problem = availableProblems.find((p: Problem) => String(p.id) === problemId);
+            return problem ? volunteerActions(problem) : null;
+          }}
+        />
+
         {/* Available Problems — Volunteer Opportunities */}
         {availableProblems.length > 0 && (
           <div className="space-y-4">
@@ -180,12 +222,9 @@ export default function UniversityDashboard() {
             </p>
             <div className="space-y-4">
               {availableProblems.map((problem) => {
-                const hasVolunteered = volunteeredIds.has(String(problem.id));
                 const existingVolunteer = problem.volunteers?.find(
                   (v) => v.solverType === "university" && v.solverName === universityName
                 );
-                const showVolunteer = !hasVolunteered && !existingVolunteer;
-                const showWithdraw = hasVolunteered || (existingVolunteer && existingVolunteer.status === "volunteered");
                 return (
                   <div key={problem.id} className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
                     <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -213,24 +252,7 @@ export default function UniversityDashboard() {
                       </div>
                     )}
                     <div className="flex gap-2">
-                      {showVolunteer && (
-                        <button
-                          onClick={() => handleVolunteer(String(problem.id), problem.requiredCapabilities?.join(", ") || "")}
-                          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700"
-                        >
-                          <Handshake size={12} />
-                          Volunteer
-                        </button>
-                      )}
-                      {showWithdraw && (
-                        <button
-                          onClick={() => handleWithdrawVolunteer(String(problem.id))}
-                          className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
-                        >
-                          <span className="text-amber-600">↶</span>
-                          {existingVolunteer?.status === "accepted" ? "Withdrawn" : "Withdraw"}
-                        </button>
-                      )}
+                      {volunteerActions(problem)}
                       <button
                         onClick={() => setSelectedChallenge(toUniversityChallenge(problem))}
                         className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50"

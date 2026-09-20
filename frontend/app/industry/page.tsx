@@ -8,6 +8,7 @@ import { Problem } from "@/types/problem";
 import StatsCard from "@/components/StatsCard";
 import { Inbox, Handshake, Award, Activity, ArrowRight, Clock, Send } from "lucide-react";
 import Link from "next/link";
+import BestMatchProblems from "@/components/people/BestMatchProblems";
 import ProjectCards from "@/components/workspace/ProjectCards";
 import { useProjects } from "@/lib/projects";
 
@@ -48,6 +49,38 @@ export default function IndustryDashboardPage() {
         (v) => v.solverName === company.name && v.solverType === "industry" && v.status === "accepted"
       )
   );
+
+  // Volunteer / Withdraw buttons for one problem, shared by the best-match cards and the full list below.
+  const volunteerActions = (problem: Problem) => {
+    const hasVolunteered = volunteeredIds.has(String(problem.id));
+    const existingVolunteer = problem.volunteers?.find(
+      (v) => v.solverName === company.name && v.solverType === "industry"
+    );
+    const showVolunteer = !hasVolunteered && !existingVolunteer;
+    const showWithdraw = hasVolunteered || (existingVolunteer && existingVolunteer.status === "volunteered");
+    return (
+      <>
+        {showVolunteer && (
+          <button
+            onClick={() => handleVolunteer(String(problem.id), problem.requiredCapabilities?.join(", ") || "")}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700"
+          >
+            <Handshake size={12} />
+            Volunteer
+          </button>
+        )}
+        {showWithdraw && (
+          <button
+            onClick={() => handleWithdraw(String(problem.id))}
+            className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+          >
+            <span className="text-amber-600">↶</span>
+            {existingVolunteer?.status === "accepted" ? "Withdrawn" : "Withdraw"}
+          </button>
+        )}
+      </>
+    );
+  };
 
   const pendingRequestsCount = requests.filter(r => r.status === "Received" || r.status === "Under Review" || r.status === "Clarification Needed").length;
   const activeCollaborationsCount = collaborations.filter(c => c.collaborationStatus === "In Progress" || c.collaborationStatus === "Support Delivered").length;
@@ -104,6 +137,15 @@ export default function IndustryDashboardPage() {
         />
       </div>
 
+      {/* Best Match Problems — ranked by how well this organization's own people fit */}
+      <BestMatchProblems
+        accent="blue"
+        renderActions={(problemId) => {
+          const problem = availableProblems.find((p: Problem) => String(p.id) === problemId);
+          return problem ? volunteerActions(problem) : null;
+        }}
+      />
+
       {/* Available Problems — Volunteer Opportunities */}
       {availableProblems.length > 0 && (
         <div className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
@@ -121,12 +163,9 @@ export default function IndustryDashboardPage() {
           </p>
           <div className="space-y-4">
             {availableProblems.map((problem) => {
-              const hasVolunteered = volunteeredIds.has(String(problem.id));
               const existingVolunteer = problem.volunteers?.find(
                 (v) => v.solverName === company.name && v.solverType === "industry"
               );
-              const showVolunteer = !hasVolunteered && !existingVolunteer;
-              const showWithdraw = hasVolunteered || (existingVolunteer && existingVolunteer.status === "volunteered");
               return (
                 <div key={problem.id} className="rounded-xl border border-slate-100 p-4">
                   <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -154,24 +193,7 @@ export default function IndustryDashboardPage() {
                     </div>
                   )}
                   <div className="flex gap-2">
-                    {showVolunteer && (
-                      <button
-                        onClick={() => handleVolunteer(String(problem.id), problem.requiredCapabilities?.join(", ") || "")}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700"
-                      >
-                        <Handshake size={12} />
-                        Volunteer
-                      </button>
-                    )}
-                    {showWithdraw && (
-                      <button
-                        onClick={() => handleWithdraw(String(problem.id))}
-                        className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100"
-                      >
-                        <span className="text-amber-600">↶</span>
-                        {existingVolunteer?.status === "accepted" ? "Withdrawn" : "Withdraw"}
-                      </button>
-                    )}
+                    {volunteerActions(problem)}
                   </div>
                 </div>
               );
