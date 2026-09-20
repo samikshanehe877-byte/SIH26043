@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
+  Award,
   ArrowLeft,
   Building2,
   CheckCircle2,
@@ -10,15 +11,18 @@ import {
   Download,
   Factory,
   Handshake,
+  Link2,
   Loader2,
   MapPin,
   Megaphone,
   MessageSquare,
   Paperclip,
+  Plus,
   Send,
   User,
   X,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import { formatOwners, ownerNames } from "@/lib/owners";
 import AttachmentGallery, {
   DownloadStatus,
@@ -55,9 +59,14 @@ import {
   ViewerType,
   workspaceDownloadPaths,
 } from "@/lib/projects";
+import {
+  joinProject, MAX_MILESTONE_ATTACHMENTS, MAX_MILESTONE_LINKS, MILESTONE_LABELS, MILESTONE_TYPES, MilestoneType,
+  submitMilestone, useMilestones, useProjectMembers,
+} from "@/lib/points";
+import MilestoneEvidence from "@/components/points/MilestoneEvidence";
 import { useLanguage } from "@/context/LanguageContext";
 
-type Tab = "updates" | "chat" | "collaboration";
+type Tab = "updates" | "milestones" | "chat" | "collaboration";
 type ColorSet = (typeof ACCENTS)[Accent];
 
 const ROLE_LABELS: Record<ProjectSummary["my_role"], string> = {
@@ -190,6 +199,12 @@ export default function ProjectWorkspace({
 
   const isLead = project.my_role === "lead";
   const isOwner = project.my_role === "owner";
+  const tabs: { id: Tab; label: string; icon: typeof Megaphone }[] = [
+    { id: "updates", label: "Updates", icon: Megaphone },
+    { id: "milestones", label: "Milestones", icon: Award },
+    { id: "chat", label: "Chat", icon: MessageSquare },
+    // Inviting partners is the solving organisations' job; the citizen sees partners in the header.
+    ...(isOwner ? [] : [{ id: "collaboration" as const, label: "Collaboration", icon: Handshake }]),
 
   const tabs: {
     id: Tab;
@@ -366,6 +381,9 @@ export default function ProjectWorkspace({
           accent={accent}
           onPosted={loadProject}
         />
+      )}
+      {tab === "milestones" && (
+        <MilestonesPanel project={project} partyType={partyType} partyName={partyName} userName={userName} accent={accent} />
       )}
 
       {tab === "chat" && (
@@ -1337,6 +1355,347 @@ function AddMoreAttachments({
           onDismiss={() => setConfirmed(null)}
         />
       )}
+    </div>
+  );
+}
+
+const MILESTONE_STATUS_STYLE: Record<"verified" | "rejected" | "submitted", string> = {
+  verified: "bg-emerald-50 text-emerald-700",
+  rejected: "bg-red-50 text-red-700",
+  submitted: "bg-amber-50 text-amber-700",
+};
+const MILESTONE_STATUS_LABEL: Record<"verified" | "rejected" | "submitted", string> = {
+  verified: "Verified",
+  rejected: "Needs resubmission",
+  submitted: "Awaiting verification",
+};
+
+/**
+ * Team roster + milestone submission history, shared by the university and industry workspace.
+ * Citizens (my_role "owner") see the same history read-only -- it's their problem's progress --
+ * but only the lead/collaborator side can join the team or submit a milestone for verification.
+ */
+function MilestonesPanel({ project, partyType, partyName, accent }: PanelProps & { project: ProjectSummary }) {
+  const colors = ACCENTS[accent];
+  const { user } = useAuth();
+  const isReadOnly = project.my_role === "owner";
+  const { data: members, refresh: refreshMembers } = useProjectMembers(project.id, partyType);
+  const { data: milestoneData, refresh: refreshMilestones } = useMilestones(project.id, partyType);
+  const [selectedType, setSelectedType] = useState<MilestoneType>(MILESTONE_TYPES[0]);
+  const [note, setNote] = useState("");
+  const [isJoining, setIsJoining] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  // Evidence: links typed in, and files picked but not uploaded until the milestone is submitted.
+  const [links, setLinks] = useState<string[]>([]);
+  const [linkDraft, setLinkDraft] = useState("");
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const staged = useStagedFiles(MAX_MILESTONE_ATTACHMENTS);
+  const [phase, setPhase] = useState<UploadPhase>("idle");
+  const [uploadFraction, setUploadFraction] = useState(0);
+  const [failure, setFailure] = useState<{ error: UploadError | Error; hadFiles: boolean } | null>(null);
+  const submitting = phase === "uploading";
+
+  const isMember = user ? members.some((m) => m.user_id === user.id) : false;
+  const verifiedTypes = new Set(milestoneData.milestones.filter((m) => m.status === "verified").map((m) => m.milestone_type));
+  const submittableTypes = MILESTONE_TYPES.filter((type) => !verifiedTypes.has(type));
+  // The dropdown only offers milestones that aren't verified yet, so the remembered choice has to fall
+  // back to the first of those once its own option is gone (e.g. "Project Accepted" after it's verified).
+  // Without this the box shows one milestone while a different, no-longer-offered one gets submitted.
+  const chosenType: MilestoneType | undefined = submittableTypes.includes(selectedType) ? selectedType : submittableTypes[0];
+  // Points this organisation itself earned per milestone, straight from the ledger -- never a
+  // locally duplicated point table, so there's nothing here that can drift from ai/points_storage.py.
+  const myPointsByMilestone = new Map(
+    milestoneData.point_events
+      .filter((event) => event.actor_type === partyType && event.actor_id === partyName)
+      .map((event) => [event.milestone_id, event.points]),
+  );
+
+  const handleJoin = async () => {
+    setIsJoining(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await joinProject(project.id);
+      setNotice("You've joined this project's team. Verified milestones now credit you individually too.");
+      await refreshMembers();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not join the team");
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
+  /** A typed link as a full http(s) URL, or null if it isn't one. "www.example.com" gets https:// added,
+   * the same as the server does, so what's shown here is what gets stored. */
+  const parseLink = (value: string): string | null => {
+    const trimmed = value.trim();
+    const withScheme = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed) ? trimmed : `https://${trimmed}`;
+    try {
+      const url = new URL(withScheme);
+      return (url.protocol === "http:" || url.protocol === "https:") && url.hostname ? withScheme : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const addLink = () => {
+    if (!linkDraft.trim()) return;
+    const parsed = parseLink(linkDraft);
+    if (!parsed) {
+      setLinkError("That doesn't look like a web link. Links must start with http:// or https://");
+      return;
+    }
+    if (!links.includes(parsed)) {
+      if (links.length >= MAX_MILESTONE_LINKS) {
+        setLinkError(`You can add up to ${MAX_MILESTONE_LINKS} links.`);
+        return;
+      }
+      setLinks((prev) => [...prev, parsed]);
+    }
+    setLinkDraft("");
+    setLinkError(null);
+  };
+
+  const handleSubmit = async () => {
+    if (!chosenType) return;
+    // A link that was typed but never added with "Add" still counts; dropping it silently would be worse.
+    let linksToSend = links;
+    if (linkDraft.trim()) {
+      const parsed = parseLink(linkDraft);
+      if (!parsed) {
+        setLinkError("That doesn't look like a web link. Links must start with http:// or https://");
+        return;
+      }
+      linksToSend = links.includes(parsed) ? links : [...links, parsed];
+    }
+    const files = staged.files;
+    setPhase("uploading");
+    setUploadFraction(0);
+    setFailure(null);
+    setError(null);
+    setNotice(null);
+    setLinkError(null);
+    try {
+      await submitMilestone(
+        project.id, chosenType, { note: note.trim() || undefined, links: linksToSend, files }, setUploadFraction,
+      );
+      const evidenceCount = files.length + linksToSend.length;
+      setNotice(
+        `"${MILESTONE_LABELS[chosenType]}" submitted for government verification` +
+          (evidenceCount > 0 ? ` with ${evidenceCount} piece${evidenceCount === 1 ? "" : "s"} of evidence.` : "."),
+      );
+      setNote("");
+      setLinks([]);
+      setLinkDraft("");
+      staged.clear();
+      setPhase("idle");
+      await refreshMilestones();
+    } catch (err) {
+      setFailure({ error: err instanceof Error ? err : new Error("Could not submit the milestone."), hadFiles: files.length > 0 });
+      setPhase("failed");
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-bold text-slate-800">Team</h2>
+          {!isReadOnly && !isMember && (
+            <button
+              onClick={() => void handleJoin()}
+              disabled={isJoining}
+              className={`rounded-xl px-4 py-1.5 text-xs font-bold transition disabled:opacity-40 ${colors.solid}`}
+            >
+              {isJoining ? "Joining..." : "Join this project"}
+            </button>
+          )}
+        </div>
+        <p className="mt-1 text-xs text-slate-500">
+          Everyone listed here is credited individually when a milestone is verified, on top of the points
+          your organisation earns as a whole.
+        </p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {members.length === 0 && <p className="text-xs text-slate-400">No one has joined the team yet.</p>}
+          {members.map((member) => (
+            <span key={member.id} className="inline-flex items-center gap-1.5 rounded-xl border border-slate-100 bg-slate-50 px-3 py-1.5 text-xs text-slate-700">
+              <User size={13} />
+              <span className="font-semibold">{member.user_name}</span>
+              {member.role && <span className="text-slate-400">· {member.role}</span>}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {!isReadOnly && (
+        <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+          <h2 className="text-sm font-bold text-slate-800">Submit a milestone</h2>
+          <p className="mt-0.5 text-xs text-slate-500">A government officer verifies it before it counts toward your points.</p>
+          <div className="mt-3 space-y-3">
+            <select
+              value={chosenType ?? ""}
+              onChange={(e) => setSelectedType(e.target.value as MilestoneType)}
+              disabled={submittableTypes.length === 0}
+              className={`w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none disabled:opacity-60 ${colors.ring}`}
+            >
+              {submittableTypes.length === 0 && <option>Every milestone is already verified</option>}
+              {submittableTypes.map((type) => (
+                <option key={type} value={type}>{MILESTONE_LABELS[type]}</option>
+              ))}
+            </select>
+            <textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              disabled={submitting}
+              rows={2}
+              placeholder="Notes for the reviewing officer (optional)"
+              className={`w-full resize-none rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm outline-none disabled:opacity-60 ${colors.ring}`}
+            />
+
+            <div className="space-y-2 rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+              <p className="text-xs font-semibold text-slate-700">
+                Evidence <span className="font-normal text-slate-400">(optional, but helps the officer verify faster)</span>
+              </p>
+              <FilePickerButton
+                label={staged.files.length > 0
+                  ? `Add more files (${staged.files.length}/${MAX_MILESTONE_ATTACHMENTS} selected)`
+                  : "Attach photos, videos, PDFs or Office docs"}
+                disabled={submitting || staged.files.length >= MAX_MILESTONE_ATTACHMENTS}
+                onPick={(picked) => {
+                  staged.add(picked);
+                  if (phase === "failed") setPhase("idle");
+                }}
+                className="flex items-center justify-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-500 transition hover:border-slate-400 hover:text-slate-700"
+              />
+              <p className="text-[11px] text-slate-400">
+                Up to {MAX_MILESTONE_ATTACHMENTS} files, {MAX_ATTACHMENT_SIZE_MB} MB each. Click a file to preview it before submitting.
+              </p>
+              <RejectedFilesNotice rejected={staged.rejected} onDismiss={staged.dismissRejected} />
+              <StagedFilesGrid
+                files={staged.files}
+                phase={phase}
+                failedFileName={failure?.error instanceof UploadError ? failure.error.fileName : null}
+                onRemove={(index) => {
+                  staged.remove(index);
+                  if (phase === "failed") setPhase("idle");
+                }}
+              />
+
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Link2 size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    value={linkDraft}
+                    onChange={(e) => {
+                      setLinkDraft(e.target.value);
+                      setLinkError(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addLink();
+                      }
+                    }}
+                    disabled={submitting}
+                    placeholder="Paste a link (demo video, shared folder, repository...)"
+                    className={`w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-3 text-sm outline-none disabled:opacity-60 ${colors.ring}`}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={addLink}
+                  disabled={submitting || !linkDraft.trim()}
+                  className="flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+                >
+                  <Plus size={13} /> Add
+                </button>
+              </div>
+              {linkError && <p className="rounded-lg bg-red-50 px-3 py-1.5 text-xs text-red-700">{linkError}</p>}
+              {links.length > 0 && (
+                <ul className="space-y-1">
+                  {links.map((url) => (
+                    <li key={url} className="flex items-center gap-2 rounded-lg border border-slate-100 bg-white px-2.5 py-1.5 text-xs text-slate-700">
+                      <Link2 size={12} className="flex-shrink-0 text-slate-400" />
+                      <span className="min-w-0 flex-1 truncate" title={url}>{url}</span>
+                      <button
+                        type="button"
+                        onClick={() => setLinks((prev) => prev.filter((l) => l !== url))}
+                        disabled={submitting}
+                        aria-label={`Remove ${url}`}
+                        className="flex-shrink-0 text-slate-400 hover:text-red-500 disabled:opacity-40"
+                      >
+                        <X size={13} />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            {submitting && staged.files.length > 0 && <UploadProgress fileCount={staged.files.length} fraction={uploadFraction} />}
+            {failure && (
+              <UploadFailedNotice
+                error={failure.error}
+                hadFiles={failure.hadFiles}
+                failedTitle="Couldn't submit the milestone."
+                onRetry={() => void handleSubmit()}
+                onDismiss={() => setFailure(null)}
+              />
+            )}
+            {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+            {notice && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs text-emerald-700">{notice}</p>}
+            <div className="flex justify-end">
+              <button
+                onClick={() => void handleSubmit()}
+                disabled={submitting || submittableTypes.length === 0}
+                className={`flex items-center gap-2 rounded-xl px-5 py-2 text-sm font-bold transition disabled:opacity-40 ${colors.solid}`}
+              >
+                {submitting && <Loader2 size={14} className="animate-spin" />}
+                {submitting ? (staged.files.length > 0 ? "Uploading..." : "Submitting...") : "Submit for verification"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {milestoneData.milestones.length === 0 && (
+          <p className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 py-8 text-center text-sm text-slate-500">
+            No milestones submitted yet.
+          </p>
+        )}
+        {MILESTONE_TYPES.map((type) => {
+          const milestone = milestoneData.milestones.find((m) => m.milestone_type === type);
+          if (!milestone) return null;
+          const points = myPointsByMilestone.get(milestone.id);
+          return (
+            <div key={type} className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-semibold text-slate-900">{MILESTONE_LABELS[type]}</p>
+                <div className="flex items-center gap-2">
+                  {milestone.status === "verified" && points !== undefined && (
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${colors.soft}`}>+{points} pts</span>
+                  )}
+                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${MILESTONE_STATUS_STYLE[milestone.status]}`}>
+                    {MILESTONE_STATUS_LABEL[milestone.status]}
+                  </span>
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-slate-500">
+                Submitted by {milestone.submitted_by_name} ({milestone.submitted_by_org_name}) · {formatRelativeTime(milestone.submitted_at)}
+              </p>
+              {milestone.submitted_note && <p className="mt-1 text-xs text-slate-600">{milestone.submitted_note}</p>}
+              <MilestoneEvidence milestone={milestone} />
+              {milestone.decision_note && (
+                <p className="mt-1 text-xs text-slate-600">
+                  <span className="font-semibold">Officer note:</span> {milestone.decision_note}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

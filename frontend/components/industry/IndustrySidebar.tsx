@@ -14,6 +14,7 @@ import {
   Settings,
   LogOut,
   Sparkles,
+  Trophy,
 } from "lucide-react";
 import { useIndustry } from "@/context/IndustryContext";
 import { useAuth } from "@/context/AuthContext";
@@ -24,6 +25,7 @@ import { useCollaborationRequestBadge } from "@/lib/projects";
 const navItems = [
   { name: "Dashboard",              href: "/industry",               icon: LayoutDashboard },
   { name: "Collaboration Requests", href: "/industry/requests",      icon: Inbox           },
+  { name: "Leaderboard",            href: "/industry/leaderboard",   icon: Trophy          },
   { name: "Supported Challenges",   href: "/industry/challenges",    icon: Award           },
   { name: "Universities & Teams",   href: "/industry/universities",  icon: Building2       },
   { name: "Expertise & Resources",  href: "/industry/expertise",     icon: Cpu             },

@@ -12,6 +12,7 @@ import {
   Settings,
   LogOut,
   Handshake,
+  Trophy,
 } from "lucide-react";
 import { getOrganizationName, useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
@@ -23,6 +24,7 @@ const navItems = [
   { name: "Dashboard",              href: "/university",                        icon: LayoutDashboard },
   { name: "Assigned Challenges",    href: "/university/assigned-challenges",    icon: ClipboardList   },
   { name: "Collaboration Requests", href: "/university/collaboration-requests", icon: Handshake       },
+  { name: "Leaderboard",            href: "/university/leaderboard",            icon: Trophy          },
   { name: "Departments",            href: "/university/departments",           icon: Building2       },
   { name: "Mentors",                href: "/university/mentors",                icon: Users           },
   { name: "Notifications",          href: "/university/notifications",          icon: Bell            },

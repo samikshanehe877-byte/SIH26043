@@ -382,6 +382,7 @@ export function UploadProgress({
 }
 
 export function UploadFailedNotice({
+  error, hadFiles, onRetry, onDismiss, failedTitle = "Couldn't post the update.",
   error,
   hadFiles,
   onRetry,
@@ -391,6 +392,8 @@ export function UploadFailedNotice({
   hadFiles: boolean;
   onRetry: () => void;
   onDismiss: () => void;
+  /** Heading shown when there were no files, for callers that aren't posting an update. */
+  failedTitle?: string;
 }) {
   const hindi = useHindi();
   const fileName =
@@ -408,6 +411,7 @@ export function UploadFailedNotice({
         />
 
         <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold">{hadFiles ? "Upload failed. Nothing was attached." : failedTitle}</p>
           <p className="text-sm font-bold">
             {hindi
               ? hadFiles

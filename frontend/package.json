@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:authorization": "node tests/authorization-policy.test.cjs && node tests/session-token.test.cjs && node tests/api-authorization.test.cjs",
+    "test:authorization": "node tests/authorization-policy.test.cjs && node tests/session-token.test.cjs && node tests/api-authorization.test.cjs && node tests/milestone-submission-route.test.cjs",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",

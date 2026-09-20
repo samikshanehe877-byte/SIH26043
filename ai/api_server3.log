@@ -1,0 +1,530 @@
+INFO:     Will watch for changes in these directories: ['C:\\Users\\JANHAVI TUPE\\OneDrive\\Desktop\\sih\\SIH26043\\ai']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [15732] using StatReload
+INFO:     Started server process [2428]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:52216 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54115 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49166 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63292 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58653 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:sentence_transformers.SentenceTransformer:Use pytorch device_name: cpu
+INFO:sentence_transformers.SentenceTransformer:Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json "HTTP/1.1 307 Temporary Redirect"
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+WARNING:huggingface_hub.utils._http:Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/modules.json?%2Fsentence-transformers%2Fall-MiniLM-L6-v2%2Fresolve%2Fmain%2Fmodules.json=&etag=%22952a9b81c0bfd99800fabf352f69c7ccd46c5e43%22 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config_sentence_transformers.json "HTTP/1.1 307 Temporary Redirect"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config_sentence_transformers.json?%2Fsentence-transformers%2Fall-MiniLM-L6-v2%2Fresolve%2Fmain%2Fconfig_sentence_transformers.json=&etag=%22fd1b291129c607e5d49799f87cb219b27f98acdf%22 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/README.md?%2Fsentence-transformers%2Fall-MiniLM-L6-v2%2Fresolve%2Fmain%2FREADME.md=&etag=%2244af2e3b0fa3a0b6239e48422972bf755f28fde0%22 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json "HTTP/1.1 307 Temporary Redirect"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/modules.json?%2Fsentence-transformers%2Fall-MiniLM-L6-v2%2Fresolve%2Fmain%2Fmodules.json=&etag=%22952a9b81c0bfd99800fabf352f69c7ccd46c5e43%22 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/sentence_bert_config.json "HTTP/1.1 307 Temporary Redirect"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/sentence_bert_config.json?%2Fsentence-transformers%2Fall-MiniLM-L6-v2%2Fresolve%2Fmain%2Fsentence_bert_config.json=&etag=%2259d594003bf59880a884c574bf88ef7555bb0202%22 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/adapter_config.json "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config.json?%2Fsentence-transformers%2Fall-MiniLM-L6-v2%2Fresolve%2Fmain%2Fconfig.json=&etag=%2272b987fd805cfa2b58c4c8c952b274a11bfd5a00%22 "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights:  31%|###1      | 32/103 [00:00<00:00, 316.55it/s]Loading weights: 100%|##########| 103/103 [00:00<00:00, 782.47it/s]
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config.json?%2Fsentence-transformers%2Fall-MiniLM-L6-v2%2Fresolve%2Fmain%2Fconfig.json=&etag=%2272b987fd805cfa2b58c4c8c952b274a11bfd5a00%22 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/tokenizer_config.json?%2Fsentence-transformers%2Fall-MiniLM-L6-v2%2Fresolve%2Fmain%2Ftokenizer_config.json=&etag=%22c79f2b6a0cea6f4b564fed1938984bace9d30ff0%22 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2/revision/main "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2 "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:63420 - "POST /problems HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52683 - "POST /problems/check-duplicates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65308 - "DELETE /problems/fb68dc68-d73f-4b55-a946-b31bac811482?citizen_name=XFieldTest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57468 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64616 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54764 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60522 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62006 - "POST /problems/check-duplicates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61629 - "GET /problems/e2e93c5f-8c25-4ef4-9a6d-81a508b08826 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60396 - "POST /problems HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64145 - "POST /problems/check-duplicates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64786 - "DELETE /problems/5041aa9c-4e81-4f2d-9dd1-5f07b09e3ca4?citizen_name=DiffPlaceTest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55293 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61169 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55528 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'test_duplicate_engine.py'. Reloading...
+ INFO:     127.0.0.1:60191 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57598 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61832 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64775 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49287 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64026 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62555 - "GET /notifications?citizen_name=Rahul%20Sharma&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49706 - "GET /notifications?citizen_name=Rahul%20Sharma&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50287 - "GET /problems?citizen_name=Rahul%20Sharma&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "GET /notifications?citizen_name=Rahul%20Sharma&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50901 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49706 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62555 - "GET /notifications?citizen_name=Rahul%20Sharma&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50287 - "GET /problems?citizen_name=Rahul%20Sharma&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61371 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52058 - "OPTIONS /ai/structure-problem HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/interactions "HTTP/1.1 400 Bad Request"
+WARNING:problem_structurer:Gemini problem structuring failed or client unavailable: Error code: 400 - [{'error': {'code': 400, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'INVALID_ARGUMENT', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'API_KEY_INVALID', 'domain': 'googleapis.com', 'metadata': {'service': 'generativelanguage.googleapis.com'}}, {'@type': 'type.googleapis.com/google.rpc.LocalizedMessage', 'locale': 'en-US', 'message': 'API key not valid. Please pass a valid API key.'}]}}]. Using heuristic fallback.
+INFO:     127.0.0.1:52058 - "POST /ai/structure-problem HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54134 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53859 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65369 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63272 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51298 - "OPTIONS /problems/check-duplicates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51298 - "POST /problems/check-duplicates HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60595 - "OPTIONS /problems HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60595 - "POST /problems HTTP/1.1" 200 OK
+INFO:sentence_transformers.SentenceTransformer:Use pytorch device_name: cpu
+INFO:sentence_transformers.SentenceTransformer:Load pretrained SentenceTransformer: all-MiniLM-L6-v2
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json "HTTP/1.1 307 Temporary Redirect"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/modules.json?%2Fsentence-transformers%2Fall-MiniLM-L6-v2%2Fresolve%2Fmain%2Fmodules.json=&etag=%22952a9b81c0bfd99800fabf352f69c7ccd46c5e43%22 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config_sentence_transformers.json "HTTP/1.1 307 Temporary Redirect"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config_sentence_transformers.json?%2Fsentence-transformers%2Fall-MiniLM-L6-v2%2Fresolve%2Fmain%2Fconfig_sentence_transformers.json=&etag=%22fd1b291129c607e5d49799f87cb219b27f98acdf%22 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/README.md "HTTP/1.1 307 Temporary Redirect"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/README.md?%2Fsentence-transformers%2Fall-MiniLM-L6-v2%2Fresolve%2Fmain%2FREADME.md=&etag=%2244af2e3b0fa3a0b6239e48422972bf755f28fde0%22 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/modules.json "HTTP/1.1 307 Temporary Redirect"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/modules.json?%2Fsentence-transformers%2Fall-MiniLM-L6-v2%2Fresolve%2Fmain%2Fmodules.json=&etag=%22952a9b81c0bfd99800fabf352f69c7ccd46c5e43%22 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/sentence_bert_config.json "HTTP/1.1 307 Temporary Redirect"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/sentence_bert_config.json?%2Fsentence-transformers%2Fall-MiniLM-L6-v2%2Fresolve%2Fmain%2Fsentence_bert_config.json=&etag=%2259d594003bf59880a884c574bf88ef7555bb0202%22 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/adapter_config.json "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config.json?%2Fsentence-transformers%2Fall-MiniLM-L6-v2%2Fresolve%2Fmain%2Fconfig.json=&etag=%2272b987fd805cfa2b58c4c8c952b274a11bfd5a00%22 "HTTP/1.1 200 OK"
+Loading weights:   0%|          | 0/103 [00:00<?, ?it/s]Loading weights:   1%|          | 1/103 [00:00<00:12,  8.10it/s]Loading weights: 100%|##########| 103/103 [00:00<00:00, 464.60it/s]
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/config.json?%2Fsentence-transformers%2Fall-MiniLM-L6-v2%2Fresolve%2Fmain%2Fconfig.json=&etag=%2272b987fd805cfa2b58c4c8c952b274a11bfd5a00%22 "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:54669 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+INFO:httpx:HTTP Request: HEAD https://huggingface.co/api/resolve-cache/models/sentence-transformers/all-MiniLM-L6-v2/1110a243fdf4706b3f48f1d95db1a4f5529b4d41/tokenizer_config.json?%2Fsentence-transformers%2Fall-MiniLM-L6-v2%2Fresolve%2Fmain%2Ftokenizer_config.json=&etag=%22c79f2b6a0cea6f4b564fed1938984bace9d30ff0%22 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+INFO:httpx:HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2/revision/main "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: GET https://huggingface.co/api/models/sentence-transformers/all-MiniLM-L6-v2 "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/interactions "HTTP/1.1 400 Bad Request"
+ERROR:ai_pipeline:Pipeline stage 'classify_with_review' failed: Error code: 400 - [{'error': {'code': 400, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'INVALID_ARGUMENT', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'API_KEY_INVALID', 'domain': 'googleapis.com', 'metadata': {'service': 'generativelanguage.googleapis.com'}}, {'@type': 'type.googleapis.com/google.rpc.LocalizedMessage', 'locale': 'en-US', 'message': 'API key not valid. Please pass a valid API key.'}]}}]
+Traceback (most recent call last):
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\utils\unmarshal_json_response.py", line 57, in unmarshal_json_response
+    return unmarshal_json(body, typ)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\utils\serializers.py", line 132, in unmarshal_json
+    return unmarshal(from_json(raw), typ, coerce_iterables=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\utils\serializers.py", line 144, in unmarshal
+    m = unmarshaller(body=val)
+        ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\pydantic\main.py", line 263, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Unmarshaller
+body
+  Input should be a valid dictionary or instance of CreateInteractionClientErrorData [type=model_type, input_value=[{'error': {'code': 400, ...s a valid API key.'}]}}], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.13/v/model_type
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\interactions.py", line 486, in _speakeasy_parse_response
+    response_data = unmarshal_json_response(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\utils\unmarshal_json_response.py", line 66, in unmarshal_json_response
+    raise errors.ResponseValidationError(
+google.genai._gaos.errors.responsevalidationerror.ResponseValidationError: Response validation failed: 1 validation error for Unmarshaller
+body
+  Input should be a valid dictionary or instance of CreateInteractionClientErrorData [type=model_type, input_value=[{'error': {'code': 400, ...s a valid API key.'}]}}], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.13/v/model_type
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\interactions.py", line 756, in create
+    return _speakeasy_parse_response(http_res)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\interactions.py", line 493, in _speakeasy_parse_response
+    raise errors.GenAiDefaultError(
+google.genai._gaos.errors.genaidefaulterror.GenAiDefaultError: Error response body did not match expected schema: Status 400 Content-Type "application/json; charset=UTF-8". Body: [{
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+]
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\ai_pipeline.py", line 41, in _safe_call
+    return fn(*args, **kwargs), None
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\classifier.py", line 62, in classify_with_review
+    result = classify_problem(problem_text)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\classifier.py", line 46, in classify_problem
+    text = generate_text(prompt)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\gemini_utils.py", line 67, in generate_text
+    interaction = client.interactions.create(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\google_genai.py", line 278, in create
+    response = wrap_sdk_call(
+               ^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\lib\compat_errors.py", line 368, in wrap_sdk_call
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\interactions.py", line 758, in create
+    response_helpers.raise_parse_error(
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\utils\response_helpers.py", line 92, in raise_parse_error
+    raise parse_error from exc
+google.genai._gaos.lib.compat_errors.BadRequestError: Error code: 400 - [{'error': {'code': 400, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'INVALID_ARGUMENT', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'API_KEY_INVALID', 'domain': 'googleapis.com', 'metadata': {'service': 'generativelanguage.googleapis.com'}}, {'@type': 'type.googleapis.com/google.rpc.LocalizedMessage', 'locale': 'en-US', 'message': 'API key not valid. Please pass a valid API key.'}]}}]
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/interactions "HTTP/1.1 400 Bad Request"
+ERROR:ai_pipeline:Pipeline stage 'analyze_priority' failed: Error code: 400 - [{'error': {'code': 400, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'INVALID_ARGUMENT', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'API_KEY_INVALID', 'domain': 'googleapis.com', 'metadata': {'service': 'generativelanguage.googleapis.com'}}, {'@type': 'type.googleapis.com/google.rpc.LocalizedMessage', 'locale': 'en-US', 'message': 'API key not valid. Please pass a valid API key.'}]}}]
+Traceback (most recent call last):
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\utils\unmarshal_json_response.py", line 57, in unmarshal_json_response
+    return unmarshal_json(body, typ)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\utils\serializers.py", line 132, in unmarshal_json
+    return unmarshal(from_json(raw), typ, coerce_iterables=False)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\utils\serializers.py", line 144, in unmarshal
+    m = unmarshaller(body=val)
+        ^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\pydantic\main.py", line 263, in __init__
+    validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for Unmarshaller
+body
+  Input should be a valid dictionary or instance of CreateInteractionClientErrorData [type=model_type, input_value=[{'error': {'code': 400, ...s a valid API key.'}]}}], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.13/v/model_type
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\interactions.py", line 486, in _speakeasy_parse_response
+    response_data = unmarshal_json_response(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\utils\unmarshal_json_response.py", line 66, in unmarshal_json_response
+    raise errors.ResponseValidationError(
+google.genai._gaos.errors.responsevalidationerror.ResponseValidationError: Response validation failed: 1 validation error for Unmarshaller
+body
+  Input should be a valid dictionary or instance of CreateInteractionClientErrorData [type=model_type, input_value=[{'error': {'code': 400, ...s a valid API key.'}]}}], input_type=list]
+    For further information visit https://errors.pydantic.dev/2.13/v/model_type
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\interactions.py", line 756, in create
+    return _speakeasy_parse_response(http_res)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\interactions.py", line 493, in _speakeasy_parse_response
+    raise errors.GenAiDefaultError(
+google.genai._gaos.errors.genaidefaulterror.GenAiDefaultError: Error response body did not match expected schema: Status 400 Content-Type "application/json; charset=UTF-8". Body: [{
+  "error": {
+    "code": 400,
+    "message": "API key not valid. Please pass a valid API key.",
+    "status": "INVALID_ARGUMENT",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "API_KEY_INVALID",
+        "domain": "googleapis.com",
+        "metadata": {
+          "service": "generativelanguage.googleapis.com"
+        }
+      },
+      {
+        "@type": "type.googleapis.com/google.rpc.LocalizedMessage",
+        "locale": "en-US",
+        "message": "API key not valid. Please pass a valid API key."
+      }
+    ]
+  }
+}
+]
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\ai_pipeline.py", line 41, in _safe_call
+    return fn(*args, **kwargs), None
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\priority_ai.py", line 43, in analyze_priority
+    text = generate_text(prompt)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\gemini_utils.py", line 67, in generate_text
+    interaction = client.interactions.create(
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\google_genai.py", line 278, in create
+    response = wrap_sdk_call(
+               ^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\lib\compat_errors.py", line 368, in wrap_sdk_call
+    return fn(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\interactions.py", line 758, in create
+    response_helpers.raise_parse_error(
+  File "C:\Users\JANHAVI TUPE\OneDrive\Desktop\sih\SIH26043\ai\.venv\Lib\site-packages\google\genai\_gaos\utils\response_helpers.py", line 92, in raise_parse_error
+    raise parse_error from exc
+google.genai._gaos.lib.compat_errors.BadRequestError: Error code: 400 - [{'error': {'code': 400, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'INVALID_ARGUMENT', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'API_KEY_INVALID', 'domain': 'googleapis.com', 'metadata': {'service': 'generativelanguage.googleapis.com'}}, {'@type': 'type.googleapis.com/google.rpc.LocalizedMessage', 'locale': 'en-US', 'message': 'API key not valid. Please pass a valid API key.'}]}}]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]INFO:     127.0.0.1:50853 - "GET /problems?limit=500&include_unverified=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50853 - "GET /problems?limit=500&include_unverified=true HTTP/1.1" 200 OK
+Batches: 100%|##########| 1/1 [00:00<00:00,  4.84it/s]Batches: 100%|##########| 1/1 [00:00<00:00,  4.82it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]INFO:     127.0.0.1:50853 - "GET /problems/7c8c224b-f799-4cb3-b7b8-41ff6ed88da7/similarities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50853 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53353 - "GET /problems?citizen_name=Officer%20Rajesh%20Patil&limit=500 HTTP/1.1" 200 OK
+Batches: 100%|##########| 1/1 [00:00<00:00,  3.71it/s]Batches: 100%|##########| 1/1 [00:00<00:00,  3.71it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00,  5.97it/s]Batches: 100%|##########| 1/1 [00:00<00:00,  5.97it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00, 10.52it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00, 17.50it/s]
+Batches:   0%|          | 0/1 [00:00<?, ?it/s]Batches: 100%|##########| 1/1 [00:00<00:00, 21.69it/s]
+INFO:httpx:HTTP Request: POST https://generativelanguage.googleapis.com/v1beta/interactions "HTTP/1.1 400 Bad Request"
+WARNING:problem_summary:Gemini summary generation failed, using fallback: Error code: 400 - [{'error': {'code': 400, 'message': 'API key not valid. Please pass a valid API key.', 'status': 'INVALID_ARGUMENT', 'details': [{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'API_KEY_INVALID', 'domain': 'googleapis.com', 'metadata': {'service': 'generativelanguage.googleapis.com'}}, {'@type': 'type.googleapis.com/google.rpc.LocalizedMessage', 'locale': 'en-US', 'message': 'API key not valid. Please pass a valid API key.'}]}}]
+INFO:     127.0.0.1:60595 - "POST /problems/7c8c224b-f799-4cb3-b7b8-41ff6ed88da7/analyze HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53353 - "GET /problems/e2e93c5f-8c25-4ef4-9a6d-81a508b08826/similarities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53353 - "OPTIONS /problems/e2e93c5f-8c25-4ef4-9a6d-81a508b08826/duplicate-decision HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53353 - "POST /problems/e2e93c5f-8c25-4ef4-9a6d-81a508b08826/duplicate-decision HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49914 - "GET /problems/7c8c224b-f799-4cb3-b7b8-41ff6ed88da7/similarities HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56949 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64404 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56949 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63150 - "OPTIONS /merge-requests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63150 - "POST /merge-requests HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49905 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61323 - "GET /projects?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65456 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60905 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60168 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62317 - "GET /merge-requests?citizen_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64488 - "GET /problems?citizen_name=janhavi%20tupe&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60905 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62317 - "GET /problems?citizen_name=janhavi%20tupe&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60168 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65456 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58694 - "GET /projects?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64488 - "GET /merge-requests?citizen_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60007 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64488 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58694 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65456 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60168 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60168 - "OPTIONS /notifications/ab77feeb-71dc-4b9e-9ba8-d9a2d22c9a25/read HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60168 - "PATCH /notifications/ab77feeb-71dc-4b9e-9ba8-d9a2d22c9a25/read HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58694 - "GET /merge-requests?citizen_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60168 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65456 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58694 - "GET /merge-requests?citizen_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56033 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57188 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51836 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61044 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57188 - "GET /merge-requests?citizen_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61044 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51836 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57188 - "GET /merge-requests?citizen_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63871 - "GET /projects?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52867 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63141 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56825 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63094 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51206 - "GET /notifications?citizen_name=Rahul%20Sharma&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65255 - "GET /notifications?citizen_name=Rahul%20Sharma&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54512 - "GET /notifications?citizen_name=Rahul%20Sharma&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63013 - "GET /notifications?citizen_name=Rahul%20Sharma&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51629 - "OPTIONS /notifications/16a7bc50-6d60-4efb-a9a1-366a6428ca62/read HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51629 - "PATCH /notifications/16a7bc50-6d60-4efb-a9a1-366a6428ca62/read HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51629 - "GET /notifications?citizen_name=Rahul%20Sharma&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62679 - "GET /notifications?citizen_name=Rahul%20Sharma&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53884 - "GET /merge-requests?citizen_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53884 - "GET /merge-requests?citizen_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54516 - "GET /projects?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59002 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64860 - "OPTIONS /merge-requests/0c135266-afcb-4372-a716-e6766f14fcd0/respond HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64860 - "POST /merge-requests/0c135266-afcb-4372-a716-e6766f14fcd0/respond HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64860 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58109 - "GET /problems?citizen_name=Rahul%20Sharma&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62940 - "GET /merge-requests?citizen_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53733 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54041 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53470 - "GET /merge-requests?citizen_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61816 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60166 - "GET /problems?citizen_name=janhavi%20tupe&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53733 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54041 - "GET /problems?citizen_name=janhavi%20tupe&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53470 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61816 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52229 - "GET /projects?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60166 - "GET /merge-requests?citizen_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60166 - "OPTIONS /merge-requests/0c135266-afcb-4372-a716-e6766f14fcd0/approve HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52229 - "POST /merge-requests/0c135266-afcb-4372-a716-e6766f14fcd0/approve HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60166 - "GET /problems?citizen_name=janhavi%20tupe&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61816 - "GET /merge-requests?citizen_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52229 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59427 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53269 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55981 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49672 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51749 - "GET /problems?limit=500&include_unverified=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51749 - "GET /problems?limit=500&include_unverified=true HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51749 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59736 - "GET /problems?citizen_name=Officer%20Rajesh%20Patil&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64119 - "GET /projects?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57926 - "OPTIONS /problems/e2e93c5f-8c25-4ef4-9a6d-81a508b08826/verification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57926 - "PATCH /problems/e2e93c5f-8c25-4ef4-9a6d-81a508b08826/verification HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63279 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56157 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57711 - "GET /problems?citizen_name=janhavi%20tupe&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57711 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56157 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /merge-requests?citizen_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52526 - "GET /problems?citizen_name=janhavi%20tupe&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53480 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57711 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56157 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51190 - "GET /merge-requests?citizen_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52793 - "GET /projects?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55887 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59554 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56413 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63613 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53554 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50546 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58409 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58111 - "GET /notifications?citizen_name=Rahul%20Sharma&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64995 - "GET /notifications?citizen_name=Rahul%20Sharma&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61930 - "GET /merge-requests?citizen_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50852 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64340 - "GET /problems?citizen_name=Rahul%20Sharma&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58111 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64995 - "GET /problems?citizen_name=Rahul%20Sharma&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64340 - "GET /merge-requests?citizen_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61930 - "GET /notifications?citizen_name=Rahul%20Sharma&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50852 - "GET /notifications?citizen_name=Rahul%20Sharma&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56653 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60025 - "GET /projects?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52916 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53234 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57638 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50907 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62569 - "GET /notifications?citizen_name=ABC%20Institute%20of%20Technology&audience=university HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58891 - "GET /problems?assigned_university=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54758 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53286 - "GET /problems?citizen_name=Dr.%20Priya%20Coordinator&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58167 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62569 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63305 - "GET /problems?citizen_name=Dr.%20Priya%20Coordinator&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58891 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54758 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51681 - "GET /projects?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54758 - "OPTIONS /problems/e2e93c5f-8c25-4ef4-9a6d-81a508b08826/volunteer HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58891 - "POST /problems/e2e93c5f-8c25-4ef4-9a6d-81a508b08826/volunteer HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58891 - "GET /problems?assigned_university=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50842 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62251 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52269 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61428 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65494 - "GET /problems?citizen_name=janhavi%20tupe&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53460 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61428 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50842 - "GET /problems?citizen_name=janhavi%20tupe&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52269 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65494 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62251 - "GET /projects?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56660 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62251 - "OPTIONS /notifications/f290b6b9-c26e-420d-bca5-db9bd9588da2/read HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62251 - "PATCH /notifications/f290b6b9-c26e-420d-bca5-db9bd9588da2/read HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65494 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62251 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52269 - "GET /merge-requests?citizen_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52269 - "GET /merge-requests?citizen_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52269 - "OPTIONS /problems/e2e93c5f-8c25-4ef4-9a6d-81a508b08826/select-volunteer HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62251 - "POST /problems/e2e93c5f-8c25-4ef4-9a6d-81a508b08826/select-volunteer HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63192 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63430 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60137 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50187 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63099 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58461 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60782 - "GET /merge-requests?citizen_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59095 - "GET /problems?citizen_name=janhavi%20tupe&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63099 - "GET /problems?citizen_name=janhavi%20tupe&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50187 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58461 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59095 - "GET /merge-requests?citizen_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60782 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64835 - "GET /projects?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63592 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65175 - "GET /notifications?citizen_name=janhavi%20tupe&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64568 - "GET /projects/e2e93c5f-8c25-4ef4-9a6d-81a508b08826?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64568 - "GET /projects/e2e93c5f-8c25-4ef4-9a6d-81a508b08826/updates?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50101 - "GET /projects/e2e93c5f-8c25-4ef4-9a6d-81a508b08826/updates?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51951 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54008 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49669 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62124 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55580 - "GET /projects/e2e93c5f-8c25-4ef4-9a6d-81a508b08826/updates?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63046 - "GET /notifications?citizen_name=Rahul%20Sharma&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58353 - "GET /notifications?citizen_name=Rahul%20Sharma&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61445 - "GET /merge-requests?citizen_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63046 - "GET /problems?citizen_name=Rahul%20Sharma&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56055 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58353 - "GET /problems?citizen_name=Rahul%20Sharma&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49269 - "GET /problems?limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63046 - "GET /notifications?citizen_name=Rahul%20Sharma&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61445 - "GET /notifications?citizen_name=Rahul%20Sharma&audience=citizen HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56055 - "GET /merge-requests?citizen_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61418 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56095 - "GET /projects?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62243 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64161 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65008 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57613 - "GET /projects?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64953 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64636 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51052 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65312 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57065 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53121 - "GET /projects?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50540 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49886 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62602 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55923 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51617 - "GET /projects?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58710 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63027 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56467 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58994 - "GET /projects?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59451 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53281 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63747 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58858 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64571 - "GET /projects?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62680 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60656 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51453 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60117 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55017 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61498 - "GET /projects?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64778 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61044 - "GET /projects?party_type=citizen&party_name=janhavi%20tupe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57729 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51536 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58725 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55442 - "GET /projects?party_type=university&party_name=ABC%20Institute%20of%20Technology HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65146 - "GET /projects?party_type=citizen&party_name=Rahul%20Sharma HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53861 - "GET /collaboration-requests?university_name=ABC%20Institute%20of%20Technology&limit=500 HTTP/1.1" 200 OK
