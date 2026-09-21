@@ -9,7 +9,7 @@ import { requirePortalRole } from "@/lib/requirePortalRole";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "SolveTogether — University Portal",
+  title: "SamasyaLink — University Portal",
   description:
     "University coordinator dashboard for managing assigned societal challenges, mentor allocation, and solution progress.",
 };

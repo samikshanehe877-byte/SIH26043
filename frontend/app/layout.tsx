@@ -12,7 +12,7 @@ import { ProblemsProvider } from "@/context/ProblemsContext";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "SolveTogether",
+  title: "SamasyaLink",
   description:
     "Crowdsourcing societal challenges and facilitating collaborative problem-solving.",
 };

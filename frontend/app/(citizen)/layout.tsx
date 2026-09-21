@@ -5,7 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import BottomNavigation from "@/components/BottomNavigation";
 
 export const metadata: Metadata = {
-  title: "SolveTogether — Citizen Portal",
+  title: "SamasyaLink — Citizen Portal",
   description: "Report societal problems and collaborate with universities and industries to find solutions.",
 };
 

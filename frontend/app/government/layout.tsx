@@ -7,7 +7,7 @@ import { requirePortalRole } from "@/lib/requirePortalRole";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "SolveTogether — Government Portal",
+  title: "SamasyaLink — Government Portal",
   description:
     "Government-governed regional platform for verification, monitoring, and impact oversight of societal problem-solving projects.",
 };

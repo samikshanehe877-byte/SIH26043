@@ -12,7 +12,7 @@ interface LanguageContextType {
 
 const translations: Record<Language, Record<string, string>> = {
   English: {
-    app_name: "SolveTogether",
+    app_name: "SamasyaLink",
     sign_in: "Sign In",
     sign_up: "Sign Up",
     logout: "Logout",
@@ -23,7 +23,7 @@ const translations: Record<Language, Record<string, string>> = {
   },
 
   Hindi: {
-    app_name: "SolveTogether",
+    app_name: "SamasyaLink",
     sign_in: "???? ??",
     sign_up: "???? ??",
     logout: "??? ???",

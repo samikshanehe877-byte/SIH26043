@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { AuthProvider } from "@/context/AuthContext";
 
 export const metadata: Metadata = {
-  title: "Complete Profile — SolveTogether",
+  title: "Complete Profile — SamasyaLink",
   description: "Complete your university or industry profile to get started.",
 };
 

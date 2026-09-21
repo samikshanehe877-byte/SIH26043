@@ -62,7 +62,7 @@ export default function StudentSidebar() {
         </div>
         <div className="min-w-0 flex-1">
           <h1 className="text-sm font-bold text-slate-900 leading-tight truncate">
-            SolveTogether
+            SamasyaLink
           </h1>
           <div className="flex items-center gap-1.5 text-xs text-indigo-600 font-semibold">
             <span>Student Portal</span>

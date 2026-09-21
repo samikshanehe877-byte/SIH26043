@@ -76,6 +76,9 @@ def database_url() -> Optional[str]:
     return base + ("?" + "&".join(kept) if kept else "")
 
 
+# Prisma's tables are addressed as public.<table> rather than relying on the default search_path.
+# Neon's pooler multiplexes clients onto shared server connections, so a search_path set by any
+# other client can otherwise leak in and make these tables invisible mid-query.
 _MEMBER_SELECTS = [
     # kind, org_type, table, org column, title, years, specialization, capacity, load, bio
     ("student", "university", "university_students", "university_id", "(m.course || ', year ' || m.year::text)", "NULL::int", "m.bio", "NULL::int", "NULL::int", "m.bio"),
@@ -94,13 +97,13 @@ _PEOPLE_COLUMNS = (
 PEOPLE_SQL = _PEOPLE_COLUMNS + "FROM (" + " UNION ALL ".join(
     f"SELECT '{kind}' AS kind, '{org_type}' AS org_type, m.id AS member_id, m.user_id AS user_id, "
     f"m.{org_col} AS org_id, m.unit_id AS unit_id, {title} AS title, {years} AS years, "
-    f"{spec} AS specialization, {cap} AS max_capacity, {load} AS current_load, {bio} AS bio FROM {table} m"
+    f"{spec} AS specialization, {cap} AS max_capacity, {load} AS current_load, {bio} AS bio FROM public.{table} m"
     for kind, org_type, table, org_col, title, years, spec, cap, load, bio in _MEMBER_SELECTS
 ) + """) p
-JOIN users u ON u.id = p.user_id
-LEFT JOIN universities uo ON p.org_type = 'university' AND uo.id = p.org_id
-LEFT JOIN industries io ON p.org_type = 'industry' AND io.id = p.org_id
-LEFT JOIN organization_units un ON un.id = p.unit_id
+JOIN public.users u ON u.id = p.user_id
+LEFT JOIN public.universities uo ON p.org_type = 'university' AND uo.id = p.org_id
+LEFT JOIN public.industries io ON p.org_type = 'industry' AND io.id = p.org_id
+LEFT JOIN public.organization_units un ON un.id = p.unit_id
 WHERE COALESCE(uo.verification_status::text, io.verification_status::text) = 'VERIFIED'
 """
 
@@ -122,12 +125,13 @@ def load_people(org_type: Optional[str] = None) -> List[Dict]:
             people = [dict(row) for row in connection.execute(query, params).fetchall()]
             user_ids = [p["user_id"] for p in people]
             skills = connection.execute(
-                "SELECT us.user_id, s.name, us.proficiency FROM user_skills us JOIN skills s ON s.id = us.skill_id "
+                "SELECT us.user_id, s.name, us.proficiency FROM public.user_skills us "
+                "JOIN public.skills s ON s.id = us.skill_id "
                 "WHERE us.user_id = ANY(%s)", (user_ids,),
             ).fetchall()
             claims = connection.execute(
-                "SELECT c.user_id, d.name AS domain, sd.name AS subdomain, c.proficiency FROM member_domain_claims c "
-                "JOIN domains d ON d.id = c.domain_id LEFT JOIN subdomains sd ON sd.id = c.subdomain_id "
+                "SELECT c.user_id, d.name AS domain, sd.name AS subdomain, c.proficiency FROM public.member_domain_claims c "
+                "JOIN public.domains d ON d.id = c.domain_id LEFT JOIN public.subdomains sd ON sd.id = c.subdomain_id "
                 "WHERE c.user_id = ANY(%s)", (user_ids,),
             ).fetchall()
     except PeopleDataUnavailable:

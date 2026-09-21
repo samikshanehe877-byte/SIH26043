@@ -5,7 +5,7 @@ import "../globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "SIH - Smart India Hackathon",
+  title: "SamasyaLink",
   description: "Platform for civic problem solving",
 };
 

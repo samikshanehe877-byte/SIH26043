@@ -288,9 +288,37 @@ def _to_postgres(sql: str) -> str:
     # chronological order, so the wrapper can simply be dropped rather than cast.
     sql = re.sub(r"\bdatetime\(\s*([a-z_.]+)\s*\)", r"\1", sql, flags=re.IGNORECASE)
 
+    sql = _qualify(sql)
     sql = sql.replace("?", "%s")
     sql = re.sub(r"\bREAL\b", "DOUBLE PRECISION", sql)
     return sql + conflict
+
+
+# Every table this module and its siblings own. Names are rewritten to schema.table rather than
+# relying on a session search_path: Neon (and any PgBouncer in transaction mode) multiplexes several
+# clients onto one server connection, so a `SET search_path` leaks into whatever query runs next --
+# which is how people_matcher, reading Prisma's tables in `public`, stopped being able to find them.
+_OWNED_TABLES = {
+    "problems", "notifications", "collaboration_requests", "merge_requests", "problem_embeddings",
+    "problem_similarities", "project_members", "project_messages", "project_updates", "milestones",
+    "point_events", "match_feedback", "matching_ai_cache",
+}
+
+_TABLE_REF = re.compile(
+    r"\b(FROM|INTO|UPDATE|JOIN|TABLE IF NOT EXISTS|TABLE|ON)\s+([a-z_][a-z0-9_]*)",
+    re.IGNORECASE,
+)
+
+
+def _qualify(sql: str) -> str:
+    """Prefixes this module's own tables with their schema, leaving everything else untouched."""
+    def replace(match):
+        keyword, name = match.group(1), match.group(2)
+        if name.lower() not in _OWNED_TABLES:
+            return match.group(0)
+        return '%s "%s".%s' % (keyword, PROBLEM_DB_SCHEMA, name)
+
+    return _TABLE_REF.sub(replace, sql)
 
 
 class _PostgresConnection:
@@ -306,9 +334,13 @@ class _PostgresConnection:
         from psycopg.rows import dict_row
 
         self._conn = psycopg.connect(url, row_factory=dict_row, autocommit=False)
+        self._schema = schema
         with self._conn.cursor() as cursor:
+            # Table names here are schema-qualified, so this connection needs no search_path of its
+            # own. Resetting it clears anything an earlier session left on this pooled connection --
+            # a pooler in transaction mode hands the same server connection to unrelated clients.
+            cursor.execute("RESET search_path")
             cursor.execute('CREATE SCHEMA IF NOT EXISTS "%s"' % schema)
-            cursor.execute('SET search_path TO "%s"' % schema)
         self._conn.commit()
 
     def execute(self, sql, params=()):

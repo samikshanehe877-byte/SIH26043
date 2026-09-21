@@ -77,7 +77,7 @@ export default function Sidebar() {
             <span className="text-sm font-black text-white">ST</span>
           </div>
           <div>
-            <h1 className="text-base font-bold text-slate-900">SolveTogether</h1>
+            <h1 className="text-base font-bold text-slate-900">SamasyaLink</h1>
             <p className="text-xs text-slate-400">
               {tr("Citizen Portal", "सिटीजन पोर्टल")}
             </p>
@@ -114,7 +114,7 @@ export default function Sidebar() {
 
         <div>
           <h1 className="text-base font-bold text-slate-900">
-            SolveTogether
+            SamasyaLink
           </h1>
           <p className="text-xs text-slate-400">
             {tr("Citizen Portal", "सिटीजन पोर्टल")}
