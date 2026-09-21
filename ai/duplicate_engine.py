@@ -48,6 +48,7 @@ from problem_storage import (
     DUPLICATE_CHECK_EXCLUDED_STATUSES,
     ProblemInDB,
     get_problem_embedding,
+    get_problem_embeddings,
     list_problems,
     save_problem_embedding,
     save_problem_similarity,
@@ -361,10 +362,14 @@ def classify_tier(score: float) -> str:
     return "normal"
 
 
-def _ensure_embedding(problem: ProblemInDB) -> np.ndarray:
+def _ensure_embedding(problem: ProblemInDB, cache: Optional[Dict[str, Any]] = None) -> np.ndarray:
     """Cached per-problem embedding; computed and persisted once, then reused by
-    every future check. Backfills problems created before this pipeline existed."""
-    cached = get_problem_embedding(problem.id)
+    every future check. Backfills problems created before this pipeline existed.
+
+    `cache` is the result of one batch read covering every problem in this comparison, so the
+    common path touches the database no more than once for the whole run.
+    """
+    cached = cache.get(problem.id) if cache is not None else get_problem_embedding(problem.id)
     if cached is not None:
         return np.asarray(cached, dtype=np.float32)
     vector = get_embedding(_build_text(_problem_fields(problem)))
@@ -404,9 +409,12 @@ def duplicate_check(
             if p.id != exclude_problem_id and p.status not in DUPLICATE_CHECK_EXCLUDED_STATUSES
         ]
 
+        # One round trip for every cached vector, rather than one per candidate.
+        embedding_cache = get_problem_embeddings([c.id for c in candidates])
+
         scored = []
         for candidate in candidates:
-            candidate_embedding = _ensure_embedding(candidate)
+            candidate_embedding = _ensure_embedding(candidate, embedding_cache)
             breakdown = compute_similarity(fields, _problem_fields(candidate), new_embedding, candidate_embedding)
             tier = classify_tier(breakdown["overall"])
             if persist_similarities_for:

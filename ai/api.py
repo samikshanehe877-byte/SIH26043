@@ -37,6 +37,7 @@ LIMITATIONS (read before wiring up the frontend):
 """
 
 import contextlib
+import threading
 import logging
 import os
 import re
@@ -156,6 +157,28 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="SIH26043 AI Module API", version="1.0")
+
+
+@app.on_event("startup")
+def _warm_duplicate_engine() -> None:
+    """Loads the sentence-transformer model on a background thread as the server comes up.
+
+    The model takes roughly twenty seconds to load and is loaded lazily on first use, so without
+    this the first citizen to submit a problem waits out that load inside their duplicate check
+    while the form shows "Checking for similar reports...". Warming it costs nothing at startup and
+    leaves the first real submission as fast as every later one. Failure is not fatal: duplicate
+    checking already degrades to "no duplicate found" when the model is unavailable.
+    """
+
+    def warm() -> None:
+        try:
+            import embeddings
+            embeddings.get_model()
+            logger.info("Embedding model warmed")
+        except Exception as error:  # noqa: BLE001 - never block startup on an optional dependency
+            logger.warning("Embedding model warm-up skipped: %s", error)
+
+    threading.Thread(target=warm, name="embedding-warmup", daemon=True).start()
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Browsers reject "*" together with credentials, and a wildcard would let any site on the internet

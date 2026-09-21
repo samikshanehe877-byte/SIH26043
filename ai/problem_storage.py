@@ -7,6 +7,7 @@ import json
 import os
 import re
 import sqlite3
+import threading
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
@@ -321,6 +322,46 @@ def _qualify(sql: str) -> str:
     return _TABLE_REF.sub(replace, sql)
 
 
+# One live connection per thread, reused across calls.
+#
+# Opening a connection to a hosted database is not free the way opening a SQLite file is: against
+# Neon from here each TLS handshake costs about four seconds, and a single duplicate check makes
+# roughly fifty of them. Dialling afresh per query turned a submission into a three-minute wait, so
+# the connection is opened once per thread and handed back at the end of each `with` block instead
+# of being closed. FastAPI runs sync endpoints on a thread pool, so per-thread is the right grain:
+# no two requests ever share one connection concurrently.
+_thread_state = threading.local()
+
+
+def _thread_connection(url: str, schema: str):
+    """This thread's connection, opening one if it has none or the last one died."""
+    import psycopg
+    from psycopg.rows import dict_row
+
+    conn = getattr(_thread_state, "conn", None)
+    if conn is not None and not conn.closed:
+        try:
+            # A connection left mid-transaction by an error would fail every later statement.
+            conn.rollback()
+            return conn
+        except psycopg.Error:
+            try:
+                conn.close()
+            except psycopg.Error:
+                pass
+
+    conn = psycopg.connect(url, row_factory=dict_row, autocommit=False)
+    with conn.cursor() as cursor:
+        # Table names are schema-qualified, so this connection needs no search_path of its own.
+        # Resetting clears anything an earlier session left behind: a pooler in transaction mode
+        # hands the same server connection to unrelated clients.
+        cursor.execute("RESET search_path")
+        cursor.execute('CREATE SCHEMA IF NOT EXISTS "%s"' % schema)
+    conn.commit()
+    _thread_state.conn = conn
+    return conn
+
+
 class _PostgresConnection:
     """The slice of the sqlite3.Connection interface this module uses, backed by psycopg.
 
@@ -330,18 +371,8 @@ class _PostgresConnection:
     """
 
     def __init__(self, url: str, schema: str):
-        import psycopg
-        from psycopg.rows import dict_row
-
-        self._conn = psycopg.connect(url, row_factory=dict_row, autocommit=False)
         self._schema = schema
-        with self._conn.cursor() as cursor:
-            # Table names here are schema-qualified, so this connection needs no search_path of its
-            # own. Resetting it clears anything an earlier session left on this pooled connection --
-            # a pooler in transaction mode hands the same server connection to unrelated clients.
-            cursor.execute("RESET search_path")
-            cursor.execute('CREATE SCHEMA IF NOT EXISTS "%s"' % schema)
-        self._conn.commit()
+        self._conn = _thread_connection(url, schema)
 
     def execute(self, sql, params=()):
         cursor = self._conn.cursor()
@@ -358,15 +389,12 @@ class _PostgresConnection:
         return self
 
     def __exit__(self, exc_type, exc, tb):
-        # sqlite3 commits on a clean exit and rolls back on an exception; mirror that, then close,
-        # because every caller here opens a fresh connection rather than holding one open.
-        try:
-            if exc_type is None:
-                self._conn.commit()
-            else:
-                self._conn.rollback()
-        finally:
-            self._conn.close()
+        # sqlite3 commits on a clean exit and rolls back on an exception. The connection itself is
+        # kept open and reused: see _thread_connection for why closing it here was ruinous.
+        if exc_type is None:
+            self._conn.commit()
+        else:
+            self._conn.rollback()
         return False
 
 
@@ -689,6 +717,24 @@ def get_problem_embedding(problem_id: str) -> Optional[List[float]]:
             "SELECT embedding FROM problem_embeddings WHERE problem_id = ?", (problem_id,)
         ).fetchone()
     return json.loads(row["embedding"]) if row else None
+
+
+def get_problem_embeddings(problem_ids: List[str]) -> Dict[str, List[float]]:
+    """Every cached embedding among `problem_ids`, as {problem_id: vector}, in one round trip.
+
+    The per-id version below is fine against a local file but ruinous against a hosted database:
+    a duplicate check looks at every existing problem, and fifty sequential queries to Neon cost
+    about fifty seconds, which is most of why submitting a problem appeared to hang.
+    """
+    if not problem_ids:
+        return {}
+    with _connection() as connection:
+        placeholders = ",".join("?" for _ in problem_ids)
+        rows = connection.execute(
+            "SELECT problem_id, embedding FROM problem_embeddings WHERE problem_id IN (%s)" % placeholders,
+            tuple(problem_ids),
+        ).fetchall()
+    return {row["problem_id"]: json.loads(row["embedding"]) for row in rows}
 
 
 def save_problem_similarity(problem_a_id: str, problem_b_id: str, scores: Dict[str, float], tier: str) -> None:
