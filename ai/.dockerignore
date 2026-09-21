@@ -1,0 +1,18 @@
+# The 1.5GB local virtualenv is rebuilt inside the image; copying it would bloat the build and
+# shadow the Linux wheels with Windows ones.
+.venv/
+__pycache__/
+*.pyc
+
+# Secrets belong in the host's environment, never baked into an image.
+.env
+.env.backup-local
+
+# Local data. The deployed service uses the mounted disk at /data instead.
+data/problems.sqlite3
+data/problems.sqlite3.backup*
+data/uploads/
+
+*.log
+.pytest_cache/
+test_*.py

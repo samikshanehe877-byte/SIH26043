@@ -158,9 +158,20 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title="SIH26043 AI Module API", version="1.0")
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
+# Browsers reject "*" together with credentials, and a wildcard would let any site on the internet
+# call this API from a visitor's browser. ALLOWED_ORIGINS is a comma-separated list of the exact
+# frontends allowed to do so; the local dev ports are the default so nothing has to be configured
+# to work on a laptop.
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+    if origin.strip()
+]
+logger.info("CORS: allowing %s", ", ".join(ALLOWED_ORIGINS))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # TODO: replace with your frontend's actual origin
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

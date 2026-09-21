@@ -47,14 +47,33 @@ class PeopleDataUnavailable(RuntimeError):
 
 # --------------------------------------------------------------------------------------- loading
 
+# Query parameters Prisma understands but libpq does not; anything else in the URL is a real
+# connection setting and must survive.
+_PRISMA_ONLY_PARAMS = {"schema", "connection_limit", "pool_timeout", "pgbouncer", "connect_timeout",
+                       "socket_timeout", "sslidentity", "sslpassword", "sslcert"}
+
+
 def database_url() -> Optional[str]:
-    """DATABASE_URL from the environment, else from the web app's .env, without Prisma's ?schema=... suffix."""
+    """DATABASE_URL from the environment, else from the web app's .env, with Prisma-only options removed.
+
+    Only Prisma's own parameters are stripped. Dropping the whole query string would also discard
+    `sslmode` and `channel_binding`, and libpq defaults to sslmode=prefer -- which silently falls
+    back to an unencrypted connection rather than failing. Against a hosted database that would send
+    the password over the open internet in plaintext, so these have to be preserved.
+    """
     url = os.environ.get("DATABASE_URL")
     if not url and os.path.exists(FRONTEND_ENV_PATH):
         with open(FRONTEND_ENV_PATH, "r", encoding="utf-8") as handle:
             found = re.search(r'^DATABASE_URL\s*=\s*"?([^"\r\n]+)"?', handle.read(), re.MULTILINE)
             url = found.group(1) if found else None
-    return url.split("?")[0] if url else None
+    if not url:
+        return None
+    base, separator, query = url.partition("?")
+    if not separator:
+        return base
+    kept = [pair for pair in query.split("&")
+            if pair and pair.split("=")[0].strip().lower() not in _PRISMA_ONLY_PARAMS]
+    return base + ("?" + "&".join(kept) if kept else "")
 
 
 _MEMBER_SELECTS = [

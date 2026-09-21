@@ -1,0 +1,37 @@
+# Deployment for the FastAPI service, so every machine talks to one backend and sees the same
+# problems. The Next.js frontend is deployed separately (Vercel) with NEXT_PUBLIC_API_URL pointing
+# at this service's URL.
+#
+# The disk is the point of this file. Problems live in SQLite and evidence lives on the filesystem,
+# so without a mounted disk every deploy would start from an empty database and lose uploads.
+# Render disks require a paid instance type; a free instance will lose data on each deploy.
+services:
+  - type: web
+    name: sih26043-api
+    runtime: docker
+    dockerfilePath: ./ai/Dockerfile
+    dockerContext: ./ai
+    plan: starter
+    healthCheckPath: /health
+    disk:
+      name: sih26043-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      # The people directory. Keep channel_binding here: psycopg supports it, and it defends against
+      # a man-in-the-middle even with a stolen certificate. Prisma cannot parse it, so the frontend's
+      # copy of this URL must leave it off.
+      - key: DATABASE_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      # Exact frontend origins allowed to call this API from a browser. Comma-separated, no wildcard:
+      # a wildcard combined with credentials is rejected by browsers and would expose the API to any site.
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: PROBLEM_DB_PATH
+        value: /data/problems.sqlite3
+      - key: UPLOAD_DIR
+        value: /data/uploads
+      - key: PYTHONUNBUFFERED
+        value: "1"

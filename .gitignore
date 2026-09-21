@@ -1,0 +1,47 @@
+# ---- Dependencies ----
+# Reinstall with `npm install` (frontend) and `pip install -r requirements.txt` (ai).
+# The virtualenv was removed from tracking in 93df67e1 but never ignored, so it kept reappearing as
+# ~29,000 untracked files where a single `git add -A` would have committed 1.5GB of Windows-only
+# wheels that cannot run on a Linux host anyway.
+node_modules/
+ai/.venv/
+.venv/
+venv/
+
+# ---- Python build artifacts ----
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+
+# ---- Next.js build output ----
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# ---- Secrets ----
+# Only the .example templates belong in the repo. Everything else here holds real keys.
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# ---- Local database snapshots ----
+# Taken by hand before destructive changes; the live database itself is still tracked on purpose,
+# because it is currently the only way demo data reaches another machine. Once the API is deployed
+# with its own disk, ai/data/problems.sqlite3 should be untracked too.
+*.sqlite3.backup*
+*.sqlite3-journal
+*.sqlite3-wal
+*.sqlite3-shm
+
+# ---- Logs and scratch output ----
+*.log
+logs/
+
+# ---- Editor / OS ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
