@@ -29,6 +29,14 @@ services:
       # a wildcard combined with credentials is rejected by browsers and would expose the API to any site.
       - key: ALLOWED_ORIGINS
         sync: false
+      # Problems, notifications, milestones and the points ledger. Set this to the same Postgres
+      # URL as DATABASE_URL to share that state across every machine; its tables live in their own
+      # schema so they cannot collide with the Prisma tables. Leave it unset to fall back to the
+      # SQLite file on the mounted disk below.
+      - key: PROBLEM_DB_URL
+        sync: false
+      - key: PROBLEM_DB_SCHEMA
+        value: ai
       - key: PROBLEM_DB_PATH
         value: /data/problems.sqlite3
       - key: UPLOAD_DIR

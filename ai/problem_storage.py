@@ -5,6 +5,7 @@ SQLite storage for problems with status workflow.
 
 import json
 import os
+import re
 import sqlite3
 from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
@@ -225,11 +226,137 @@ def is_owner(problem: ProblemBase, citizen_name: str) -> bool:
     return citizen_name == problem.citizen_name or citizen_name in (problem.co_owners or [])
 
 
-def _connection() -> sqlite3.Connection:
+# ---------------------------------------------------------------------------
+# Storage backend: SQLite by default, PostgreSQL when PROBLEM_DB_URL is set.
+#
+# SQLite is a file, so a problem created on one machine is invisible to every other one. Pointing
+# PROBLEM_DB_URL at Postgres puts this state somewhere every deployment shares.
+#
+# SQLite stays the default deliberately. All thirteen test modules isolate themselves by pointing
+# DATABASE_PATH at a fresh file under tmp_path, which needs no running server and keeps the suite
+# fast; requiring Postgres to run the tests would cost far more than it would catch. The trade is
+# real and worth stating: SQL that works on SQLite but not on Postgres will not be caught by the
+# suite, so the translation below is deliberately small and every statement it rewrites is listed.
+#
+# The tables go in their own schema because `problems` and `project_members` already exist in the
+# Prisma schema that owns users and organizations. Sharing one database is fine; sharing those two
+# table names would have each half quietly overwriting the other.
+# ---------------------------------------------------------------------------
+
+PROBLEM_DB_URL = os.getenv("PROBLEM_DB_URL")
+PROBLEM_DB_SCHEMA = os.getenv("PROBLEM_DB_SCHEMA", "ai")
+
+
+def using_postgres() -> bool:
+    """True when problem state lives in PostgreSQL rather than a local SQLite file."""
+    return bool(PROBLEM_DB_URL)
+
+
+_JSON_EXTRACT = re.compile(r"json_extract\(\s*([a-z_.]+)\s*,\s*'\$\.([a-z_]+)'\s*\)", re.IGNORECASE)
+
+
+def _to_postgres(sql: str) -> str:
+    """Rewrites the SQLite dialect this module uses into PostgreSQL.
+
+    Only four things differ across the whole module, and each is rewritten here rather than being
+    spelled differently at every call site:
+
+      json_extract(payload, '$.x')  ->  payload::jsonb ->> 'x'
+      INSERT OR IGNORE              ->  INSERT ... ON CONFLICT DO NOTHING
+      INSERT OR REPLACE             ->  INSERT ... ON CONFLICT (<first column>) DO UPDATE SET ...
+      ?                             ->  %s          (and REAL -> DOUBLE PRECISION in DDL)
+
+    Both INSERT OR REPLACE/IGNORE statements in this codebase conflict on their first column, which
+    is the primary key in each case, so that is what the rewrite targets.
+    """
+    sql = _JSON_EXTRACT.sub(r"\1::jsonb ->> '\2'", sql)
+
+    conflict = ""
+    if re.search(r"INSERT\s+OR\s+IGNORE", sql, re.IGNORECASE):
+        sql = re.sub(r"INSERT\s+OR\s+IGNORE", "INSERT", sql, flags=re.IGNORECASE)
+        conflict = " ON CONFLICT DO NOTHING"
+    elif re.search(r"INSERT\s+OR\s+REPLACE", sql, re.IGNORECASE):
+        sql = re.sub(r"INSERT\s+OR\s+REPLACE", "INSERT", sql, flags=re.IGNORECASE)
+        columns = re.search(r"INSERT\s+INTO\s+[a-z_]+\s*\(([^)]*)\)", sql, re.IGNORECASE)
+        names = [c.strip() for c in columns.group(1).split(",")] if columns else []
+        if names:
+            updates = ", ".join("%s = EXCLUDED.%s" % (c, c) for c in names[1:])
+            conflict = " ON CONFLICT (%s) DO UPDATE SET %s" % (names[0], updates) if updates else " ON CONFLICT (%s) DO NOTHING" % names[0]
+
+    # datetime(col) only exists in SQLite. Every timestamp this module stores is an ISO-8601 string
+    # ("2026-09-17T14:45:31.247720"), and those sort and compare lexicographically in exactly
+    # chronological order, so the wrapper can simply be dropped rather than cast.
+    sql = re.sub(r"\bdatetime\(\s*([a-z_.]+)\s*\)", r"\1", sql, flags=re.IGNORECASE)
+
+    sql = sql.replace("?", "%s")
+    sql = re.sub(r"\bREAL\b", "DOUBLE PRECISION", sql)
+    return sql + conflict
+
+
+class _PostgresConnection:
+    """The slice of the sqlite3.Connection interface this module uses, backed by psycopg.
+
+    `execute` translates the statement and returns a cursor, so callers keep using .fetchone(),
+    .fetchall() and .rowcount exactly as they do against SQLite. Rows come back as dicts, which
+    supports the row["column"] access used throughout (no positional access is relied upon).
+    """
+
+    def __init__(self, url: str, schema: str):
+        import psycopg
+        from psycopg.rows import dict_row
+
+        self._conn = psycopg.connect(url, row_factory=dict_row, autocommit=False)
+        with self._conn.cursor() as cursor:
+            cursor.execute('CREATE SCHEMA IF NOT EXISTS "%s"' % schema)
+            cursor.execute('SET search_path TO "%s"' % schema)
+        self._conn.commit()
+
+    def execute(self, sql, params=()):
+        cursor = self._conn.cursor()
+        cursor.execute(_to_postgres(sql), tuple(params))
+        return cursor
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        self._conn.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        # sqlite3 commits on a clean exit and rolls back on an exception; mirror that, then close,
+        # because every caller here opens a fresh connection rather than holding one open.
+        try:
+            if exc_type is None:
+                self._conn.commit()
+            else:
+                self._conn.rollback()
+        finally:
+            self._conn.close()
+        return False
+
+
+def _connection():
+    """A connection to wherever problem state lives: PostgreSQL if configured, else the SQLite file."""
+    if PROBLEM_DB_URL:
+        return _PostgresConnection(PROBLEM_DB_URL, PROBLEM_DB_SCHEMA)
     os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
     connection = sqlite3.connect(DATABASE_PATH)
     connection.row_factory = sqlite3.Row
     return connection
+
+
+def _table_columns(connection, table: str) -> set:
+    """The column names of one table. SQLite answers with PRAGMA, PostgreSQL with information_schema."""
+    if using_postgres():
+        rows = connection.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_schema = ? AND table_name = ?",
+            (PROBLEM_DB_SCHEMA, table),
+        ).fetchall()
+        return {row["column_name"] for row in rows}
+    return {row["name"] for row in connection.execute(f"PRAGMA table_info({table})")}
 
 
 def initialize_storage() -> None:
@@ -366,7 +493,7 @@ def initialize_storage() -> None:
         # CREATE TABLE IF NOT EXISTS never alters a table that already exists, so a database created
         # before milestones could carry evidence needs these two columns added in place. Existing rows
         # get the '[]' default, i.e. "no evidence attached", which is exactly what they had.
-        existing_milestone_columns = {row["name"] for row in connection.execute("PRAGMA table_info(milestones)")}
+        existing_milestone_columns = _table_columns(connection, "milestones")
         for column in ("submitted_attachments", "submitted_links"):
             if column not in existing_milestone_columns:
                 connection.execute(f"ALTER TABLE milestones ADD COLUMN {column} TEXT NOT NULL DEFAULT '[]'")
