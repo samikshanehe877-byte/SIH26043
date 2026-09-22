@@ -1,2 +1,6 @@
 .env
 __pycache__/
+# Uploaded evidence and workspace attachments. These live in object storage (R2_*) so every
+# machine sharing the database can reach them; committing them meant a file only reached a
+# teammate when somebody remembered to commit it, and bloated the repo with 11 MB of binaries.
+data/uploads/
