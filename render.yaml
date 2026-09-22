@@ -39,6 +39,17 @@ services:
         value: ai
       - key: PROBLEM_DB_PATH
         value: /data/problems.sqlite3
+      # Object storage for evidence and workspace attachments. Set these and files live in the
+      # bucket instead of on the disk below, which is what lets several machines -- or several
+      # deploys -- serve the same attachment. Keep the bucket private.
+      - key: R2_ENDPOINT
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
       - key: UPLOAD_DIR
         value: /data/uploads
       - key: PYTHONUNBUFFERED

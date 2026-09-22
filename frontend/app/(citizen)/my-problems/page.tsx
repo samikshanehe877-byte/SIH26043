@@ -361,6 +361,7 @@ export default function MyProblemsPage() {
     myProblems,
     toggleSupport,
     deleteProblem,
+    deleteEvidence,
     resubmitProblem,
     refreshProblems,
   } = useProblems();
@@ -430,6 +431,22 @@ export default function MyProblemsPage() {
       return;
 
     await deleteProblem(problem.id);
+  };
+
+  // Evidence can only be pulled back while the problem is still the citizen's to correct. Once
+  // verified, the files are part of what the officer decided on, so the backend refuses too.
+  const canRemoveEvidence = (problem: Problem) =>
+    ["Submitted", "Under Review", "Returned for Correction"].includes(problem.status);
+
+  const handleDeleteEvidence = async (problem: Problem, index: number, name: string) => {
+    if (
+      !window.confirm(
+        tr(`Remove "${name}"?`, `"${name}" हटाएँ?`)
+      )
+    )
+      return;
+
+    await deleteEvidence(problem.id, index);
   };
 
   const handleResubmit = async (problem: Problem) => {
@@ -564,6 +581,42 @@ export default function MyProblemsPage() {
                       </span>
                     )}
                   </p>
+                </div>
+              )}
+
+              {(problem.evidenceAttachments?.length ?? 0) > 0 && (
+                <div className="mt-3 space-y-2 border-t border-slate-200 pt-3">
+                  <p className="text-xs font-semibold text-slate-600">
+                    {tr("Uploaded files", "अपलोड की गई फ़ाइलें")}
+                  </p>
+                  {problem.evidenceAttachments?.map((attachment, index) => (
+                    <div
+                      key={attachment.url}
+                      className="flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs"
+                    >
+                      <a
+                        href={`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}${attachment.url}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex min-w-0 flex-1 items-center justify-between text-blue-700 hover:underline"
+                      >
+                        <span className="truncate">{attachment.name}</span>
+                        <span className="ml-3 flex-shrink-0 text-slate-400">
+                          {attachment.content_type ?? "file"}
+                        </span>
+                      </a>
+                      {canRemoveEvidence(problem) && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteEvidence(problem, index, attachment.name)}
+                          title={tr("Remove this file", "यह फ़ाइल हटाएँ")}
+                          className="flex-shrink-0 rounded-md p-1 text-slate-400 transition hover:bg-red-50 hover:text-red-600"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
                 </div>
               )}
 

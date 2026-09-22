@@ -12,6 +12,7 @@ interface ProblemsContextType {
   // or null if the request failed outright.
   addProblem: (problem: Problem) => Promise<Problem | null>;
   deleteProblem: (id: number | string) => Promise<boolean>;
+  deleteEvidence: (id: number | string, index: number) => Promise<boolean>;
   resubmitProblem: (id: number | string, files: File[], note?: string) => Promise<boolean>;
   volunteerForProblem: (id: number | string, solverType: "university" | "industry", solverName: string, proposal?: string) => Promise<boolean>;
   withdrawVolunteerRequest: (id: number | string, solverType: "university" | "industry", solverName: string) => Promise<boolean>;
@@ -183,6 +184,24 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const deleteEvidence = async (id: number | string, index: number) => {
+    if (!user) return false;
+    try {
+      const response = await fetch(
+        `${apiUrl}/problems/${id}/evidence/${index}?citizen_name=${encodeURIComponent(user.name)}`,
+        { method: "DELETE" }
+      );
+      if (!response.ok) return false;
+      // The endpoint returns the problem as it now stands, so the list reflects the removal
+      // without a refetch -- and without guessing which attachment the server actually dropped.
+      const saved = toFrontendProblem(await response.json());
+      setMyProblems((previous) => previous.map((problem) => (problem.id === id ? saved : problem)));
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const resubmitProblem = async (id: number | string, files: File[], note = "") => {
     if (!user) return false;
     try {
@@ -279,6 +298,7 @@ export function ProblemsProvider({ children }: { children: ReactNode }) {
         myProblems,
         addProblem,
         deleteProblem,
+        deleteEvidence,
         resubmitProblem,
         volunteerForProblem,
         withdrawVolunteerRequest,

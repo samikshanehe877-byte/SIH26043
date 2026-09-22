@@ -75,7 +75,7 @@ const statusConfig: Record<string, { color: string; bg: string; icon: typeof Shi
   "Under Review": { color: "text-blue-600", bg: "bg-blue-50", icon: Clock },
   Verified: { color: "text-emerald-600", bg: "bg-emerald-50", icon: BadgeCheck },
   Rejected: { color: "text-red-600", bg: "bg-red-50", icon: XCircle },
-  "Returned for Correction": { color: "text-amber-600", bg: "bg-amber-50", icon: AlertTriangle },
+  "Returned for Correction": { color: "text-green-700", bg: "bg-green-50", icon: AlertTriangle },
   Duplicate: { color: "text-slate-600", bg: "bg-slate-100", icon: Copy },
   "Merge Pending": { color: "text-blue-700", bg: "bg-blue-50", icon: GitMerge },
   Merged: { color: "text-indigo-700", bg: "bg-indigo-50", icon: GitMerge },
@@ -622,7 +622,18 @@ export default function VerifyPage() {
                     <p className="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Verification history</p>
                     <div className="mt-3 space-y-3">
                       {selectedProblem.verification_history?.map((entry, index) => (
-                        <div key={`${entry.timestamp}-${index}`} className="border-l-2 border-emerald-200 pl-3">
+                        <div
+                          key={`${entry.timestamp}-${index}`}
+                          className={`border-l-2 pl-3 ${
+                            entry.decision === "reject"
+                              ? "border-red-400"
+                              : entry.decision === "proof"
+                                ? "border-green-500"
+                                : entry.decision === "approve"
+                                  ? "border-emerald-400"
+                                  : "border-slate-200"
+                          }`}
+                        >
                           <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                             <span className="font-semibold text-slate-700">{entry.officer}</span>
                             <span className="text-slate-400">{new Date(entry.timestamp).toLocaleString()}</span>
@@ -656,7 +667,7 @@ export default function VerifyPage() {
                   </button>
                   <button
                     onClick={() => updateDecision("proof")}
-                    className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100"
+                    className="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm font-semibold text-green-700 transition hover:bg-green-100"
                   >
                     Ask for Proof
                   </button>

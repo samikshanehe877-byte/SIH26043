@@ -37,6 +37,7 @@ LIMITATIONS (read before wiring up the frontend):
 """
 
 import contextlib
+import mimetypes
 import threading
 import logging
 import os
@@ -49,7 +50,7 @@ from typing import Optional, List, Dict, Any, Literal, Tuple
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
 from pydantic import BaseModel, Field
@@ -70,6 +71,7 @@ from project_storage import (
 import points_storage
 from frontend_adapter import to_university_challenge, to_university_mentor
 import match_feedback
+import object_store
 import matching_ai
 import people_matcher
 from department_matcher import list_departments_for_university, match_departments
@@ -112,7 +114,7 @@ from problem_storage import (
 
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", os.path.join(os.path.dirname(__file__), "data", "uploads"))
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-MAX_EVIDENCE_SIZE = 10 * 1024 * 1024
+MAX_EVIDENCE_SIZE = 20 * 1024 * 1024
 ALLOWED_EVIDENCE_TYPES = {
     "video/mp4",
     "video/webm",
@@ -179,7 +181,24 @@ def _warm_duplicate_engine() -> None:
             logger.warning("Embedding model warm-up skipped: %s", error)
 
     threading.Thread(target=warm, name="embedding-warmup", daemon=True).start()
-app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+# Served through the app rather than mounted as a static directory, so the same /uploads/<name>
+# URL resolves whether the bytes are in object storage or on local disk. Existing attachment
+# records keep working untouched, and the bucket can stay private.
+@app.get("/uploads/{stored_name}")
+def serve_upload(stored_name: str):
+    safe_name = os.path.basename(stored_name)
+    if object_store.enabled():
+        content = object_store.get(safe_name)
+        if content is not None:
+            return Response(
+                content=content,
+                media_type=mimetypes.guess_type(safe_name)[0] or "application/octet-stream",
+                headers={"Content-Disposition": f'inline; filename="{safe_name}"'},
+            )
+    path = os.path.realpath(os.path.join(UPLOAD_DIR, safe_name))
+    if path.startswith(os.path.realpath(UPLOAD_DIR) + os.sep) and os.path.isfile(path):
+        return FileResponse(path)
+    raise HTTPException(status_code=404, detail="File not found")
 
 # Browsers reject "*" together with credentials, and a wildcard would let any site on the internet
 # call this API from a visitor's browser. ALLOWED_ORIGINS is a comma-separated list of the exact
@@ -1274,19 +1293,19 @@ def _unique_name(name: str, used: set) -> str:
     return candidate
 
 
-def _zip_download(entries: List[Tuple[str, Optional[str], str]], zip_name: str) -> FileResponse:
-    """entries: (path inside the zip, file on disk or None if missing, original name)."""
-    present = [(arcname, path) for arcname, path, _ in entries if path]
+def _zip_download(entries: List[Tuple[str, Optional[bytes], str]], zip_name: str) -> FileResponse:
+    """entries: (path inside the zip, the file's bytes or None if missing, original name)."""
+    present = [(arcname, content) for arcname, content, _ in entries if content is not None]
     if not present:
         raise HTTPException(status_code=404, detail="None of these files are available on the server any more")
-    missing = [name for _, path, name in entries if not path]
+    missing = [name for _, content, name in entries if content is None]
     handle = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
     handle.close()
     try:
         # Stored, not compressed: photos, videos, PDFs and Office files are already compressed.
         with zipfile.ZipFile(handle.name, "w", compression=zipfile.ZIP_STORED) as archive:
-            for arcname, path in present:
-                archive.write(path, arcname)
+            for arcname, content in present:
+                archive.writestr(arcname, content)
             if missing:
                 archive.writestr(
                     "MISSING FILES.txt",
@@ -1310,12 +1329,13 @@ def download_update_attachment_endpoint(problem_id: str, update_id: str, index: 
     if not 0 <= index < len(update.attachments):
         raise HTTPException(status_code=404, detail="Attachment not found")
     attachment = update.attachments[index]
-    path = _upload_path(attachment)
-    if not path:
+    content = _attachment_bytes(attachment)
+    if content is None:
         raise HTTPException(status_code=404, detail=f"'{attachment['name']}' is no longer available on the server")
-    return FileResponse(
-        path, media_type=attachment.get("content_type") or "application/octet-stream",
-        filename=_safe_filename(attachment["name"]),
+    return Response(
+        content=content,
+        media_type=attachment.get("content_type") or "application/octet-stream",
+        headers={"Content-Disposition": f'attachment; filename="{_safe_filename(attachment["name"])}"'},
     )
 
 
@@ -1328,7 +1348,7 @@ def download_update_attachments_zip_endpoint(problem_id: str, update_id: str, pa
         raise HTTPException(status_code=404, detail="This update has no attachments")
     used: set = set()
     entries = [
-        (_unique_name(_safe_filename(a["name"]), used), _upload_path(a), a["name"])
+        (_unique_name(_safe_filename(a["name"]), used), _attachment_bytes(a), a["name"])
         for a in update.attachments
     ]
     return _zip_download(entries, f"{_safe_filename(update.title, 'update')[:60]} - files.zip")
@@ -1347,7 +1367,7 @@ def download_project_attachments_zip_endpoint(problem_id: str, party_type: str, 
         folder = _unique_name(f"{update.created_at:%Y-%m-%d} - {_safe_filename(update.title, 'update')[:60]}", folders)
         used: set = set()
         for attachment in update.attachments:
-            entries.append((f"{folder}/{_unique_name(_safe_filename(attachment['name']), used)}", _upload_path(attachment), attachment["name"]))
+            entries.append((f"{folder}/{_unique_name(_safe_filename(attachment['name']), used)}", _attachment_bytes(attachment), attachment["name"]))
     title = _safe_filename(problem.title or problem.problem_text, "workspace")[:60]
     return _zip_download(entries, f"{title} - all files.zip")
 
@@ -1626,6 +1646,13 @@ async def _store_attachment(
                    f"files must be {max_size // (1024 * 1024)} MB or smaller.",
         )
     stored_name = f"{uuid.uuid4().hex}{extension}"
+    if object_store.enabled():
+        # Object storage first: a file written here is reachable from every machine that shares the
+        # database, which local disk never was.
+        if not object_store.put(stored_name, content, content_type):
+            raise HTTPException(status_code=500, detail=f"'{upload.filename}' could not be saved")
+        return {"name": upload.filename, "content_type": content_type, "size": len(content),
+                "url": f"/uploads/{stored_name}"}
     stored_path = os.path.join(UPLOAD_DIR, stored_name)
     try:
         with open(stored_path, "wb") as output:
@@ -1638,6 +1665,30 @@ async def _store_attachment(
         # Belt-and-braces: confirm the write actually landed before telling the caller it succeeded.
         raise HTTPException(status_code=500, detail=f"'{upload.filename}' was not saved correctly")
     return {"name": upload.filename, "content_type": content_type, "size": len(content), "url": f"/uploads/{stored_name}"}
+
+
+def _attachment_bytes(attachment: Dict[str, Any]) -> Optional[bytes]:
+    """The stored file's contents, from object storage or local disk, or None if it is gone.
+
+    Callers work in bytes rather than paths because a file in a bucket has no path on this machine.
+    Attachments are capped at MAX_EVIDENCE_SIZE, so holding one in memory to serve or zip it is
+    bounded; a workspace zip of many large files is the case to watch if that cap ever rises.
+    """
+    stored_name = os.path.basename(str(attachment.get("url", "")))
+    if not stored_name:
+        return None
+    if object_store.enabled():
+        content = object_store.get(stored_name)
+        if content is not None:
+            return content
+    path = _upload_path(attachment)
+    if not path:
+        return None
+    try:
+        with open(path, "rb") as handle:
+            return handle.read()
+    except OSError:
+        return None
 
 
 def _upload_path(attachment: Dict[str, Any]) -> Optional[str]:
@@ -1653,6 +1704,7 @@ def _upload_path(attachment: Dict[str, Any]) -> Optional[str]:
 
 def _discard_attachments(attachments: List[Dict[str, Any]]) -> None:
     for attachment in attachments:
+        object_store.delete(os.path.basename(str(attachment.get("url", ""))))
         path = _upload_path(attachment)
         if path:
             try:
@@ -1749,11 +1801,14 @@ def verify_problem_endpoint(problem_id: str, decision: VerificationDecision):
         title = "Problem approved"
         message = f"Your problem '{problem.title or problem.problem_text}' was approved and published."
     elif decision.decision == "proof":
-        notification_type = "warning"
+        # "proof" and "error" rather than "warning"/"update": the citizen's notification then
+        # carries the same colour as the government decision that produced it -- green for a
+        # problem still alive and actionable, red for one that is not.
+        notification_type = "proof"
         title = "Additional proof requested"
         message = f"Please provide additional proof for '{problem.title or problem.problem_text}': {note}"
     else:
-        notification_type = "update"
+        notification_type = "error"
         title = "Problem rejected"
         message = f"Your problem '{problem.title or problem.problem_text}' was rejected: {note}"
     create_notification(
@@ -1802,6 +1857,51 @@ class DuplicateReviewDecision(BaseModel):
     officer: str = "Government Officer"
     note: Optional[str] = None
     merged_into_id: Optional[str] = None  # only for "duplicate"; defaults to duplicate_of_id
+
+
+@app.delete("/problems/{problem_id}/evidence/{index}", response_model=ProblemBase)
+def delete_evidence_endpoint(problem_id: str, index: int, citizen_name: str = Query(..., max_length=120)):
+    """Remove one evidence attachment the citizen uploaded, by its position in the list.
+
+    Only an owner may remove their own evidence, and only while the problem is still theirs to
+    correct: once it has been verified, the attachments are part of what the officer decided on and
+    deleting them would leave the verification history referring to files nobody can see.
+    """
+    problem = get_problem(problem_id)
+    if not problem:
+        raise HTTPException(status_code=404, detail="Problem not found")
+    if not is_owner(problem, citizen_name):
+        raise HTTPException(status_code=403, detail="You can only change your own problems")
+    if problem.status not in {"submitted", "under_review", "returned_for_correction"}:
+        raise HTTPException(
+            status_code=409,
+            detail="Evidence can only be removed while the problem is still under review",
+        )
+
+    attachments = list(problem.evidence_attachments)
+    if index < 0 or index >= len(attachments):
+        raise HTTPException(status_code=404, detail="No attachment at that position")
+
+    removed = attachments.pop(index)
+    updated = update_problem(
+        problem_id,
+        ProblemUpdate(
+            evidence_provided=[item["name"] for item in attachments],
+            evidence_attachments=attachments,
+        ),
+    )
+    if not updated:
+        raise HTTPException(status_code=404, detail="Problem not found")
+
+    # The stored file goes only after the record is safely updated: an orphaned file wastes disk,
+    # but a record pointing at a deleted file is a broken link in the verification trail.
+    stored_name = os.path.basename(str(removed.get("url", "")))
+    object_store.delete(stored_name)
+    with contextlib.suppress(OSError):
+        local = os.path.join(UPLOAD_DIR, stored_name)
+        if os.path.isfile(local):
+            os.remove(local)
+    return updated
 
 
 @app.post("/problems/{problem_id}/duplicate-decision", response_model=ProblemBase)

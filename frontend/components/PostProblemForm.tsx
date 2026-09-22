@@ -1437,7 +1437,7 @@ export default function PostProblemForm({
                   </p>
 
                   <p className="text-[11px] text-slate-400">
-                    PDF, JPG, PNG up to 10 MB
+                    PDF, JPG, PNG up to 20 MB
                   </p>
 
                   <input

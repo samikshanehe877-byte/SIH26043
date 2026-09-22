@@ -47,12 +47,9 @@ export default function NotificationsPage() {
         setNotifications(
           records.map((record) => ({
             id: record.id,
-            type:
-              record.type === "success" ||
-              record.type === "warning" ||
-              record.type === "update"
-                ? record.type
-                : "info",
+            type: ["success", "warning", "update", "error", "proof"].includes(record.type)
+              ? record.type
+              : "info",
             title: record.title,
             message: record.message,
             timeAgo: formatNotificationTime(record.created_at),

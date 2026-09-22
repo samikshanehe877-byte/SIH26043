@@ -208,7 +208,7 @@ export interface User {
 
 export interface Notification {
   id: number | string;
-  type: "success" | "info" | "warning" | "update";
+  type: "success" | "info" | "warning" | "update" | "error" | "proof";
   title: string;
   message: string;
   timeAgo: string;

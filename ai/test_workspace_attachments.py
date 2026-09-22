@@ -86,7 +86,7 @@ def test_disallowed_file_type_is_rejected(client, project):
 
 
 def test_oversized_file_is_rejected(client, project):
-    huge = b"x" * (10 * 1024 * 1024 + 1)
+    huge = b"x" * (api.MAX_EVIDENCE_SIZE + 1)
     files = [("files", ("huge.png", huge, "image/png"))]
     response = post_update(client, project, files=files)
     assert response.status_code == 413

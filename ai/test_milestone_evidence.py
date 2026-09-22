@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 import api
 import points_storage
 import problem_storage
-from api import MAX_MILESTONE_ATTACHMENTS, app
+from api import MAX_EVIDENCE_SIZE, MAX_MILESTONE_ATTACHMENTS, app
 from problem_storage import (
     CollaborationRequestRecord,
     ProblemBase,
@@ -126,7 +126,7 @@ def test_disallowed_file_type_is_rejected_and_nothing_is_left_behind(client, pro
 
 
 def test_oversized_file_is_rejected(client, project, uploads_dir):
-    huge = b"x" * (10 * 1024 * 1024 + 1)
+    huge = b"x" * (MAX_EVIDENCE_SIZE + 1)
     response = submit(client, project.id, files=[("files", ("huge.png", huge, "image/png"))])
     assert response.status_code == 413
     assert stored_files(uploads_dir) == []
