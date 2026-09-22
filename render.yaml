@@ -1,22 +1,22 @@
 # Deployment for the FastAPI service, so every machine talks to one backend and sees the same
 # problems. The Next.js frontend is deployed separately (Vercel) with NEXT_PUBLIC_API_URL pointing
-# at this service's URL.
+# at this service's URL, set at build time -- Next.js inlines NEXT_PUBLIC_* during the build, so
+# changing it afterwards does nothing until the frontend is rebuilt.
 #
-# The disk is the point of this file. Problems live in SQLite and evidence lives on the filesystem,
-# so without a mounted disk every deploy would start from an empty database and lose uploads.
-# Render disks require a paid instance type; a free instance will lose data on each deploy.
+# There is deliberately no mounted disk. This file used to define one, back when problems lived in
+# a SQLite file and evidence lived on the filesystem: without it every deploy started from an empty
+# database and lost uploads. Both now live off the instance -- problem state in PostgreSQL
+# (PROBLEM_DB_URL) and attachments in object storage (R2_*) -- so the instance holds nothing worth
+# keeping and can be replaced freely. That is also what makes the free plan viable, since Render
+# disks require a paid instance type.
 services:
   - type: web
-    name: sih26043-api
+    name: samasyalink-api
     runtime: docker
     dockerfilePath: ./ai/Dockerfile
     dockerContext: ./ai
-    plan: starter
+    plan: free
     healthCheckPath: /health
-    disk:
-      name: sih26043-data
-      mountPath: /data
-      sizeGB: 1
     envVars:
       # The people directory. Keep channel_binding here: psycopg supports it, and it defends against
       # a man-in-the-middle even with a stolen certificate. Prisma cannot parse it, so the frontend's
@@ -25,23 +25,27 @@ services:
         sync: false
       - key: GEMINI_API_KEY
         sync: false
-      # Exact frontend origins allowed to call this API from a browser. Comma-separated, no wildcard:
-      # a wildcard combined with credentials is rejected by browsers and would expose the API to any site.
+      # Exact frontend origins allowed to call this API from a browser, comma-separated and with no
+      # wildcard: a wildcard combined with credentials is rejected by browsers and would expose the
+      # API to any site. The frontend's URL does not exist until it is deployed, so this is normally
+      # filled in on a second pass, once Vercel has issued one.
       - key: ALLOWED_ORIGINS
         sync: false
-      # Problems, notifications, milestones and the points ledger. Set this to the same Postgres
-      # URL as DATABASE_URL to share that state across every machine; its tables live in their own
-      # schema so they cannot collide with the Prisma tables. Leave it unset to fall back to the
-      # SQLite file on the mounted disk below.
+      # Problems, notifications, milestones and the points ledger. Point this at the same Postgres
+      # database as DATABASE_URL; its tables live in their own schema so they cannot collide with
+      # the Prisma tables, which define their own `problems` and `project_members`.
+      #
+      # Leaving it unset is not a viable deployment: the API would fall back to a SQLite file on an
+      # instance with no persistent disk, and every deploy would silently start from nothing.
       - key: PROBLEM_DB_URL
         sync: false
       - key: PROBLEM_DB_SCHEMA
         value: ai
-      - key: PROBLEM_DB_PATH
-        value: /data/problems.sqlite3
-      # Object storage for evidence and workspace attachments. Set these and files live in the
-      # bucket instead of on the disk below, which is what lets several machines -- or several
-      # deploys -- serve the same attachment. Keep the bucket private.
+      # Object storage for evidence and workspace attachments. Without these the API writes uploads
+      # to the container's own filesystem, which is discarded on every deploy and is not shared
+      # between instances -- the failure mode being a database record that hands every viewer a link
+      # to a file that exists nowhere. Keep the bucket private; the API streams files itself rather
+      # than handing out public URLs, because these are citizens' evidence photographs.
       - key: R2_ENDPOINT
         sync: false
       - key: R2_ACCESS_KEY_ID
@@ -50,7 +54,5 @@ services:
         sync: false
       - key: R2_BUCKET
         sync: false
-      - key: UPLOAD_DIR
-        value: /data/uploads
       - key: PYTHONUNBUFFERED
         value: "1"

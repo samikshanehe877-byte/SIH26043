@@ -27,8 +27,11 @@ RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTr
 
 COPY . .
 
-# The SQLite database and uploaded evidence must live on a mounted disk. Without one, every deploy
-# starts from an empty database and previously uploaded files 404.
+# Fallback paths only, and deliberately not on a mounted disk. A real deployment sets
+# PROBLEM_DB_URL and the R2_* variables, which put problem state in PostgreSQL and attachments in
+# object storage, leaving nothing here worth keeping. Anything written under /data lives and dies
+# with the container, so a deployment missing those variables silently loses everything on each
+# deploy rather than failing loudly -- which is the one way to get this wrong.
 ENV PROBLEM_DB_PATH=/data/problems.sqlite3 \
     UPLOAD_DIR=/data/uploads
 RUN mkdir -p /data/uploads && useradd -m -u 10001 appuser && chown -R appuser:appuser /app /data
