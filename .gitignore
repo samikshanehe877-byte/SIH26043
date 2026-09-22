@@ -28,9 +28,11 @@ next-env.d.ts
 !.env.*.example
 
 # ---- Local database snapshots ----
-# Taken by hand before destructive changes; the live database itself is still tracked on purpose,
-# because it is currently the only way demo data reaches another machine. Once the API is deployed
-# with its own disk, ai/data/problems.sqlite3 should be untracked too.
+# Problem state lives in PostgreSQL now (PROBLEM_DB_URL), so the SQLite file is only the offline
+# fallback and is no longer how demo data reaches another machine. Tracking it had become actively
+# misleading: the committed copy drifts from the live database, and anyone running without
+# PROBLEM_DB_URL set would silently read that stale snapshot instead of an obviously empty one.
+ai/data/problems.sqlite3
 *.sqlite3.backup*
 *.sqlite3-journal
 *.sqlite3-wal
