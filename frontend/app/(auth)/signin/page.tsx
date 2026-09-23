@@ -14,7 +14,21 @@ import {
   AlertCircle,
   Loader2,
   ArrowRight,
+  BookOpen,
+  Users,
 } from "lucide-react";
+
+// The four roles a reviewer needs to walk the whole workflow. A problem is posted by a citizen,
+// verified by an officer, matched to organisations, and volunteered for by one of them -- so
+// seeing any of it through requires switching accounts, which a login screen does not suggest.
+const DEMO_ACCOUNTS = [
+  { role: "Citizen", detail: "Posts problems", email: "rahul.citizen@example.com" },
+  { role: "Government Officer", detail: "Verifies problems", email: "officer.patil@maharashtra.gov.in" },
+  { role: "University Coordinator", detail: "ABC Institute, Pune", email: "coordinator@abcit.edu.in" },
+  { role: "Industry Employee", detail: "TechSolutions, Pune", email: "amit.engineer@techsolutions.com" },
+] as const;
+
+const DEMO_PASSWORD = "password123";
 
 export default function SignInPage() {
   return (
@@ -246,6 +260,56 @@ function SignInForm() {
             {!isLoading && <ArrowRight className="h-5 w-5" />}
           </button>
         </form>
+
+        {/* Demo accounts */}
+        <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4 flex-shrink-0 text-blue-700" />
+              <p className="text-sm font-semibold text-blue-900">
+                {language === "Hindi" ? "डेमो खाते" : "Demo accounts"}
+              </p>
+            </div>
+            <Link
+              href="/demo"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-shrink-0 items-center gap-1.5 rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-blue-700 shadow-sm transition hover:bg-blue-100"
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+              {language === "Hindi" ? "गाइड" : "Guide"}
+            </Link>
+          </div>
+
+          <p className="mt-1.5 text-xs text-blue-800">
+            {language === "Hindi"
+              ? "भरने के लिए किसी भूमिका पर क्लिक करें। सभी का पासवर्ड: "
+              : "Click a role to fill the form. Password for all: "}
+            <span className="font-mono font-semibold">{DEMO_PASSWORD}</span>
+          </p>
+
+          <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
+            {DEMO_ACCOUNTS.map((account) => (
+              <button
+                key={account.email}
+                type="button"
+                onClick={() => {
+                  setEmail(account.email);
+                  setPassword(DEMO_PASSWORD);
+                  setError("");
+                }}
+                className={`rounded-lg border px-3 py-2 text-left transition ${
+                  email === account.email
+                    ? "border-blue-500 bg-white shadow-sm"
+                    : "border-blue-200 bg-white/70 hover:border-blue-400 hover:bg-white"
+                }`}
+              >
+                <span className="block text-xs font-semibold text-gray-900">{account.role}</span>
+                <span className="block text-[11px] text-gray-500">{account.detail}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Sign Up */}
         <div className="text-center">
