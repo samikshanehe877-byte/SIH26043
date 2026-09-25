@@ -185,6 +185,7 @@ export default function DemoGuidePage() {
         <section className="mb-12">
           <h2 className="text-lg font-bold text-slate-900">The ten-minute walkthrough</h2>
           <p className="mt-1 text-sm text-slate-600">
+            Suggestion: Open two browsers and make use of incognito tabs in each. Example: Microsoft Edge - Citizen Dashboard, Microsoft Edge (incognito) - Government Dashboard , Google Chrome - University Dashboard , Google Chrome (incognito) - Industry Dashboard. 
             Four steps, in order. Each one hands off to the next.
           </p>
 
